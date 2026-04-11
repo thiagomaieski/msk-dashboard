@@ -1,0 +1,68 @@
+import { useDash } from '../store/useStore';
+import logoLight from '../assets/dashboard-logo-light-theme.svg';
+import logoDark from '../assets/dashboard-logo.svg';
+
+export default function Topbar() {
+  const currentUser = useDash(s => s.currentUser);
+  const theme = useDash(s => s.theme);
+  const toggleTheme = useDash(s => s.toggleTheme);
+  const signOut = useDash(s => s.signOut);
+  const goTo = useDash(s => s.goTo);
+  const activePage = useDash(s => s.activePage);
+  const isLight = theme === 'light';
+  const logo = isLight ? logoLight : logoDark;
+
+  return (
+    <div className="topbar">
+      <div className="topbar-left">
+        <div className="topbar-logo">
+          <img src={logo} alt="Dashboard" className="logo-img" style={{ height: 35 }} />
+        </div>
+      </div>
+      <div className="topbar-right">
+        <button
+          className="topbar-account"
+          onClick={() => goTo('configuracoes')}
+          title="Minha Conta"
+        >
+          <img className="user-avatar" src={currentUser?.photoURL || 'https://via.placeholder.com/40'} alt="" />
+          <span className="topbar-account-text">
+            <span className="topbar-account-label">Minha Conta</span>
+            <span className="topbar-account-name">{currentUser?.displayName || 'Usuário'}</span>
+          </span>
+        </button>
+        <div className="theme-switch" title="Alternar tema">
+          <input
+            type="checkbox"
+            className="checkbox"
+            id="theme-toggle"
+            checked={!isLight}
+            onChange={toggleTheme}
+          />
+          <label htmlFor="theme-toggle" className="label">
+            <svg className="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M3 11.5C3 16.75 7.25 21 12.5 21c3.72 0 6.95-2.15 8.5-5.27-8.5 0-12.73-4.23-12.73-12.73C5.15 4.55 3 7.78 3 11.5Z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <svg className="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="ball"></div>
+          </label>
+        </div>
+        <button
+          className={`btn-icon ${activePage === 'configuracoes' ? 'active' : ''}`}
+          id="btn-settings"
+          onClick={() => goTo('configuracoes')}
+          title="Configurações"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+        </button>
+        <button className="btn-signout" onClick={signOut}>Sair</button>
+      </div>
+    </div>
+  );
+}
