@@ -112,7 +112,7 @@ export default function ProjetosPage() {
                     <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.descricao || ''}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 -10px' }}>
-                    <span className="indicator-glow-wrap" style={{ fontSize: 11, fontWeight: 700, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>
+                    <span className="indicator-glow-wrap" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>
                       <span className="indicator-glow"></span>
                       {p.status || 'Em andamento'}
                     </span>

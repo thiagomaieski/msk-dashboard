@@ -2139,10 +2139,22 @@ input:checked + .switch-slider:before {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: currentColor;
-  border: 4px solid rgba(255, 255, 255, 0.12);
-  background-clip: padding-box;
+  background: rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-right: 8px;
+}
+
+.indicator-glow::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
 }
 
 /* NOTIFICATIONS CENTER */
