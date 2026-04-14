@@ -191,7 +191,7 @@ export const useDash = create((set, get) => ({
   demoMode: localStorage.getItem('demoMode') === 'true',
 
   configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24 },
-  profile: { name: '', email: '', photoURL: '', setupCompleted: false },
+  profile: { name: '', email: '', photoURL: '', photoPath: '', setupCompleted: false },
   editingId: { ...EMPTY_EDITING },
   activePage: 'dashboard',
   requiresSetup: false,
@@ -268,6 +268,7 @@ export const useDash = create((set, get) => ({
             name: user.displayName || '',
             email: user.email,
             photoURL: user.photoURL || '',
+            photoPath: '',
             setupCompleted: false,
             criadoEm: serverTimestamp()
           };
@@ -330,14 +331,14 @@ export const useDash = create((set, get) => ({
     }
   },
 
-  completeSetup: async (displayName, photoURL, modules) => {
+  completeSetup: async (displayName, photoURL, photoPath, modules) => {
     const { currentUser, updateProfileDoc, toast } = get();
     try {
       // Update Firebase Auth Profile
       await updateProfile(currentUser, { displayName, photoURL });
       
       // Update Firestore Profile
-      await updateProfileDoc({ name: displayName, photoURL, setupCompleted: true });
+      await updateProfileDoc({ name: displayName, photoURL, photoPath, setupCompleted: true });
       
       // Save Modules to Settings
       await setDoc(uDoc('settings', 'main'), { modules }, { merge: true });
@@ -345,7 +346,7 @@ export const useDash = create((set, get) => ({
       set(s => ({ 
         requiresSetup: false, 
         configData: { ...s.configData, modules },
-        profile: { ...s.profile, name: displayName, photoURL, setupCompleted: true }
+        profile: { ...s.profile, name: displayName, photoURL, photoPath, setupCompleted: true }
       }));
       
       toast('Configuração concluída!');
@@ -371,6 +372,31 @@ export const useDash = create((set, get) => ({
     const profileRef = uDoc('profile', 'info');
     await updateDoc(profileRef, data);
     set(s => ({ profile: { ...s.profile, ...data } }));
+  },
+
+  removeProfilePhoto: async () => {
+    const { profile, updateProfileDoc, deleteFile, toast } = get();
+    if (profile.photoPath) {
+      await deleteFile(profile.photoPath);
+    }
+    await updateProfileDoc({ photoURL: '', photoPath: '' });
+    toast('Foto de perfil removida');
+  },
+
+  importGooglePhoto: async () => {
+    const { currentUser, profile, updateProfileDoc, deleteFile, toast } = get();
+    const googlePhoto = currentUser.providerData.find(p => p.providerId === 'google.com')?.photoURL;
+    
+    if (!googlePhoto) {
+      return toast('Nenhuma foto do Google encontrada para esta conta.', 'error');
+    }
+
+    if (profile.photoPath) {
+      await deleteFile(profile.photoPath);
+    }
+
+    await updateProfileDoc({ photoURL: googlePhoto, photoPath: '' });
+    toast('Foto do Google importada!');
   },
 
   signOut: async () => {

@@ -37,6 +37,9 @@ export default function ConfiguracoesPage() {
   const lancarDespesasMensais = useDash(s => s.lancarDespesasMensais);
   const profile = useDash(s => s.profile);
   const updateProfileDoc = useDash(s => s.updateProfileDoc);
+  const removeProfilePhoto = useDash(s => s.removeProfilePhoto);
+  const importGooglePhoto = useDash(s => s.importGooglePhoto);
+  const deleteFile = useDash(s => s.deleteFile);
   const updateModules = useDash(s => s.updateModules);
   const sessions = useDash(s => s.sessions);
   const loadSessions = useDash(s => s.loadSessions);
@@ -175,8 +178,33 @@ export default function ConfiguracoesPage() {
                 <div className="settings-row-info">
                   <div className="settings-row-title">Identidade Visual</div>
                   <div className="settings-row-desc">Atualize sua foto de perfil (Máx 200kb).</div>
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button className="btn btn-sm btn-secondary" onClick={() => document.getElementById('config-photo-upload').click()}>Alterar Foto</button>
+                    
+                    {profile.photoURL && (
+                      <button 
+                        className="btn btn-sm btn-secondary" 
+                        style={{ color: 'var(--red)', borderColor: 'rgba(255,0,0,0.2)' }} 
+                        onClick={async () => {
+                          if (await showConfirm('Remover foto de perfil?', 'O arquivo sumirá do servidor e você usará o ícone padrão.')) {
+                            removeProfilePhoto();
+                          }
+                        }}
+                      >
+                        Remover
+                      </button>
+                    )}
+
+                    {currentUser?.providerData?.some(p => p.providerId === 'google.com') && (
+                      <button 
+                        className="btn btn-sm btn-secondary" 
+                        onClick={importGooglePhoto}
+                        title="Importar foto original da sua conta Google"
+                      >
+                        Importar do Google
+                      </button>
+                    )}
+
                     <input 
                       id="config-photo-upload" 
                       type="file" 
@@ -188,8 +216,10 @@ export default function ConfiguracoesPage() {
                         if (file.size > 200 * 1024) return toast('Arquivo muito grande! Máximo 200kb.', 'error');
                         
                         try {
+                          const oldPath = profile.photoPath;
                           const result = await useDash.getState().uploadFile(file, 'profile');
-                          await updateProfileDoc({ photoURL: result.url });
+                          await updateProfileDoc({ photoURL: result.url, photoPath: result.path });
+                          if (oldPath) deleteFile(oldPath).catch(console.error);
                           toast('Foto atualizada!');
                         } catch (err) {
                           // Erro já tratado no store via toast

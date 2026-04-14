@@ -11,7 +11,15 @@ const MODULES_LIST = [
 
 export default function SetupScreen() {
   const { currentUser, completeSetup, toast, uploadFile } = useDash();
-  // ... (nome, photoURL, selectedModules, etc permanecem iguais)
+  const [name, setName] = useState(currentUser?.displayName || '');
+  const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || '');
+  const [photoPath, setPhotoPath] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [selectedModules, setSelectedModules] = useState({
+    leads: true, projetos: true, recorrencia: true, negocio: true, pessoal: true
+  });
+  const fileRef = useRef();
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -32,10 +40,13 @@ export default function SetupScreen() {
     setProgress('Enviando...');
 
     try {
-      // Usamos a nova ação centralizada que já lida com Auth e API Key
+      const oldPath = photoPath;
       const result = await uploadFile(file, 'profile');
       
       setPhotoURL(result.url);
+      setPhotoPath(result.path);
+      if (oldPath) useDash.getState().deleteFile(oldPath).catch(console.error);
+
       setProgress('Upload concluído!');
       toast('Foto carregada com sucesso!');
     } catch (err) {
@@ -54,7 +65,7 @@ export default function SetupScreen() {
 
     try {
       setUploading(true);
-      await completeSetup(name, photoURL, selectedModules);
+      await completeSetup(name, photoURL, photoPath, selectedModules);
     } catch (e) {
       // toast is already handled in store
     } finally {
