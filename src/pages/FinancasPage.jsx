@@ -114,8 +114,8 @@ export function FinancasNegocioPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title green">↑ Receitas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Receita
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')} title="Nova Receita">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
             <span className="finance-col-total green">{fmtBRL(rec)}</span>
@@ -137,8 +137,8 @@ export function FinancasNegocioPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Despesa
+              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
             <span className="finance-col-total red">{fmtBRL(desp)}</span>
@@ -247,8 +247,8 @@ export function FinancasPessoaisPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title green">↑ Receitas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('pessoalReceita')}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Receita
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('pessoalReceita')} title="Nova Receita">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
             <span className="finance-col-total green">{fmtBRL(rec)}</span>
@@ -270,8 +270,8 @@ export function FinancasPessoaisPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('pessoalDespesa')}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Despesa
+              <button className="btn btn-sm btn-danger" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
             <span className="finance-col-total red">{fmtBRL(desp)}</span>

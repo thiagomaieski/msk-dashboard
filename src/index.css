@@ -948,10 +948,10 @@ tbody tr:hover .copy-btn { opacity: 1; }
   background: transparent;
   border: none;
   box-shadow: none;
-  text-align: center;
-  padding: 5px 2px;
-  width: 60px;
-  flex-shrink: 0;
+  text-align: left;
+  padding: 5px 8px;
+  width: 100%;
+  flex: 1;
 }
 
 .number-stepper .form-input:focus,
@@ -1337,6 +1337,8 @@ tbody tr:hover .row-actions { opacity: 1; }
 }
 
 .dash-card-body { padding: 0; }
+.dash-card-scroll { max-height: 500px; overflow-y: auto; }
+
 
 .dash-item {
   padding: 12px 16px;
@@ -1360,6 +1362,42 @@ tbody tr:hover .row-actions { opacity: 1; }
 .dash-item-etapa { font-size: 12px; color: var(--accent); margin-top: 2px; }
 .dash-empty { padding: 24px 16px; text-align: center; color: var(--text3); font-size: 13px; }
 .dash-reminder-done { display: flex; gap: 8px; align-items: center; }
+.dash-item.concluido { opacity: 0.6; }
+
+.task-cat-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 2px 6px;
+  background: var(--bg3);
+  color: var(--text3);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.btn-icon-sub {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all .2s;
+}
+
+.btn-icon-sub:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.btn-icon-sub.text-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red);
+}
 
 /* FINANCE COLUMNS */
 .finance-period {
@@ -2079,10 +2117,25 @@ input:checked + .switch-slider:before {
   display: flex;
   position: relative;
   align-items: center;
+  width: 100%;
 }
 
 .number-stepper .form-input {
   padding-right: 32px !important;
+}
+
+.number-stepper-prefix {
+  position: absolute;
+  left: 14px;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.number-stepper.has-prefix .form-input {
+  padding-left: 38px !important;
 }
 
 .number-stepper-actions {

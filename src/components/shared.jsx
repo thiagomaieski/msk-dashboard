@@ -93,34 +93,58 @@ export function NumberStepper({
   title,
   inputId,
   wrapperClass = '',
+  mode = 'number', // 'number' or 'currency'
 }) {
-  const numericValue = Number.isFinite(parseInt(value, 10)) ? parseInt(value, 10) : null;
+  const numericValue = parseFloat(value) || 0;
 
   const clampValue = (nextValue) => {
-    if (!Number.isFinite(nextValue)) return '';
+    if (!Number.isFinite(nextValue)) return 0;
     if (Number.isFinite(min)) nextValue = Math.max(min, nextValue);
     if (Number.isFinite(max)) nextValue = Math.min(max, nextValue);
     return nextValue;
   };
 
   const adjust = (direction) => {
-    const base = numericValue ?? (Number.isFinite(min) ? min : 0);
-    onChange(String(clampValue(base + (direction * step))));
+    const base = numericValue;
+    const next = clampValue(base + (direction * step));
+    onChange(mode === 'currency' ? next.toFixed(2) : String(next));
+  };
+
+  const formatDisplay = (val) => {
+    if (mode === 'currency') {
+      const n = parseFloat(val) || 0;
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return val;
+  };
+
+  const handleChange = (e) => {
+    let raw = e.target.value;
+    if (mode === 'currency') {
+      const digits = raw.replace(/\D/g, '');
+      if (!digits) return onChange('0.00');
+      const n = (parseInt(digits, 10) / 100).toFixed(2);
+      onChange(n);
+    } else {
+      onChange(raw);
+    }
   };
 
   return (
-    <div className={`number-stepper ${wrapperClass}`} style={style}>
+    <div className={`number-stepper ${wrapperClass} ${mode === 'currency' ? 'has-prefix' : ''}`} style={style}>
+      {mode === 'currency' && <span className="number-stepper-prefix">R$</span>}
       <input
         id={inputId}
-        type="number"
-        min={min}
-        max={max}
+        type={mode === 'currency' ? 'text' : 'number'}
+        min={mode === 'currency' ? undefined : min}
+        max={mode === 'currency' ? undefined : max}
         step={step}
         className={className}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={formatDisplay(value)}
+        onChange={handleChange}
         placeholder={placeholder}
         title={title}
+        inputMode={mode === 'currency' ? 'numeric' : undefined}
       />
       <div className="number-stepper-actions">
         <button type="button" className="number-stepper-btn-v" onClick={() => adjust(1)} aria-label="Aumentar">

@@ -30,7 +30,10 @@ export default function DashboardPage() {
       leadsNovos: data.leads.filter(l => l.status === 'Novo').length,
       projetosAndamento: data.projetos.filter(p => p.status === 'Em andamento'),
       leadsNovo: data.leads.filter(l => l.status === 'Novo').slice(0, 5),
-      lembretes: [...data.lembretes].sort((a, b) => new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01'))
+      lembretes: [...data.lembretes].sort((a, b) => {
+        if (a.concluido !== b.concluido) return a.concluido ? 1 : -1;
+        return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
+      })
     };
   }, [data, mesAtual]);
 
@@ -79,26 +82,94 @@ export default function DashboardPage() {
           <div className="dash-card">
             <div className="dash-card-head">
               <span className="dash-card-title">Lembretes &amp; Tarefas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('lembrete')}>+ novo</button>
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('lembrete')}>+</button>
             </div>
-            <div className="dash-card-body">
+            <div className="dash-card-body dash-card-scroll">
               {!lembretes.length
                 ? <div className="dash-empty">Tudo em dia!</div>
-                : lembretes.map(r => (
-                    <div key={r.id} className="dash-item card-in">
-                      <div className="dash-item-top">
-                        <label className="dash-reminder-done">
-                          <input type="checkbox" checked={!!r.concluido} onChange={() => toggleLembrete(r.id, r.concluido)} />
-                          <span className="dash-item-title" style={{ textDecoration: r.concluido ? 'line-through' : 'none', opacity: r.concluido ? 0.5 : 1 }}>{r.titulo}</span>
-                        </label>
-                        <div><Badge status={r.prioridade} /></div>
+                : lembretes.map(r => {
+                    const now = new Date();
+                    const taskDate = r.prazo; // 'YYYY-MM-DD'
+                    const taskTime = r.horario; // 'HH:mm' or null
+                    
+                    let deadline = null;
+                    if (taskDate) {
+                      deadline = taskTime ? new Date(`${taskDate}T${taskTime}`) : new Date(`${taskDate}T23:59:59`);
+                    }
+
+                    const isOverdue = deadline && now > deadline && !r.concluido;
+                    
+                    // Lógica para "Quase vencendo" (Amarelo)
+                    const todayStr = now.toISOString().split('T')[0];
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                    
+                    const isSoon = !isOverdue && !r.concluido && (taskDate === todayStr || taskDate === tomorrowStr);
+                    
+                    const deadlineColor = isOverdue ? 'var(--red)' : isSoon ? 'var(--amber)' : 'var(--text3)';
+
+                    return (
+                      <div key={r.id} className={`dash-item card-in ${r.concluido ? 'concluido' : ''}`} style={{ borderLeft: isOverdue ? '3px solid var(--red)' : 'none' }}>
+                        <div className="dash-item-top">
+                          <label className="dash-reminder-done">
+                            <input type="checkbox" checked={!!r.concluido} onChange={() => toggleLembrete(r.id, r.concluido)} />
+                            <span className="dash-item-title" style={{ 
+                              textDecoration: r.concluido ? 'line-through' : 'none', 
+                              opacity: r.concluido ? 0.5 : 1
+                            }}>
+                              {r.titulo}
+                            </span>
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {r.categoria && <span className="task-cat-tag">{r.categoria}</span>}
+                            <Badge status={r.prioridade} />
+                          </div>
+                        </div>
+                        <div className="dash-item-sub" style={{ marginLeft: 24, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: deadlineColor }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            {fmtDate(r.prazo)}
+                          </span>
+                          
+                          {r.horario && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                              {r.horario}
+                            </span>
+                          )}
+
+                          {r.descricao && (
+                            <span title={r.descricao} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent)' }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                              </svg>
+                              Nota
+                            </span>
+                          )}
+                          
+                          <div style={{ flex: 1 }} />
+                          
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn-icon-sub" onClick={() => openModal('lembrete', r.id)} title="Editar">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            <button className="btn-icon-sub text-danger" onClick={() => deleteLembrete(r.id)} title="Excluir">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="dash-item-sub" style={{ marginLeft: 24 }}>
-                        Prazo: {fmtDate(r.prazo)} &bull;{' '}
-                        <button style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer' }} onClick={() => deleteLembrete(r.id)}>Excluir</button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
               }
             </div>
           </div>

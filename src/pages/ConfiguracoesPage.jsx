@@ -469,10 +469,15 @@ export default function ConfiguracoesPage() {
               {/* Categorias */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 40 }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)' }}>Categoria de Despesa Pessoal</div>
+                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--red)' }}><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    Categoria de Despesa Pessoal
+                  </div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                     <input type="text" className="form-input" placeholder="Ex: Combustível" value={catInput} onChange={e => setCatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { addCatPessoal(catInput); setCatInput(''); } }} />
-                    <button className="btn btn-secondary" onClick={() => { addCatPessoal(catInput); setCatInput(''); }}>Add</button>
+                    <button className="btn btn-secondary" onClick={() => { addCatPessoal(catInput); setCatInput(''); }} title="Adicionar Categoria">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 16, height: 16 }}><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {(configData.categoriasPessoal || []).map((c, i) => (
@@ -482,10 +487,15 @@ export default function ConfiguracoesPage() {
                 </div>
 
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)' }}>Categoria de Despesa do Negócio</div>
+                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--red)' }}><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    Categoria de Despesa do Negócio
+                  </div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                     <input type="text" className="form-input" placeholder="Ex: Marketing" value={catNegocioInput} onChange={e => setCatNegocioInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { addCatNegocioDespesa(catNegocioInput); setCatNegocioInput(''); } }} />
-                    <button className="btn btn-secondary" onClick={() => { addCatNegocioDespesa(catNegocioInput); setCatNegocioInput(''); }}>Add</button>
+                    <button className="btn btn-secondary" onClick={() => { addCatNegocioDespesa(catNegocioInput); setCatNegocioInput(''); }} title="Adicionar Categoria">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 16, height: 16 }}><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {(configData.categoriasNegocioDespesa || []).map((c, i) => (
@@ -495,10 +505,15 @@ export default function ConfiguracoesPage() {
                 </div>
 
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)' }}>Criar Categoria de Entrada</div>
+                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--green)' }}><path d="M12 5v14M5 12h14" /></svg>
+                    Criar Categoria de Entrada
+                  </div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                     <input type="text" className="form-input" placeholder="Ex: Investimento" value={catRecInput} onChange={e => setCatRecInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { addCatReceita(catRecInput); setCatRecInput(''); } }} />
-                    <button className="btn btn-secondary" onClick={() => { addCatReceita(catRecInput); setCatRecInput(''); }}>Add</button>
+                    <button className="btn btn-secondary" onClick={() => { addCatReceita(catRecInput); setCatRecInput(''); }} title="Adicionar Categoria">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 16, height: 16 }}><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {(configData.categoriasReceita || []).map((c, i) => (

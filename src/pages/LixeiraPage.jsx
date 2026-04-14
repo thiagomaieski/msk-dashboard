@@ -91,13 +91,7 @@ export default function LixeiraPage() {
         Itens excluídos são mantidos por <strong style={{ color: 'var(--amber)' }}>15 dias</strong> antes de serem apagados permanentemente.
       </p>
 
-      {items === null ? (
-        <div style={{ padding: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.6 }}>
-          <div className="loader-bar-track" style={{ width: 120, margin: 0 }}>
-            <div className="loader-bar-ind" />
-          </div>
-        </div>
-      ) : items.length === 0 ? (
+      {items === null ? null : items.length === 0 ? (
         <div className="trash-empty">
           <IcoTrash />
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>Lixeira vazia</div>

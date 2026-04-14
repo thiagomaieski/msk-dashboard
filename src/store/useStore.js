@@ -779,7 +779,12 @@ export const useDash = create((set, get) => ({
   },
   saveLembrete: async (fields) => {
     if (!fields.titulo) return get().toast('Título obrigatório', 'error');
-    await get().saveGeneric('lembretes', { ...fields, concluido: false, modificadoEm: serverTimestamp() }, 'Lembrete');
+    const payload = {
+      ...fields,
+      concluido: fields.concluido || false,
+      modificadoEm: serverTimestamp()
+    };
+    await get().saveGeneric('lembretes', payload, 'Lembrete');
   },
 
   // ── Delete ──
@@ -1148,16 +1153,18 @@ export const useDash = create((set, get) => ({
       if (r.concluido) return;
       if (!r.prazo) return;
       
-      const deadline = new Date(r.prazo);
+      const deadlineStr = r.horario ? `${r.prazo}T${r.horario}` : r.prazo;
+      const deadline = new Date(deadlineStr);
       const diff = deadline.getTime() - now.getTime();
       
       // If deadline is within X hours
       if (diff < leadMs && diff > -2 * 60 * 60 * 1000) {
         const exists = data.notificacoes.find(n => n.reminderId === r.id);
         if (!exists) {
+          const timeLabel = r.horario ? ` às ${r.horario}` : '';
           get().addNotification({
             title: `Tarefa Próxima: ${r.titulo}`,
-            message: `Vence em breve: ${fmtDate(r.prazo)}`,
+            message: `Vence em breve: ${fmtDate(r.prazo)}${timeLabel}`,
             type: 'alert',
             priority: r.prioridade,
             reminderId: r.id

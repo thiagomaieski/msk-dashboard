@@ -196,7 +196,7 @@ function ProjetoForm({ item }) {
           </select>
           {noCli}
         </div>
-        <div className="form-group"><label className="form-label">Valor (R$)</label><NumberStepper value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
@@ -251,7 +251,7 @@ function RecorrenciaForm({ item }) {
           </select>
           {noCli}
         </div>
-        <div className="form-group"><label className="form-label">Valor (R$)</label><NumberStepper value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Plano / Descrição</label><input className="form-input" value={f.plano} onChange={u('plano')} /></div>
       <div className="form-grid form-grid-2">
@@ -305,7 +305,7 @@ function FinancaForm({ item, defaultTipo }) {
     <div className="form-grid">
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Data</label><input className="form-input" type="date" value={f.data} onChange={u('data')} /></div>
-        <div className="form-group"><label className="form-label">Valor (R$)</label><NumberStepper value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
@@ -352,7 +352,7 @@ function PessoalForm({ item, defaultTipo }) {
     <div className="form-grid">
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Data</label><input className="form-input" type="date" value={f.data} onChange={u('data')} /></div>
-        <div className="form-group"><label className="form-label">Valor (R$)</label><NumberStepper value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
@@ -396,7 +396,7 @@ function DespesaFixaForm({ item }) {
     <div className="form-grid">
       <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Valor (R$)</label><NumberStepper value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
         <div className="form-group"><label className="form-label">Dia do Mês (Venc.)</label><NumberStepper value={f.dia} onChange={(value) => setF(p => ({ ...p, dia: value }))} min={1} max={31} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Categoria Pessoal</label>
@@ -425,24 +425,81 @@ function DespesaFixaForm({ item }) {
 function LembreteForm({ item }) {
   const saveLembrete = useDash(s => s.saveLembrete);
   const closeModal = useDash(s => s.closeModal);
+  const [hasTime, setHasTime] = useState(!!item?.horario);
   const [f, setF] = useState({
-    titulo: item?.titulo || '', prioridade: item?.prioridade || 'Baixa', prazo: item?.prazo || '',
+    titulo: item?.titulo || '', 
+    prioridade: item?.prioridade || 'Baixa', 
+    prazo: item?.prazo || '',
+    horario: item?.horario || '12:00',
+    descricao: item?.descricao || '',
+    categoria: item?.categoria || 'Geral',
+    concluido: item?.concluido || false
   });
+  
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  
+  const CATS = ['Geral', 'Trabalho', 'Pessoal', 'Financeiro', 'Urgente'];
+
   return (
     <div className="form-grid">
-      <div className="form-group"><label className="form-label">Título</label><input className="form-input" value={f.titulo} onChange={u('titulo')} /></div>
+      <div className="form-group">
+        <label className="form-label">Título da Tarefa</label>
+        <input className="form-input" placeholder="O que precisa ser feito?" value={f.titulo} onChange={u('titulo')} autoFocus />
+      </div>
+      
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Prioridade</label>
-          <select className="form-select" value={f.prioridade} onChange={u('prioridade')}>
-            {['Baixa', 'Média', 'Alta'].map(s => <option key={s}>{s}</option>)}
+        <div className="form-group">
+          <label className="form-label">Categoria</label>
+          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
+            {CATS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <div className="form-group"><label className="form-label">Data/Prazo</label><input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} /></div>
+        <div className="form-group">
+          <label className="form-label">Prioridade</label>
+          <select className="form-select" value={f.prioridade} onChange={u('prioridade')}>
+            {['Baixa', 'Média', 'Alta'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
+
+      <div className="form-grid form-grid-2" style={{ alignItems: 'flex-end' }}>
+        <div className="form-group">
+          <label className="form-label">Data de Entrega</label>
+          <input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} />
+        </div>
+        
+        <div className="form-group">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0' }}>
+            <input 
+              type="checkbox" 
+              id="f-has-time" 
+              checked={hasTime} 
+              onChange={e => setHasTime(e.target.checked)} 
+            />
+            <label htmlFor="f-has-time" style={{ fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>Definir horário</label>
+          </div>
+          {hasTime && (
+            <input className="form-input" type="time" value={f.horario} onChange={u('horario')} />
+          )}
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Descrição / Notas (opcional)</label>
+        <textarea 
+          className="form-textarea" 
+          placeholder="Adicione mais detalhes sobre esta tarefa..." 
+          style={{ minHeight: 80 }} 
+          value={f.descricao} 
+          onChange={u('descricao')} 
+        />
+      </div>
+
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveLembrete(f)}>Salvar</button>
+        <button className="btn btn-primary" onClick={() => saveLembrete({ ...f, horario: hasTime ? f.horario : null })}>
+          {item ? 'Atualizar Tarefa' : 'Adicionar Tarefa'}
+        </button>
       </div>
     </div>
   );
