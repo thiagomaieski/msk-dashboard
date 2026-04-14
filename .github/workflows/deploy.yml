@@ -41,4 +41,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./dist/ 
-        server-dir: ./public_html/ # Se o seu site estiver em uma subpasta na Hostinger, ajuste o caminho aqui
+        server-dir: ./ # Se o seu site estiver em uma subpasta na Hostinger, ajuste o caminho aqui
