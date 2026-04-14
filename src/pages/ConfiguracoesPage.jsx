@@ -186,17 +186,14 @@ export default function ConfiguracoesPage() {
                         const file = e.target.files[0];
                         if (!file) return;
                         if (file.size > 200 * 1024) return toast('Arquivo muito grande! Máximo 200kb.', 'error');
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        formData.append('userId', currentUser.uid);
-                        formData.append('type', 'profile');
+                        
                         try {
-                          const res = await fetch('upload.php', { method: 'POST', body: formData });
-                          const r = await res.json();
-                          if (r.error) throw new Error(r.error);
-                          await updateProfileDoc({ photoURL: r.url });
+                          const result = await useDash.getState().uploadFile(file, 'profile');
+                          await updateProfileDoc({ photoURL: result.url });
                           toast('Foto atualizada!');
-                        } catch (err) { toast(err.message, 'error'); }
+                        } catch (err) {
+                          // Erro já tratado no store via toast
+                        }
                       }}
                     />
                   </div>

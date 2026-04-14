@@ -45,10 +45,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="dash-stats">
-        <div className="dash-stat"><div className="dash-stat-label">Projetos Ativos</div><div className="dash-stat-val" style={{ color: 'var(--text)' }}>{projAtivos}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Receita Negócio (Mês)</div><div className="dash-stat-val" style={{ color: 'var(--green)' }}>{fmtBRL(recMes)}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Despesa Pessoal (Mês)</div><div className="dash-stat-val" style={{ color: 'var(--red)' }}>{fmtBRL(despPes)}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Novos Leads</div><div className="dash-stat-val">{leadsNovos}</div></div>
+        <div className="dash-stat"><div className="dash-stat-label">Projetos Ativos</div><div className="dash-stat-val" style={{ color: 'var(--text)' }}>{projAtivos}</div></div>
       </div>
 
       <div className="dash-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>

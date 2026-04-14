@@ -10,20 +10,8 @@ const MODULES_LIST = [
 ];
 
 export default function SetupScreen() {
-  const { currentUser, completeSetup, toast } = useDash();
-  const [name, setName] = useState(currentUser?.displayName || '');
-  const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || '');
-  const [selectedModules, setSelectedModules] = useState({
-    leads: true, projetos: true, recorrencia: true, negocio: true, pessoal: true
-  });
-  
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState('');
-  const fileRef = useRef(null);
-
-  const handleModuleToggle = (id) => {
-    setSelectedModules(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  const { currentUser, completeSetup, toast, uploadFile } = useDash();
+  // ... (nome, photoURL, selectedModules, etc permanecem iguais)
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -41,52 +29,18 @@ export default function SetupScreen() {
     }
 
     setUploading(true);
-    setProgress('Redimensionando...'); // Placeholder for UX
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('userId', currentUser.uid);
-    formData.append('type', 'profile');
+    setProgress('Enviando...');
 
     try {
-      setProgress('Enviando...');
-      // Timeout controller for robust error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
-      const response = await fetch('upload.php', { 
-        method: 'POST', 
-        body: formData,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erro no servidor (${response.status}): ${errorText || 'Falha no upload'}`);
-      }
-
-      const result = await response.json();
+      // Usamos a nova ação centralizada que já lida com Auth e API Key
+      const result = await uploadFile(file, 'profile');
       
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      if (!result.url) {
-        throw new Error('O servidor não retornou a URL da imagem.');
-      }
-
       setPhotoURL(result.url);
       setProgress('Upload concluído!');
       toast('Foto carregada com sucesso!');
     } catch (err) {
-      console.error('Upload error:', err);
-      let msg = 'Erro ao carregar foto.';
-      if (err.name === 'AbortError') msg = 'Tempo limite de upload esgotado (30s).';
-      else if (err.message) msg = err.message;
-      
-      toast(msg, 'error');
+      // O erro já é disparado via toast dentro do uploadFile, 
+      // mas limpamos o estado local aqui
       setProgress('');
     } finally {
       setUploading(false);

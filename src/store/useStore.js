@@ -995,30 +995,92 @@ export const useDash = create((set, get) => ({
     updateDoc(uDoc('projetos', activeProjectView), { tarefas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
   },
 
-  // ── File (Hostinger) ──
-  addArquivo: async (arquivo) => {
-    const { activeProjectView, data, toast } = get();
-    const p = data.projetos.find(x => x.id === activeProjectView);
-    const arquivos = [...(p?.arquivos || []), arquivo];
-    set(s => ({
-      data: {
-        ...s.data,
-        projetos: s.data.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos } : x)
-      }
-    }));
-    await updateDoc(uDoc('projetos', activeProjectView), { arquivos });
-    toast('Upload concluído com sucesso!');
+  // ── File (Hostinger Secure) ──
+  uploadFile: async (file, type = 'geral', targetId = '') => {
+    const { currentUser, toast } = get();
+    if (!currentUser) throw new Error('Usuário não autenticado');
+
+    const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', currentUser.uid);
+    formData.append('type', type);
+    formData.append('targetId', targetId);
+    formData.append('apiKey', apiKey);
+
+    try {
+      const res = await fetch('upload.php', {
+        method: 'POST',
+        headers: { 'X-Storage-API-Key': apiKey },
+        body: formData
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+      return result; // { success, url, path, name }
+    } catch (e) {
+      toast('Erro no upload: ' + e.message, 'error');
+      throw e;
+    }
   },
+
+  deleteFile: async (path) => {
+    const { currentUser, toast } = get();
+    if (!currentUser) return;
+
+    const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+    try {
+      const res = await fetch('delete.php', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Storage-API-Key': apiKey
+        },
+        body: JSON.stringify({ path, userId: currentUser.uid, apiKey })
+      });
+      const result = await res.json();
+      if (result.error) console.error('Delete error:', result.error);
+      return result;
+    } catch (e) {
+      console.warn('Falha ao comunicar deleção:', e);
+    }
+  },
+
+  addArquivo: async (file, type, targetId) => {
+    const { activeProjectView, data, toast, uploadFile } = get();
+    try {
+      const res = await uploadFile(file, type, targetId);
+      const arquivo = { 
+        nome: res.name, 
+        tipo: type, 
+        url: res.url, 
+        path: res.path, 
+        addEm: new Date().toISOString() 
+      };
+
+      set(s => ({
+        data: {
+          ...s.data,
+          projetos: s.data.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos: [...(x.arquivos || []), arquivo] } : x)
+        }
+      }));
+      await updateDoc(uDoc('projetos', activeProjectView), { 
+        arquivos: [...(data.projetos.find(x => x.id === activeProjectView)?.arquivos || []), arquivo] 
+      });
+      toast('Upload concluído com sucesso!');
+    } catch (e) { /* Error handled in uploadFile */ }
+  },
+
   delArquivo: async (idx) => {
-    const { activeProjectView, data, toast, showConfirm } = get();
+    const { activeProjectView, data, toast, showConfirm, deleteFile } = get();
     if (!await showConfirm('Apagar permanentemente?', 'O arquivo será removido do servidor e do Firebase.')) return;
+    
     const p = data.projetos.find(x => x.id === activeProjectView);
     const item = (p?.arquivos || [])[idx];
+    
     if (item?.path) {
-      try {
-        await fetch('delete.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: item.path }) });
-      } catch (e) { console.warn(e); }
+      await deleteFile(item.path);
     }
+
     const arquivos = (p?.arquivos || []).filter((_, i) => i !== idx);
     set(s => ({
       data: {

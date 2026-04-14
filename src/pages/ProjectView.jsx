@@ -179,20 +179,14 @@ function PVArquivos({ p, onAdd, onDel }) {
   const handleUpload = async () => {
     if (!nome || !selectedFile) return toast('Preencha um nome e selecione o arquivo!', 'error');
     setUploading(true);
-    setProgress('Enviando ao servidor...');
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('projectId', p.id);
+    setProgress('Preparando envio...');
     try {
-      const res = await fetch('upload.php', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setProgress('Salvando no Firebase...');
-      await onAdd({ nome, tipo, url: data.url, path: data.path, addEm: new Date().toISOString() });
+      // O addArquivo agora recebe o arquivo real e faz o upload
+      await onAdd(selectedFile, tipo, p.id);
       setNome(''); setSelectedFile(null); setProgress('');
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
-      toast('Erro: ' + e.message, 'error');
+      // Erro já tratado no store
       setProgress('');
     } finally { setUploading(false); }
   };
