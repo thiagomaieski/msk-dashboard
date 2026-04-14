@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, fmtDate } from '../store/useStore';
 import { EmptyDiv } from '../components/shared';
 
@@ -19,17 +19,20 @@ export default function ProjetosPage() {
   const [pag, setPag] = useState('');
   const [sort, setSort] = useState('criadoDesc');
 
-  let list = data.projetos.filter(p => {
-    if (search && !((p.cliente || '').toLowerCase().includes(search) || (p.descricao || '').toLowerCase().includes(search))) return false;
-    if (status && p.status !== status) return false;
-    if (pag && p.pagamento !== pag) return false;
-    return true;
-  });
-  list = sortData(list, sort);
-  const allIds = list.map(x => x.id).join(',');
+  const { list, allIds } = useMemo(() => {
+    let filtered = data.projetos.filter(p => {
+      if (search && !((p.cliente || '').toLowerCase().includes(search) || (p.descricao || '').toLowerCase().includes(search))) return false;
+      if (status && p.status !== status) return false;
+      if (pag && p.pagamento !== pag) return false;
+      return true;
+    });
+    filtered = sortData(filtered, sort);
+    return { list: filtered, allIds: filtered.map(x => x.id).join(',') };
+  }, [data.projetos, search, status, pag, sort]);
+
   const allChecked = selectedItems.length === list.length && list.length > 0;
 
-  const statusColors = { 'Em andamento': 'var(--accent)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' };
+  const statusColors = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' };
   const pagColors = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' };
 
   return (
@@ -109,8 +112,16 @@ export default function ProjetosPage() {
                     <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.descricao || ''}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 -10px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>{p.status || 'Em andamento'}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: pc, background: pc + '1a', borderRadius: 99, padding: '4px 10px' }}>{p.pagamento || 'Pendente'}</span>
+                    <span className="indicator-glow-wrap" style={{ fontSize: 11, fontWeight: 700, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>
+                      <span className="indicator-glow"></span>
+                      {p.status || 'Em andamento'}
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: pc, background: pc + '1a', borderRadius: 99, padding: '4px 10px' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                      </svg>
+                      {p.pagamento || 'Pendente'}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--text)' }}>{fmtBRL(p.valor)}</span>

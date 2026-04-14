@@ -40,8 +40,8 @@ function ModalContent({ type }) {
   if (type === 'lead') return <LeadForm item={data.leads.find(x => x.id === editingId.leads)} />;
   if (type === 'projeto') return <ProjetoForm item={data.projetos.find(x => x.id === editingId.projetos)} />;
   if (type === 'recorrencia') return <RecorrenciaForm item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
-  if (type === 'meiReceita') return <FinancaForm item={data.mei.find(x => x.id === editingId.mei)} defaultTipo="Receita" />;
-  if (type === 'meiDespesa') return <FinancaForm item={data.mei.find(x => x.id === editingId.mei)} defaultTipo="Despesa" />;
+  if (type === 'negocioReceita') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
+  if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
   if (type === 'pessoalReceita') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Receita" />;
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'cliente') return <ClienteForm item={data.clientes.find(x => x.id === editingId.clientes)} />;
@@ -49,6 +49,7 @@ function ModalContent({ type }) {
   if (type === 'despesaFixa') return <DespesaFixaForm item={data.despesasFixas.find(x => x.id === editingId.despesasFixas)} />;
   if (type === 'csvInfo') return <CsvInfoModal />;
   if (type === 'csvProgress') return <CsvProgressModal />;
+  if (type === 'changePassword') return <ChangePasswordForm />;
   return null;
 }
 
@@ -126,11 +127,36 @@ function ClienteForm({ item }) {
         <label className="form-label">Links Sociais</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { key: 'instagram', icon: '📷', bg: '#E1306C', placeholder: 'instagram.com/perfil' },
-            { key: 'facebook', icon: '📘', bg: '#1877F2', placeholder: 'facebook.com/perfil' },
-            { key: 'youtube', icon: '▶️', bg: '#FF0000', placeholder: 'youtube.com/@canal' },
-            { key: 'site', icon: '🌐', bg: 'var(--bg4)', placeholder: 'site.com.br' },
-            { key: 'linkCustom', icon: '🔗', bg: 'var(--bg4)', placeholder: 'Outro link personalizado' },
+            { 
+              key: 'instagram', 
+              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>, 
+              bg: '#E1306C', 
+              placeholder: 'instagram.com/perfil' 
+            },
+            { 
+              key: 'facebook', 
+              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>, 
+              bg: '#1877F2', 
+              placeholder: 'facebook.com/perfil' 
+            },
+            { 
+              key: 'youtube', 
+              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.42a2.78 2.78 0 0 0-1.94 2C1 8.11 1 12 1 12s0 3.89.46 5.58a2.78 2.78 0 0 0 1.94 2c1.72.42 8.6.42 8.6.42s6.88 0 8.6-.42a2.78 2.78 0 0 0 1.94-2C23 15.89 23 12 23 12s0-3.89-.46-5.58z"/><polyline points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>, 
+              bg: '#FF0000', 
+              placeholder: 'youtube.com/@canal' 
+            },
+            { 
+              key: 'site', 
+              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>, 
+              bg: 'var(--bg4)', 
+              placeholder: 'site.com.br' 
+            },
+            { 
+              key: 'linkCustom', 
+              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, 
+              bg: 'var(--bg4)', 
+              placeholder: 'Outro link personalizado' 
+            },
           ].map(({ key, icon, placeholder }) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>{icon}</span>
@@ -260,14 +286,14 @@ function RecorrenciaForm({ item }) {
   );
 }
 
-// ── FINANÇA (MEI) FORM ──
+// ── FINANÇA (NEGÓCIO) FORM ──
 function FinancaForm({ item, defaultTipo }) {
   const configData = useDash(s => s.configData);
-  const saveMei = useDash(s => s.saveMei);
+  const saveNegocio = useDash(s => s.saveNegocio);
   const closeModal = useDash(s => s.closeModal);
   const tipo = item ? item.tipo : defaultTipo;
   const isReceita = tipo === 'Receita';
-  const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasMeiDespesa || []);
+  const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasNegocioDespesa || []);
   const today = new Date().toISOString().split('T')[0];
   const [f, setF] = useState({
     data: item?.data || today, valor: item?.valor || '',
@@ -300,7 +326,7 @@ function FinancaForm({ item, defaultTipo }) {
       </div>
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveMei({ ...f, tipo, valor: parseFloat(f.valor) || 0 })}>Salvar</button>
+        <button className="btn btn-primary" onClick={() => saveNegocio({ ...f, tipo, valor: parseFloat(f.valor) || 0 })}>Salvar</button>
       </div>
     </div>
   );
@@ -379,7 +405,7 @@ function DespesaFixaForm({ item }) {
         </select>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 'var(--radius-sm)' }}>
-        <input type="checkbox" id="f-despesa-fixa-cartao" checked={f.cartao} onChange={e => setF(p => ({ ...p, cartao: e.target.checked }))} />
+        <input type="checkbox" id="f-despesa-fixa-cartao" className="checkbox-blue" checked={f.cartao} onChange={e => setF(p => ({ ...p, cartao: e.target.checked }))} />
         <label htmlFor="f-despesa-fixa-cartao" style={{ fontSize: 13, color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--blue)' }}>
             <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
@@ -484,6 +510,50 @@ export function CsvProgressModal() {
       </div>
       <div id="csv-progress-text" style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6 }}>Iniciando importação...</div>
       <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={closeModal}>Fechar Aba</button>
+    </div>
+  );
+}
+
+// ── CHANGE PASSWORD FORM ──
+function ChangePasswordForm() {
+  const changePassword = useDash(s => s.changePassword);
+  const closeModal = useDash(s => s.closeModal);
+  const [f, setF] = useState({ current: '', new: '', confirm: '' });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!f.current || !f.new || !f.confirm) return alert('Preencha todos os campos.');
+    if (f.new !== f.confirm) return alert('As senhas não coincidem.');
+    if (f.new.length < 6) return alert('A nova senha deve ter pelo menos 6 caracteres.');
+    
+    setLoading(true);
+    const success = await changePassword(f.current, f.new);
+    setLoading(false);
+    if (success) closeModal();
+  };
+
+  return (
+    <div className="form-grid">
+      <div className="form-group">
+        <label className="form-label">Senha Atual</label>
+        <input className="form-input" type="password" value={f.current} onChange={e => setF(p => ({ ...p, current: e.target.value }))} />
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group">
+          <label className="form-label">Nova Senha</label>
+          <input className="form-input" type="password" value={f.new} onChange={e => setF(p => ({ ...p, new: e.target.value }))} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Confirmar Nova Senha</label>
+          <input className="form-input" type="password" value={f.confirm} onChange={e => setF(p => ({ ...p, confirm: e.target.value }))} />
+        </div>
+      </div>
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal} disabled={loading}>Cancelar</button>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Processando...' : 'Alterar Senha'}
+        </button>
+      </div>
     </div>
   );
 }

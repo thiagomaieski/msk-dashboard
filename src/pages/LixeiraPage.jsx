@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useDash } from '../store/useStore';
+import { useDash, uCol } from '../store/useStore';
 import { db } from '../firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getDocs } from 'firebase/firestore';
 
-const TRASH_COLS = ['leads', 'projetos', 'recorrencia', 'mei', 'pessoal', 'clientes', 'despesasFixas'];
-const TRASH_LABELS = { leads: 'Lead', projetos: 'Projeto', recorrencia: 'Recorrência', mei: 'Lançamento Negócio', pessoal: 'Lançamento Pessoal', clientes: 'Cliente', despesasFixas: 'Despesa Fixa' };
+const TRASH_COLS = ['leads', 'projetos', 'recorrencia', 'negocio', 'pessoal', 'clientes', 'despesasFixas'];
+const TRASH_LABELS = { leads: 'Lead', projetos: 'Projeto', recorrencia: 'Recorrência', negocio: 'Lançamento Negócio', pessoal: 'Lançamento Pessoal', clientes: 'Cliente', despesasFixas: 'Despesa Fixa' };
 const TRASH_DAYS = 15;
 
 const IcoTrash = () => (
@@ -26,6 +26,7 @@ export default function LixeiraPage() {
   const emptyTrash = useDash(s => s.emptyTrash);
   const setLoading = useDash(s => s.setLoading);
   const activePage = useDash(s => s.activePage);
+  const toast = useDash(s => s.toast);
 
   const [items, setItems] = useState(null); // null = loading
 
@@ -33,13 +34,23 @@ export default function LixeiraPage() {
     setItems(null);
     setLoading(true);
     const result = [];
-    for (const colName of TRASH_COLS) {
-      const snap = await getDocs(query(collection(db, colName), where('uid', '==', currentUser.uid)));
-      const trashed = snap.docs.map(d => ({ id: d.id, colName, ...d.data() })).filter(x => x.deletadoEm);
-      if (trashed.length) result.push({ colName, items: trashed });
+    try {
+      for (const colName of TRASH_COLS) {
+        // Agora usamos uCol que já aponta para /users/{uid}/{colName}
+        const snap = await getDocs(uCol(colName));
+        const trashed = snap.docs
+          .map(d => ({ id: d.id, colName, ...d.data() }))
+          .filter(x => x.deletadoEm);
+        if (trashed.length) result.push({ colName, items: trashed });
+      }
+      setItems(result);
+    } catch (err) {
+      console.error('Erro ao carregar lixeira:', err);
+      toast('Erro ao carregar lixeira: Permissão negada ou rede.', 'error');
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setItems(result);
-    setLoading(false);
   };
 
   useEffect(() => { if (activePage === 'lixeira') load(); }, [activePage]);
@@ -97,7 +108,7 @@ export default function LixeiraPage() {
           <div className="trash-section-hd">{TRASH_LABELS[colName] || colName}</div>
           {colItems.map(item => {
             const name = item.nome || item.cliente || item.descricao || item.titulo || 'Sem nome';
-            const dt = item.deletadoEm ? new Date(item.deletadoEm).toLocaleDateString('pt-BR') : '—';
+            const dt = item.deletadoEm ? new Date(item.deletadoEm).toLocaleDateString('pt-BR') : '-';
             const expiresMs = new Date(item.deletadoEm).getTime() + TRASH_DAYS * 86400000;
             const expiresIn = Math.max(0, Math.ceil((expiresMs - Date.now()) / 86400000));
             const urgent = expiresIn <= 3;

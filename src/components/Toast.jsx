@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useDash } from '../store/useStore';
 
 // ── GLOBAL TOP BAR (vai-e-vem para ações internas) ──
-export function GlobalLoader() {
-  const loading = useDash(s => s.loading);
+export function GlobalLoader({ forced = false }) {
+  const loadingState = useDash(s => s.loading);
+  const show = forced || loadingState;
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, height: 2, zIndex: 9998,
@@ -13,9 +14,9 @@ export function GlobalLoader() {
         height: '100%',
         background: 'var(--accent)',
         boxShadow: '0 0 8px var(--accent)',
-        opacity: loading ? 1 : 0,
-        transition: loading ? 'opacity .15s' : 'opacity .4s .2s',
-        animation: loading ? 'globalLoaderInd 1.1s ease-in-out infinite' : 'none',
+        opacity: show ? 1 : 0,
+        transition: show ? 'opacity .15s' : 'opacity .4s .2s',
+        animation: show ? 'globalLoaderInd 1.1s ease-in-out infinite' : 'none',
         width: '40%',
       }} />
     </div>

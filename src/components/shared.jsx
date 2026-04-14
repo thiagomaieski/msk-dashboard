@@ -2,15 +2,15 @@ import { useState } from 'react';
 
 export function Badge({ status }) {
   const map = {
-    'Novo': 'badge-novo', 'Abordado': 'badge-abordado', 'Em negociaÃ§Ã£o': 'badge-negociacao',
+    'Novo': 'badge-novo', 'Abordado': 'badge-abordado', 'Em negociação': 'badge-negociacao',
     'Follow-up': 'badge-followup', 'Fechado': 'badge-fechado', 'Perdido': 'badge-perdido',
     'Ativo': 'badge-ativo', 'Inativo': 'badge-inativo',
     'Pago': 'badge-pago', 'Pendente': 'badge-pendente', 'Parcial (50%)': 'badge-parcial',
-    'Em andamento': 'badge-abordado', 'Aguardando cliente': 'badge-followup',
-    'ConcluÃ­do': 'badge-fechado', 'Pausado': 'badge-inativo',
+    'Em andamento': 'badge-em-andamento', 'Aguardando cliente': 'badge-followup',
+    'Concluído': 'badge-fechado', 'Pausado': 'badge-inativo',
     'Receita': 'badge-receita', 'Despesa': 'badge-despesa',
     'sim': 'badge-nf-sim', 'nao': 'badge-nf-nao',
-    'Alta': 'badge-alta', 'MÃ©dia': 'badge-media', 'Baixa': 'badge-baixa',
+    'Alta': 'badge-alta', 'Média': 'badge-media', 'Baixa': 'badge-baixa',
   };
   const label = status === 'sim' ? 'Com NF' : status === 'nao' ? 'Sem NF' : status;
   return <span className={`badge ${map[status] || 'badge-inativo'}`}>{label}</span>;
@@ -64,7 +64,7 @@ export function CopyCell({ text }) {
 
   return (
     <span className="copy-cell">
-      <span>{text || 'â€”'}</span>
+      <span>{text || '-'}</span>
       <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={copy} title={copied ? 'Copiado' : 'Copiar'}>
         {copied ? (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -92,6 +92,7 @@ export function NumberStepper({
   style,
   title,
   inputId,
+  wrapperClass = '',
 }) {
   const numericValue = Number.isFinite(parseInt(value, 10)) ? parseInt(value, 10) : null;
 
@@ -108,12 +109,7 @@ export function NumberStepper({
   };
 
   return (
-    <div className="number-stepper" style={style}>
-      <button type="button" className="number-stepper-btn" onClick={() => adjust(-1)} aria-label="Diminuir">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M5 12h14" />
-        </svg>
-      </button>
+    <div className={`number-stepper ${wrapperClass}`} style={style}>
       <input
         id={inputId}
         type="number"
@@ -126,11 +122,18 @@ export function NumberStepper({
         placeholder={placeholder}
         title={title}
       />
-      <button type="button" className="number-stepper-btn" onClick={() => adjust(1)} aria-label="Aumentar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
+      <div className="number-stepper-actions">
+        <button type="button" className="number-stepper-btn-v" onClick={() => adjust(1)} aria-label="Aumentar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </button>
+        <button type="button" className="number-stepper-btn-v" onClick={() => adjust(-1)} aria-label="Diminuir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

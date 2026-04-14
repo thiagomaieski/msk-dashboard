@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL } from '../store/useStore';
 import { Badge, EmptyState } from '../components/shared';
 
@@ -14,15 +14,23 @@ export default function RecorrenciaPage() {
   const [status, setStatus] = useState('');
   const [sort, setSort] = useState('criadoDesc');
 
-  let list = data.recorrencia.filter(r => {
-    if (search && !((r.cliente || '').toLowerCase().includes(search) || (r.plano || '').toLowerCase().includes(search))) return false;
-    return status ? r.status === status : true;
-  });
-  list = sortData(list, sort);
-  const allIds = list.map(x => x.id).join(',');
+  const { list, allIds, totalRec, ativosCount } = useMemo(() => {
+    let filtered = data.recorrencia.filter(r => {
+      if (search && !((r.cliente || '').toLowerCase().includes(search) || (r.plano || '').toLowerCase().includes(search))) return false;
+      return status ? r.status === status : true;
+    });
+    filtered = sortData(filtered, sort);
+    
+    const activeItems = data.recorrencia.filter(r => r.status === 'Ativo');
+    const total = activeItems.reduce((s, r) => s + (r.valor || 0), 0);
 
-  const ativos = data.recorrencia.filter(r => r.status === 'Ativo');
-  const totalRec = ativos.reduce((s, r) => s + (r.valor || 0), 0);
+    return { 
+      list: filtered, 
+      allIds: filtered.map(x => x.id).join(','),
+      totalRec: total,
+      ativosCount: activeItems.length
+    };
+  }, [data.recorrencia, search, status, sort]);
 
   return (
     <div>
@@ -38,7 +46,7 @@ export default function RecorrenciaPage() {
 
       <div className="summary-cards">
         <div className="summary-card"><div className="summary-card-label">Receita Mensal</div><div className="summary-card-val green">{fmtBRL(totalRec)}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Clientes Ativos</div><div className="summary-card-val accent">{ativos.length}</div></div>
+        <div className="summary-card"><div className="summary-card-label">Clientes Ativos</div><div className="summary-card-val accent">{ativosCount}</div></div>
         <div className="summary-card"><div className="summary-card-label">Receita Anual Est.</div><div className="summary-card-val">{fmtBRL(totalRec * 12)}</div></div>
       </div>
 
@@ -66,21 +74,21 @@ export default function RecorrenciaPage() {
               <th style={{ width: 30 }}>
                 <input type="checkbox" onChange={() => selectAll('recorrencia', allIds)} checked={selectedItems.length === list.length && list.length > 0} />
               </th>
-              <th>Cliente</th><th>Plano / Descrição</th><th>Valor Mensal</th><th>Vencimento</th><th>Status</th><th>Observações</th><th></th>
+              <th>Cliente</th><th>Plano / Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Observações</th><th></th>
             </tr>
           </thead>
           <tbody>
             {!list.length ? <EmptyState msg="Nenhum cliente de recorrência" colSpan={8} /> : list.map(r => (
               <tr key={r.id} className="row-in">
                 <td><input type="checkbox" checked={selectedItems.includes(r.id)} onChange={() => toggleSelect('recorrencia', r.id)} /></td>
-                <td style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text)' }} onClick={() => openModal('recorrencia', r.id)}>{r.cliente || '—'}</td>
-                <td><span style={{ fontSize: 12 }}>{r.plano || '—'}</span></td>
+                <td style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text)' }} onClick={() => openModal('recorrencia', r.id)}>{r.cliente || '-'}</td>
+                <td><span style={{ fontSize: 12 }}>{r.plano || '-'}</span></td>
                 <td style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>{fmtBRL(r.valor)}</td>
                 <td style={{ fontSize: 13 }}>
-                  {r.periodicidade === 'Anual' ? `Renovação: ${r.renovacao || '—'}` : `Dia ${r.vencimento || '—'}`}
+                  {r.periodicidade === 'Anual' ? `Renovação: ${r.renovacao || '-'}` : `Dia ${r.vencimento || '-'}`}
                 </td>
                 <td><Badge status={r.status || 'Ativo'} /></td>
-                <td><span style={{ fontSize: 12 }}>{r.observacoes || '—'}</span></td>
+                <td><span style={{ fontSize: 12 }}>{r.observacoes || '-'}</span></td>
                 <td>
                   <div className="row-actions">
                     <button className="row-btn" onClick={() => openModal('recorrencia', r.id)} title="Editar">

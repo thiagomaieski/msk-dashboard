@@ -49,7 +49,7 @@ export default function ProjectView() {
 }
 
 function PVDetalhes({ p, onEdit }) {
-  const sc = { 'Em andamento': 'var(--accent)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
+  const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
   const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' }[p.pagamento] || 'var(--text3)';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -64,11 +64,11 @@ function PVDetalhes({ p, onEdit }) {
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Status</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: sc }}>{p.status || '—'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: sc }}>{p.status || '-'}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Pagamento</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: pc }}>{p.pagamento || '—'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: pc }}>{p.pagamento || '-'}</div>
         </div>
       </div>
       <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

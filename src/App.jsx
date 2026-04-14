@@ -3,6 +3,7 @@ import { useDash } from './store/useStore';
 
 import LoadingScreen from './components/LoadingScreen';
 import AuthScreen from './components/AuthScreen';
+import SetupScreen from './components/SetupScreen';
 import Topbar from './components/Topbar';
 import NavBar from './components/NavBar';
 import Toast, { GlobalLoader } from './components/Toast';
@@ -53,6 +54,7 @@ function AppInner() {
   const initAuth = useDash(s => s.initAuth);
   const authReady = useDash(s => s.authReady);
   const appReady = useDash(s => s.appReady);
+  const requiresSetup = useDash(s => s.requiresSetup);
   const currentUser = useDash(s => s.currentUser);
   const activePage = useDash(s => s.activePage);
 
@@ -62,6 +64,7 @@ function AppInner() {
 
   if (!authReady) return <LoadingScreen />;
   if (!currentUser) return <AuthScreen />;
+  if (requiresSetup) return <SetupScreen />;
   if (!appReady) return <LoadingScreen />;
 
   return (
@@ -73,7 +76,7 @@ function AppInner() {
         {activePage === 'leads' && <LeadsPage />}
         {activePage === 'projetos' && <ProjetosPage />}
         {activePage === 'recorrencia' && <RecorrenciaPage />}
-        {activePage === 'financas-mei' && <FinancasNegocioPage />}
+        {activePage === 'financas-negocio' && <FinancasNegocioPage />}
         {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
         {activePage === 'lixeira' && <LixeiraPage />}
         {activePage === 'configuracoes' && <ConfiguracoesPage />}

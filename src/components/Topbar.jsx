@@ -1,16 +1,28 @@
+import { useState, useRef, useEffect } from 'react';
 import { useDash } from '../store/useStore';
+import NotificationCenter from './NotificationCenter';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 
 export default function Topbar() {
-  const currentUser = useDash(s => s.currentUser);
+  const profile = useDash(s => s.profile);
   const theme = useDash(s => s.theme);
+  const data = useDash(s => s.data);
   const toggleTheme = useDash(s => s.toggleTheme);
   const signOut = useDash(s => s.signOut);
   const goTo = useDash(s => s.goTo);
   const activePage = useDash(s => s.activePage);
   const isLight = theme === 'light';
   const logo = isLight ? logoLight : logoDark;
+
+  const [notifOpen, setNotifOpen] = useState(false);
+  const unreadCount = data.notificacoes.filter(n => !n.lida).length;
+
+  const AvatarFallback = () => (
+    <div className="user-avatar" style={{ background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+      {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+    </div>
+  );
 
   return (
     <div className="topbar">
@@ -25,10 +37,12 @@ export default function Topbar() {
           onClick={() => goTo('configuracoes')}
           title="Minha Conta"
         >
-          <img className="user-avatar" src={currentUser?.photoURL || 'https://via.placeholder.com/40'} alt="" />
+          {profile.photoURL ? (
+            <img className="user-avatar" src={profile.photoURL} alt="" />
+          ) : <AvatarFallback />}
           <span className="topbar-account-text">
             <span className="topbar-account-label">Minha Conta</span>
-            <span className="topbar-account-name">{currentUser?.displayName || 'Usuário'}</span>
+            <span className="topbar-account-name">{profile.name || 'Usuário'}</span>
           </span>
         </button>
         <div className="theme-switch" title="Alternar tema">
@@ -50,6 +64,21 @@ export default function Topbar() {
             <div className="ball"></div>
           </label>
         </div>
+
+        <div style={{ position: 'relative' }}>
+          <button
+            className={`btn-icon ${notifOpen ? 'active' : ''}`}
+            onClick={() => setNotifOpen(!notifOpen)}
+            title="Notificações"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+          </button>
+          {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} />}
+        </div>
+
         <button
           className={`btn-icon ${activePage === 'configuracoes' ? 'active' : ''}`}
           id="btn-settings"

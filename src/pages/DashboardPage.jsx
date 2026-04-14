@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useDash, sortData, fmtBRL, fmtDate } from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
 
@@ -21,14 +21,18 @@ export default function DashboardPage() {
   const dateStr = `${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
 
   const mesAtual = now.getMonth();
-  const projAtivos = data.projetos.filter(p => p.status === 'Em andamento').length;
-  const recMes = data.mei.filter(m => m.tipo === 'Receita' && parseInt(m.data?.split('-')[1]) === mesAtual + 1).reduce((s, m) => s + (m.valor || 0), 0);
-  const despPes = data.pessoal.filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1).reduce((s, m) => s + (m.valor || 0), 0);
-  const leadsNovos = data.leads.filter(l => l.status === 'Novo').length;
 
-  const projetosAndamento = data.projetos.filter(p => p.status === 'Em andamento');
-  const leadsNovo = data.leads.filter(l => l.status === 'Novo').slice(0, 5);
-  const lembretes = [...data.lembretes].sort((a, b) => new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01'));
+  const { projAtivos, recMes, despPes, leadsNovos, projetosAndamento, leadsNovo, lembretes } = useMemo(() => {
+    return {
+      projAtivos: data.projetos.filter(p => p.status === 'Em andamento').length,
+      recMes: data.negocio.filter(m => m.tipo === 'Receita' && parseInt(m.data?.split('-')[1]) === mesAtual + 1).reduce((s, m) => s + (m.valor || 0), 0),
+      despPes: data.pessoal.filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1).reduce((s, m) => s + (m.valor || 0), 0),
+      leadsNovos: data.leads.filter(l => l.status === 'Novo').length,
+      projetosAndamento: data.projetos.filter(p => p.status === 'Em andamento'),
+      leadsNovo: data.leads.filter(l => l.status === 'Novo').slice(0, 5),
+      lembretes: [...data.lembretes].sort((a, b) => new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01'))
+    };
+  }, [data, mesAtual]);
 
   return (
     <div>
@@ -38,7 +42,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="dash-stats">
-        <div className="dash-stat"><div className="dash-stat-label">Projetos Ativos</div><div className="dash-stat-val" style={{ color: 'var(--accent)' }}>{projAtivos}</div></div>
+        <div className="dash-stat"><div className="dash-stat-label">Projetos Ativos</div><div className="dash-stat-val" style={{ color: 'var(--blue)' }}>{projAtivos}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Receita Negócio (Mês)</div><div className="dash-stat-val" style={{ color: 'var(--green)' }}>{fmtBRL(recMes)}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Despesa Pessoal (Mês)</div><div className="dash-stat-val" style={{ color: 'var(--red)' }}>{fmtBRL(despPes)}</div></div>
         <div className="dash-stat"><div className="dash-stat-label">Novos Leads</div><div className="dash-stat-val">{leadsNovos}</div></div>
@@ -115,7 +119,7 @@ export default function DashboardPage() {
                         <div className="dash-item-title">{l.nome}</div>
                         <div style={{ fontSize: 11 }}><CopyCell text={l.telefone} /></div>
                       </div>
-                      <div className="dash-item-sub">Nicho: {l.nicho || '—'}</div>
+                      <div className="dash-item-sub">Nicho: {l.nicho || '-'}</div>
                     </div>
                   ))
               }

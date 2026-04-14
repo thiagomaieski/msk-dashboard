@@ -18,7 +18,7 @@ const PAGES = [
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
   },
   {
-    id: 'financas-mei', label: 'Finanças Negócio',
+    id: 'financas-negocio', label: 'Finanças Negócio',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
   },
   {
@@ -30,10 +30,21 @@ const PAGES = [
 export default function NavBar() {
   const activePage = useDash(s => s.activePage);
   const goTo = useDash(s => s.goTo);
+  const modules = useDash(s => s.configData.modules || {});
+
+  const filteredPages = PAGES.filter(p => {
+    if (p.id === 'dashboard') return true;
+    if (p.id === 'leads') return !!modules.leads;
+    if (p.id === 'projetos') return !!modules.projetos;
+    if (p.id === 'recorrencia') return !!modules.recorrencia;
+    if (p.id === 'financas-negocio') return !!modules.negocio;
+    if (p.id === 'financas-pessoais') return !!modules.pessoal;
+    return false;
+  });
 
   return (
     <nav className="nav">
-      {PAGES.map(p => (
+      {filteredPages.map(p => (
         <button
           key={p.id}
           className={`nav-btn ${activePage === p.id ? 'active' : ''}`}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 
@@ -38,36 +38,45 @@ export default function LeadsPage() {
   const csvRef = useRef(null);
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
-  const totalLeads = data.leads.length;
-  const totalLeadsAbordados = data.leads.filter(l => l.status === 'Abordado').length;
-  const totalLeadsPerdidos = data.leads.filter(l => l.status === 'Perdido').length;
-  const totalLeadsFechados = data.leads.filter(l => l.status === 'Fechado').length;
+  
+  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
+    const leads = data.leads;
+    const totals = {
+      totalLeadsAbordados: leads.filter(l => l.status === 'Abordado').length,
+      totalLeadsPerdidos: leads.filter(l => l.status === 'Perdido').length,
+      totalLeadsFechados: leads.filter(l => l.status === 'Fechado').length,
+    };
 
-  let list = data.leads.filter((l) => {
-    if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search))) return false;
-    if (status && l.status !== status) return false;
-    if (nicho && l.nicho !== nicho) return false;
-    if (ddd) {
-      const phone = (l.telefone || '').replace(/\D/g, '');
-      if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
-    }
-    return true;
-  });
-
-  list = sortData(list, sort);
-  if (columnSort.key) {
-    list = [...list].sort((a, b) => {
-      const aValue = (a[columnSort.key] || '').toString().toLowerCase();
-      const bValue = (b[columnSort.key] || '').toString().toLowerCase();
-      const result = aValue.localeCompare(bValue, 'pt-BR');
-      return columnSort.direction === 'asc' ? result : -result;
+    let filtered = leads.filter((l) => {
+      if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search))) return false;
+      if (status && l.status !== status) return false;
+      if (nicho && l.nicho !== nicho) return false;
+      if (ddd) {
+        const phone = (l.telefone || '').replace(/\D/g, '');
+        if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
+      }
+      return true;
     });
-  }
 
-  const totalItems = list.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / resolvedPageSize));
-  const safePage = Math.min(page, totalPages);
-  const paginated = list.slice((safePage - 1) * resolvedPageSize, safePage * resolvedPageSize);
+    filtered = sortData(filtered, sort);
+    if (columnSort.key) {
+      filtered = [...filtered].sort((a, b) => {
+        const aValue = (a[columnSort.key] || '').toString().toLowerCase();
+        const bValue = (b[columnSort.key] || '').toString().toLowerCase();
+        const result = aValue.localeCompare(bValue, 'pt-BR');
+        return columnSort.direction === 'asc' ? result : -result;
+      });
+    }
+
+    const tItems = filtered.length;
+    const tPages = Math.max(1, Math.ceil(tItems / resolvedPageSize));
+    const sPage = Math.min(page, tPages);
+    const pag = filtered.slice((sPage - 1) * resolvedPageSize, sPage * resolvedPageSize);
+
+    return { ...totals, list: filtered, paginated: pag, totalItems: tItems, totalPages: tPages, safePage: sPage };
+  }, [data.leads, search, status, nicho, ddd, sort, columnSort, page, resolvedPageSize]);
+
+  const totalLeads = data.leads.length;
   const allIds = list.map(x => x.id).join(',');
 
   const updateFilter = (setter) => (e) => {
@@ -138,13 +147,14 @@ export default function LeadsPage() {
       <div className="page-header">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, flex: 1 }}>
           {[
-            { label: 'Total de Leads', value: totalLeads, color: 'var(--accent)', bg: 'var(--accent-bg)' },
-            { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)' },
-            { label: 'Leads Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)' },
-            { label: 'Leads Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)' },
+            { label: 'Total de Leads', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
+            { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
+            { label: 'Leads Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
+            { label: 'Leads Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
           ].map((item) => (
             <div
               key={item.label}
+              onClick={() => { setStatus(item.status); setPage(1); }}
               style={{
                 minWidth: 150,
                 padding: '12px 14px',
@@ -154,15 +164,13 @@ export default function LeadsPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
+                cursor: 'pointer',
               }}
             >
               <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text3)', fontWeight: 700 }}>
                 {item.label}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--mono)' }}>
-                  {item.value.toLocaleString('pt-BR')}
-                </span>
                 <span
                   style={{
                     width: 10,
@@ -173,6 +181,9 @@ export default function LeadsPage() {
                     flexShrink: 0,
                   }}
                 />
+                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                  {item.value.toLocaleString('pt-BR')}
+                </span>
               </div>
             </div>
           ))}
@@ -194,6 +205,10 @@ export default function LeadsPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input className="filter-input" placeholder="Buscar lead..." value={search} onChange={updateFilter(setSearch)} />
         </div>
+        <div className="search-wrap" style={{ width: 85 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <input className="filter-input" placeholder="DDD" style={{ paddingLeft: 30, width: '100%', minWidth: 'auto' }} value={ddd} onChange={updateFilter(setDdd)} />
+        </div>
         <select className="filter-select" value={status} onChange={updateFilter(setStatus)}>
           <option value="">Todos os status</option>
           {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map((item) => <option key={item}>{item}</option>)}
@@ -202,7 +217,6 @@ export default function LeadsPage() {
           <option value="">Todos os nichos</option>
           {configData.nichos.map((item) => <option key={item}>{item}</option>)}
         </select>
-        <input className="filter-input" placeholder="DDD" style={{ width: 72 }} value={ddd} onChange={updateFilter(setDdd)} />
         <select className="filter-select" value={sort} onChange={updateFilter(setSort)}>
           <option value="criadoDesc">Mais recentes</option>
           <option value="criadoAsc">Mais antigos</option>
@@ -225,8 +239,9 @@ export default function LeadsPage() {
             min={1}
             value={pageSize}
             onChange={updatePageSize}
-            className="filter-input"
-            style={{ width: 128 }}
+            className="filter-input filter-input-sm"
+            wrapperClass="number-stepper-sm"
+            style={{ width: 80 }}
             title="Quantidade de leads por página"
           />
         </div>
@@ -271,20 +286,20 @@ export default function LeadsPage() {
                       onClick={() => openModal('lead', l.id)}
                       title="Clique para editar"
                     >
-                      {l.nome || '—'}
+                      {l.nome || '-'}
                     </span>
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}><CopyCell text={l.telefone} /></td>
                   <td style={{ maxWidth: 120 }}>
                     <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '100%' }}>
-                      {l.nicho || '—'}
+                      {l.nicho || '-'}
                     </span>
                   </td>
                   <td style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {l.site ? <a href={l.site} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, textDecoration: 'none' }}>{l.site}</a> : '—'}
+                    {l.site ? <a href={l.site} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, textDecoration: 'none' }}>{l.site}</a> : '-'}
                   </td>
                   <td><Badge status={l.status || 'Novo'} /></td>
-                  <td style={{ maxWidth: 170 }}><div className="lead-qual" title={l.observacoes || ''}>{l.observacoes || '—'}</div></td>
+                  <td style={{ maxWidth: 170 }}><div className="lead-qual" title={l.observacoes || ''}>{l.observacoes || '-'}</div></td>
                   <td>
                     <div className="row-actions">
                       <button className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">

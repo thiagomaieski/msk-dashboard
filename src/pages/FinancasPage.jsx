@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -14,7 +14,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="finance-card-top">
           <div className="finance-card-desc" style={{ cursor: 'pointer' }} onClick={() => onEdit(m.id)} title="Clique para editar">
-            {m.cartao && !isRec ? CARD_ICON : null}{m.descricao || '—'}
+            {m.cartao && !isRec ? CARD_ICON : null}{m.descricao || '-'}
           </div>
           <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)' }}>{fmtBRL(m.valor)}</div>
         </div>
@@ -45,6 +45,7 @@ export function FinancasNegocioPage() {
   const deleteItem = useDash(s => s.deleteItem);
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
+  
   const now = new Date();
   const [ano, setAno] = useState(String(CURRENT_YEAR));
   const [mes, setMes] = useState(String(now.getMonth()));
@@ -53,27 +54,40 @@ export function FinancasNegocioPage() {
   const [searchRec, setSearchRec] = useState('');
   const [searchDesp, setSearchDesp] = useState('');
 
-  const filtered = data.mei.filter(f => {
-    if (!f.data) return false;
-    const d = new Date(f.data + 'T12:00:00');
-    if (ano && d.getFullYear() !== parseInt(ano)) return false;
-    if (mes !== '' && d.getMonth() !== parseInt(mes)) return false;
-    return true;
-  }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const { filtered, receitas, despesas, rec, desp, saldo, nfCount } = useMemo(() => {
+    const list = data.negocio.filter(f => {
+      if (!f.data) return false;
+      const d = new Date(f.data + 'T12:00:00');
+      if (ano && d.getFullYear() !== parseInt(ano)) return false;
+      if (mes !== '' && d.getMonth() !== parseInt(mes)) return false;
+      return true;
+    }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 
-  const receitas = filtered.filter(m => m.tipo === 'Receita').filter(m => {
-    if (catRec && m.categoria !== catRec) return false;
-    if (searchRec && !((m.descricao || '') + (m.entidade || '')).toLowerCase().includes(searchRec)) return false;
-    return true;
-  });
-  const despesas = filtered.filter(m => m.tipo === 'Despesa').filter(m => {
-    if (catDesp && m.categoria !== catDesp) return false;
-    if (searchDesp && !((m.descricao || '') + (m.entidade || '')).toLowerCase().includes(searchDesp)) return false;
-    return true;
-  });
-  const rec = receitas.reduce((s, m) => s + (m.valor || 0), 0);
-  const desp = despesas.reduce((s, m) => s + (m.valor || 0), 0);
-  const saldo = rec - desp;
+    const recList = list.filter(m => m.tipo === 'Receita').filter(m => {
+      if (catRec && m.categoria !== catRec) return false;
+      if (searchRec && !((m.descricao || '') + (m.entidade || '')).toLowerCase().includes(searchRec)) return false;
+      return true;
+    });
+    
+    const despList = list.filter(m => m.tipo === 'Despesa').filter(m => {
+      if (catDesp && m.categoria !== catDesp) return false;
+      if (searchDesp && !((m.descricao || '') + (m.entidade || '')).toLowerCase().includes(searchDesp)) return false;
+      return true;
+    });
+
+    const totalRec = recList.reduce((s, m) => s + (m.valor || 0), 0);
+    const totalDesp = despList.reduce((s, m) => s + (m.valor || 0), 0);
+    
+    return {
+      filtered: list,
+      receitas: recList,
+      despesas: despList,
+      rec: totalRec,
+      desp: totalDesp,
+      saldo: totalRec - totalDesp,
+      nfCount: list.filter(m => m.nf === 'sim').length
+    };
+  }, [data.negocio, ano, mes, catRec, catDesp, searchRec, searchDesp]);
 
   return (
     <div>
@@ -93,14 +107,14 @@ export function FinancasNegocioPage() {
         <div className="summary-card"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
         <div className="summary-card"><div className="summary-card-label">Saldo</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div></div>
         <div className="summary-card"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Lançamentos c/ NF</div><div className="summary-card-val accent">{filtered.filter(m => m.nf === 'sim').length}</div></div>
+        <div className="summary-card"><div className="summary-card-label">Lançamentos c/ NF</div><div className="summary-card-val accent">{nfCount}</div></div>
       </div>
       <div className="finance-cols">
         <div className="finance-col">
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title green">↑ Receitas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('meiReceita')}>
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Receita
               </button>
             </div>
@@ -113,17 +127,17 @@ export function FinancasNegocioPage() {
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value.toLowerCase())} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value)} />
             </div>
           </div>
-          <FinanceColList list={receitas} isRec={true} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="mei"
-            onEdit={id => openModal('meiReceita', id)} onDelete={(id, desc) => deleteItem('mei', id, desc)} />
+          <FinanceColList list={receitas} isRec={true} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
+            onEdit={id => openModal('negocioReceita', id)} onDelete={(id, desc) => deleteItem('negocio', id, desc)} />
         </div>
         <div className="finance-col">
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('meiDespesa')}>
+              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg> Despesa
               </button>
             </div>
@@ -132,15 +146,15 @@ export function FinancasNegocioPage() {
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg3)' }}>
             <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
-              {(configData.categoriasMeiDespesa || []).map(c => <option key={c}>{c}</option>)}
+              {(configData.categoriasNegocioDespesa || []).map(c => <option key={c}>{c}</option>)}
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value.toLowerCase())} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
-          <FinanceColList list={despesas} isRec={false} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="mei"
-            onEdit={id => openModal('meiDespesa', id)} onDelete={(id, desc) => deleteItem('mei', id, desc)} />
+          <FinanceColList list={despesas} isRec={false} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
+            onEdit={id => openModal('negocioDespesa', id)} onDelete={(id, desc) => deleteItem('negocio', id, desc)} />
         </div>
       </div>
     </div>
@@ -154,6 +168,7 @@ export function FinancasPessoaisPage() {
   const deleteItem = useDash(s => s.deleteItem);
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
+  
   const now = new Date();
   const [ano, setAno] = useState(String(CURRENT_YEAR));
   const [mes, setMes] = useState(String(now.getMonth()));
@@ -162,28 +177,40 @@ export function FinancasPessoaisPage() {
   const [searchRec, setSearchRec] = useState('');
   const [searchDesp, setSearchDesp] = useState('');
 
-  const filtered = data.pessoal.filter(f => {
-    if (!f.data) return false;
-    const d = new Date(f.data + 'T12:00:00');
-    if (ano && d.getFullYear() !== parseInt(ano)) return false;
-    if (mes !== '' && d.getMonth() !== parseInt(mes)) return false;
-    return true;
-  }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const { filtered, receitas, despesas, rec, desp, saldo, cartao } = useMemo(() => {
+    const list = data.pessoal.filter(f => {
+      if (!f.data) return false;
+      const d = new Date(f.data + 'T12:00:00');
+      if (ano && d.getFullYear() !== parseInt(ano)) return false;
+      if (mes !== '' && d.getMonth() !== parseInt(mes)) return false;
+      return true;
+    }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 
-  const receitas = filtered.filter(p => p.tipo === 'Receita').filter(p => {
-    if (catRec && p.categoria !== catRec) return false;
-    if (searchRec && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchRec)) return false;
-    return true;
-  });
-  const despesas = filtered.filter(p => p.tipo === 'Despesa').filter(p => {
-    if (catDesp && p.categoria !== catDesp) return false;
-    if (searchDesp && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchDesp)) return false;
-    return true;
-  });
-  const rec = receitas.reduce((s, p) => s + (p.valor || 0), 0);
-  const desp = despesas.reduce((s, p) => s + (p.valor || 0), 0);
-  const saldo = rec - desp;
-  const cartao = despesas.filter(p => p.cartao).reduce((s, p) => s + (p.valor || 0), 0);
+    const recList = list.filter(p => p.tipo === 'Receita').filter(p => {
+      if (catRec && p.categoria !== catRec) return false;
+      if (searchRec && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchRec)) return false;
+      return true;
+    });
+    
+    const despList = list.filter(p => p.tipo === 'Despesa').filter(p => {
+      if (catDesp && p.categoria !== catDesp) return false;
+      if (searchDesp && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchDesp)) return false;
+      return true;
+    });
+
+    const totalRec = recList.reduce((s, p) => s + (p.valor || 0), 0);
+    const totalDesp = despList.reduce((s, p) => s + (p.valor || 0), 0);
+    
+    return {
+      filtered: list,
+      receitas: recList,
+      despesas: despList,
+      rec: totalRec,
+      desp: totalDesp,
+      saldo: totalRec - totalDesp,
+      cartao: despList.filter(p => p.cartao).reduce((s, p) => s + (p.valor || 0), 0)
+    };
+  }, [data.pessoal, ano, mes, catRec, catDesp, searchRec, searchDesp]);
 
   const filterMonth = mes !== '' ? parseInt(mes) : now.getMonth();
   const mesNome = MESES[filterMonth];
@@ -233,7 +260,7 @@ export function FinancasPessoaisPage() {
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value.toLowerCase())} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value)} />
             </div>
           </div>
           <FinanceColList list={receitas} isRec={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
@@ -256,7 +283,7 @@ export function FinancasPessoaisPage() {
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value.toLowerCase())} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
           <FinanceColList list={despesas} isRec={false} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
