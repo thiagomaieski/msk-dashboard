@@ -678,32 +678,76 @@ export const useDash = create((set, get) => ({
 
   bulkDelete: async () => {
     const { selectedItems, currentBulkCol, showConfirm, toast, clearBulk } = get();
+    if (!selectedItems.length) return;
     if (!await showConfirm(`Mover ${selectedItems.length} itens para a lixeira?`, 'Esta ação pode ser desfeita restaurando os itens da Lixeira.')) return;
+    
     const ids = [...selectedItems];
     const now = new Date().toISOString();
+    
+    // Separar IDs reais de mocks
+    const realIds = ids.filter(id => id && !id.toString().startsWith('m-'));
+    const mockIds = ids.filter(id => id && id.toString().startsWith('m-'));
+
+    if (realIds.length) {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          [currentBulkCol]: s.realData[currentBulkCol].filter(x => !realIds.includes(x.id))
+        }
+      }));
+    }
+    if (mockIds.length) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          [currentBulkCol]: s.mockData[currentBulkCol].filter(x => !mockIds.includes(x.id))
+        }
+      }));
+    }
+
     clearBulk();
-    set(s => ({ data: { ...s.data, [currentBulkCol]: s.data[currentBulkCol].filter(x => !ids.includes(x.id)) } }));
+    get()._refreshData();
     toast(`${ids.length} itens movidos para a lixeira`);
-    for (const id of ids) {
-      updateDoc(uDoc(currentBulkCol, id), { deletadoEm: now }).catch(e => console.error(e));
+
+    for (const id of realIds) {
+      updateDoc(uDoc(currentBulkCol, id), { deletadoEm: now }).catch(e => console.error('Bulk delete sync error:', e));
     }
   },
 
   bulkEditLeads: async (field, value) => {
     const { selectedItems, showConfirm, toast, clearBulk } = get();
-    if (!value) return;
+    if (!selectedItems.length || !value) return;
     if (!await showConfirm(`Alterar ${field === 'status' ? 'status' : 'nicho'} para "${value}"?`, `Isso afetará ${selectedItems.length} lead(s) selecionado(s).`, false)) return;
+    
     const ids = [...selectedItems];
+    const nowISO = new Date().toISOString();
+
+    const realIds = ids.filter(id => id && !id.toString().startsWith('m-'));
+    const mockIds = ids.filter(id => id && id.toString().startsWith('m-'));
+
+    if (realIds.length) {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          leads: s.realData.leads.map(l => realIds.includes(l.id) ? { ...l, [field]: value, modificadoEm: nowISO } : l)
+        }
+      }));
+    }
+    if (mockIds.length) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          leads: s.mockData.leads.map(l => mockIds.includes(l.id) ? { ...l, [field]: value, modificadoEm: nowISO } : l)
+        }
+      }));
+    }
+
     clearBulk();
-    set(s => ({
-      data: {
-        ...s.data,
-        leads: s.data.leads.map(l => ids.includes(l.id) ? { ...l, [field]: value } : l)
-      }
-    }));
+    get()._refreshData();
     toast(`${ids.length} leads atualizados`);
-    for (const id of ids) {
-      updateDoc(uDoc('leads', id), { [field]: value }).catch(e => console.error(e));
+
+    for (const id of realIds) {
+      updateDoc(uDoc('leads', id), { [field]: value, modificadoEm: serverTimestamp() }).catch(e => console.error('Bulk edit sync error:', e));
     }
   },
 
@@ -833,17 +877,34 @@ export const useDash = create((set, get) => ({
     updateDoc(uDoc(colName, id), { deletadoEm: now }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
   },
   deleteLembrete: async (id) => {
-    set(s => ({ data: { ...s.data, lembretes: s.data.lembretes.filter(x => x.id !== id) } }));
-    deleteDoc(uDoc('lembretes', id));
+    const isMock = id && id.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, lembretes: s.mockData.lembretes.filter(x => x.id !== id) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, lembretes: s.realData.lembretes.filter(x => x.id !== id) } }));
+      deleteDoc(uDoc('lembretes', id)).catch(e => console.error('Lembrete delete sync error:', e));
+    }
+    get()._refreshData();
   },
   toggleLembrete: async (id, atual) => {
-    set(s => ({
-      data: {
-        ...s.data,
-        lembretes: s.data.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l)
-      }
-    }));
-    updateDoc(uDoc('lembretes', id), { concluido: !atual });
+    const isMock = id && id.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          lembretes: s.mockData.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l)
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          lembretes: s.realData.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l)
+        }
+      }));
+      updateDoc(uDoc('lembretes', id), { concluido: !atual }).catch(e => console.error('Lembrete toggle sync error:', e));
+    }
+    get()._refreshData();
   },
 
   // ── Config ──
@@ -976,12 +1037,13 @@ export const useDash = create((set, get) => ({
 
     if (createdNegocio.length || createdPessoal.length) {
       set(s => ({
-        data: {
-          ...s.data,
-          negocio: [...createdNegocio, ...s.data.negocio],
-          pessoal: [...createdPessoal, ...s.data.pessoal]
+        realData: {
+          ...s.realData,
+          negocio: [...createdNegocio, ...s.realData.negocio],
+          pessoal: [...createdPessoal, ...s.realData.pessoal]
         }
       }));
+      get()._refreshData();
     }
   },
   lancarDespesasMensais: async () => {
@@ -1000,9 +1062,15 @@ export const useDash = create((set, get) => ({
         modificadoEm: serverTimestamp(), criadoEm: serverTimestamp()
       };
       const res = await addDoc(uCol('pessoal'), payload);
-      set(s => ({ data: { ...s.data, pessoal: [{ id: res.id, ...payload }, ...s.data.pessoal] } }));
+      set(s => ({ 
+        realData: { 
+          ...s.realData, 
+          pessoal: [{ id: res.id, ...payload, criadoEm: new Date().toISOString() }, ...s.realData.pessoal] 
+        } 
+      }));
       count++;
     }
+    get()._refreshData();
     toast(`${count} lançamentos criados!`);
   },
 
@@ -1012,13 +1080,24 @@ export const useDash = create((set, get) => ({
 
   updateProjectTarefas: async (tarefas) => {
     const { activeProjectView, toast } = get();
-    set(s => ({
-      data: {
-        ...s.data,
-        projetos: s.data.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p)
-      }
-    }));
-    updateDoc(uDoc('projetos', activeProjectView), { tarefas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+    const isMock = activeProjectView && activeProjectView.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          projetos: s.mockData.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p)
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          projetos: s.realData.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p)
+        }
+      }));
+      updateDoc(uDoc('projetos', activeProjectView), { tarefas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
   },
 
   // ── File (Hostinger Secure) ──
@@ -1083,15 +1162,26 @@ export const useDash = create((set, get) => ({
         addEm: new Date().toISOString() 
       };
 
-      set(s => ({
-        data: {
-          ...s.data,
-          projetos: s.data.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos: [...(x.arquivos || []), arquivo] } : x)
-        }
-      }));
-      await updateDoc(uDoc('projetos', activeProjectView), { 
-        arquivos: [...(data.projetos.find(x => x.id === activeProjectView)?.arquivos || []), arquivo] 
-      });
+      const isMock = activeProjectView && activeProjectView.toString().startsWith('m-');
+      if (isMock) {
+        set(s => ({
+          mockData: {
+            ...s.mockData,
+            projetos: s.mockData.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos: [...(x.arquivos || []), arquivo] } : x)
+          }
+        }));
+      } else {
+        set(s => ({
+          realData: {
+            ...s.realData,
+            projetos: s.realData.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos: [...(x.arquivos || []), arquivo] } : x)
+          }
+        }));
+        await updateDoc(uDoc('projetos', activeProjectView), { 
+          arquivos: [...(data.projetos.find(x => x.id === activeProjectView)?.arquivos || []), arquivo] 
+        });
+      }
+      get()._refreshData();
       toast('Upload concluído com sucesso!');
     } catch (e) { /* Error handled in uploadFile */ }
   },
@@ -1108,13 +1198,24 @@ export const useDash = create((set, get) => ({
     }
 
     const arquivos = (p?.arquivos || []).filter((_, i) => i !== idx);
-    set(s => ({
-      data: {
-        ...s.data,
-        projetos: s.data.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos } : x)
-      }
-    }));
-    await updateDoc(uDoc('projetos', activeProjectView), { arquivos });
+    const isMock = activeProjectView && activeProjectView.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          projetos: s.mockData.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos } : x)
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          projetos: s.realData.projetos.map(x => x.id === activeProjectView ? { ...x, arquivos } : x)
+        }
+      }));
+      await updateDoc(uDoc('projetos', activeProjectView), { arquivos });
+    }
+    get()._refreshData();
     toast('Arquivo excluído');
   },
 
@@ -1123,7 +1224,14 @@ export const useDash = create((set, get) => ({
     await updateDoc(uDoc(colName, id), { deletadoEm: null });
     const snap = await getDoc(uDoc(colName, id));
     if (snap.exists()) {
-      set(s => ({ data: { ...s.data, [colName]: [{ id: snap.id, ...snap.data() }, ...s.data[colName]] } }));
+      const restored = { id: snap.id, ...snap.data() };
+      set(s => ({ 
+        realData: { 
+          ...s.realData, 
+          [colName]: [restored, ...s.realData[colName]] 
+        } 
+      }));
+      get()._refreshData();
     }
     get().toast('Item restaurado!');
   },
@@ -1212,7 +1320,13 @@ export const useDash = create((set, get) => ({
         try {
           const local = { ...payload, criadoEm: new Date().toISOString() };
           const res = await addDoc(uCol('leads'), { ...payload, criadoEm: serverTimestamp() });
-          set(s => ({ data: { ...s.data, leads: [{ id: res.id, ...local }, ...s.data.leads] } }));
+          set(s => ({ 
+            realData: { 
+              ...s.realData, 
+              leads: [{ id: res.id, ...local }, ...s.realData.leads] 
+            } 
+          }));
+          get()._refreshData();
           imported++;
         } catch {
           errors++;
