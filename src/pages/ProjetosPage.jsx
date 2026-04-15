@@ -78,7 +78,74 @@ export default function ProjetosPage() {
         </select>
       </div>
 
-      {!list.length ? <EmptyDiv msg="Nenhum projeto encontrado" /> : (
+      {!list.length ? (
+        data.projetos.length === 0 ? (
+          <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'flex-start' }}>
+            <div 
+              className="proj-card card-in" 
+              style={{
+                background: 'var(--bg2)',
+                border: '2px dashed var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: '40px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                cursor: 'pointer',
+                transition: 'all .25s cubic-bezier(0.4, 0, 0.2, 1)',
+                minHeight: 220,
+                width: '100%',
+                maxWidth: 320,
+                textAlign: 'center'
+              }}
+              onClick={() => openModal('projeto')}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--accent)';
+                e.currentTarget.style.background = 'var(--bg3)';
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 30px -10px var(--accent-glow)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.background = 'var(--bg2)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{ 
+                width: 64, 
+                height: 64, 
+                borderRadius: '50%', 
+                background: 'var(--accent-bg)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'var(--accent)',
+                marginBottom: 8
+              }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 32, height: 32 }}>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Comece seu primeiro projeto</div>
+                <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.5 }}>Organize suas tarefas, prazos e pagamentos em um só lugar.</div>
+              </div>
+              <div className="btn btn-primary" style={{ marginTop: 8, pointerEvents: 'none' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Novo Projeto
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyDiv msg="Nenhum projeto encontrado" />
+        )
+      ) : (
+
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '8px 12px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
             <input type="checkbox" onChange={() => selectAll('projetos', allIds)} checked={allChecked} />

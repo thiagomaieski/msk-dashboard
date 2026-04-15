@@ -9,7 +9,7 @@ import {
 import {
   getFirestore, collection, addDoc, getDocs, doc,
   updateDoc, deleteDoc, query, where, serverTimestamp,
-  orderBy, getDoc, setDoc, enableMultiTabIndexedDbPersistence
+  orderBy, getDoc, setDoc, enableMultiTabIndexedDbPersistence, onSnapshot
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -44,5 +44,5 @@ export {
   sendPasswordResetEmail, updateProfile, updatePassword,
   reauthenticateWithCredential, EmailAuthProvider,
   collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
-  query, where, serverTimestamp, getDoc, setDoc, orderBy
+  query, where, serverTimestamp, getDoc, setDoc, orderBy, onSnapshot
 };

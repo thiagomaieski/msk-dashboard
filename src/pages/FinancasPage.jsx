@@ -6,7 +6,7 @@ const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSelect, colPrefix, showNf = false }) {
-  if (!list.length) return <div className="finance-col-empty">Nenhum {isRec ? 'receita' : 'despesa'}</div>;
+  if (!list.length) return <div className="finance-col-empty">Nenhuma {isRec ? 'receita' : 'despesa'}</div>;
   const CARD_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3 }} title="Cartão de crédito"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
   return list.map(m => (
     <div key={m.id} className="finance-card card-in" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -95,7 +95,7 @@ export function FinancasNegocioPage() {
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
         <select className="filter-select" value={ano} onChange={e => setAno(e.target.value)}>
-          <option value="">Todo ano</option>
+          <option value="">Todos</option>
           {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <select className="filter-select" value={mes} onChange={e => setMes(e.target.value)}>
@@ -224,7 +224,7 @@ export function FinancasPessoaisPage() {
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
         <select className="filter-select" value={ano} onChange={e => setAno(e.target.value)}>
-          <option value="">Todo ano</option>
+          <option value="">Todos</option>
           {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <select className="filter-select" value={mes} onChange={e => setMes(e.target.value)}>

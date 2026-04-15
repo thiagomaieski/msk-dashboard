@@ -5,7 +5,7 @@ import {
   query, where, serverTimestamp, getDoc, setDoc, fbSignOut, onAuthStateChanged, signInWithPopup, deleteUser,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
-  orderBy
+  orderBy, onSnapshot
 } from '../firebase';
 
 import { MOCK_DATA } from './mockData';
@@ -202,6 +202,7 @@ export const useDash = create((set, get) => ({
   zoomControl: localStorage.getItem('zoom') || '100',
   notifications: [],
   sessions: [],
+  sessionUnsubscribe: null,
 
   _refreshData: () => {
     const { realData, mockData, demoMode } = get();
@@ -283,9 +284,11 @@ export const useDash = create((set, get) => ({
         }
 
         await get().loadAll();
+        get().listenToSession();
         set({ appReady: true });
       } else {
-        set({ currentUser: null, authReady: true, appReady: false, requiresSetup: false });
+        if (get().sessionUnsubscribe) get().sessionUnsubscribe();
+        set({ currentUser: null, authReady: true, appReady: false, requiresSetup: false, sessionUnsubscribe: null });
       }
     });
   },
@@ -399,9 +402,13 @@ export const useDash = create((set, get) => ({
     toast('Foto do Google importada!');
   },
 
-  signOut: async () => {
+  signOut: async (silent = false) => {
+    const { sessionUnsubscribe, toast } = get();
+    if (sessionUnsubscribe) sessionUnsubscribe();
     await fbSignOut(auth);
-    set({ currentUser: null, appReady: false, data: { ...EMPTY_DATA }, requiresSetup: false });
+    localStorage.removeItem('dash_session_id');
+    set({ currentUser: null, appReady: false, data: { ...EMPTY_DATA }, requiresSetup: false, sessionUnsubscribe: null });
+    if (!silent) toast('Sessão encerrada.');
   },
 
   toggleTheme: () => {
@@ -505,6 +512,28 @@ export const useDash = create((set, get) => ({
       lastActive: serverTimestamp(),
       isCurrent: true
     }, { merge: true });
+  },
+
+  listenToSession: () => {
+    const { currentUser, signOut, toast } = get();
+    if (!currentUser) return;
+    
+    const sid = localStorage.getItem('dash_session_id');
+    if (!sid) return;
+
+    // Se já houver um listener, limpa
+    if (get().sessionUnsubscribe) get().sessionUnsubscribe();
+
+    const unsub = onSnapshot(uDoc('sessions', sid), (doc) => {
+      if (!doc.exists()) {
+        signOut(true);
+        toast('Sessão revogada ou expirada.', 'error');
+      }
+    }, (err) => {
+      console.error('Session listener error:', err);
+    });
+
+    set({ sessionUnsubscribe: unsub });
   },
 
   loadSessions: async () => {

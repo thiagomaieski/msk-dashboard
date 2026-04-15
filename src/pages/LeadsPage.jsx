@@ -82,6 +82,7 @@ export default function LeadsPage() {
   const updateFilter = (setter) => (e) => {
     setter(e.target.value);
     setPage(1);
+    if (setter === setSort) setColumnSort({ key: null, direction: 'asc' });
   };
 
   const updatePageSize = (value) => {
