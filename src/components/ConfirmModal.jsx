@@ -1,18 +1,32 @@
+import { useRef } from 'react';
 import { useDash } from '../store/useStore';
 
 export default function ConfirmModal() {
   const confirm = useDash(s => s.confirm);
   const closeConfirm = useDash(s => s.closeConfirm);
+  const overlayClickRef = useRef(false);
 
   if (!confirm) return null;
 
   const { msg, sub, danger } = confirm;
 
+  const handleMouseDown = (e) => {
+    overlayClickRef.current = e.target === e.currentTarget;
+  };
+
+  const handleMouseUp = (e) => {
+    if (e.target === e.currentTarget && overlayClickRef.current) {
+      closeConfirm(false);
+    }
+    overlayClickRef.current = false;
+  };
+
   return (
     <div
       id="confirm-overlay"
       style={{ display: 'flex' }}
-      onClick={(e) => { if (e.target === e.currentTarget) closeConfirm(false); }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
     >
       <div className="confirm-box">
         <div

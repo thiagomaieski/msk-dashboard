@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, uDoc } from '../store/useStore';
 import { setDoc } from '../firebase';
 import { Badge, EmptyState, NumberStepper } from '../components/shared';
+import nonProfilePhoto from '../assets/non-profile-photo.png';
 
 export default function ConfiguracoesPage() {
   const activeTab = useDash(s => s.configActiveTab);
@@ -73,7 +74,6 @@ export default function ConfiguracoesPage() {
   const [tempCcNome, setTempCcNome] = useState(configData.cartaoNome || '');
   const [tempCcVenc, setTempCcVenc] = useState(configData.cartaoVenc || 1);
   const [tempNotifEnabled, setTempNotifEnabled] = useState(configData.notifEnabled !== false);
-  const [tempNotifLeadTime, setTempNotifLeadTime] = useState(configData.notifLeadTime || 24);
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync with store when data arrives/changes
@@ -92,8 +92,7 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     setTempNotifEnabled(configData.notifEnabled !== false);
-    setTempNotifLeadTime(configData.notifLeadTime || 24);
-  }, [configData.notifEnabled, configData.notifLeadTime]);
+  }, [configData.notifEnabled]);
 
   const hasChanges = useMemo(() => {
     const nameChanged = tempName !== (profile.name || '');
@@ -101,9 +100,8 @@ export default function ConfiguracoesPage() {
     const ccNomeChanged = tempCcNome !== (configData.cartaoNome || '');
     const ccVencChanged = tempCcVenc !== (configData.cartaoVenc || 1);
     const notifEnabledChanged = tempNotifEnabled !== (configData.notifEnabled !== false);
-    const notifLeadTimeChanged = tempNotifLeadTime !== (configData.notifLeadTime || 24);
-    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || notifLeadTimeChanged;
-  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempNotifLeadTime, profile, configData]);
+    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged;
+  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, profile, configData]);
 
   const handleSaveAll = async () => {
     setIsSaving(true);
@@ -113,9 +111,9 @@ export default function ConfiguracoesPage() {
       if (tempCcNome !== configData.cartaoNome || tempCcVenc !== configData.cartaoVenc) {
         await saveCartao(tempCcNome, tempCcVenc);
       }
-      if (tempNotifEnabled !== configData.notifEnabled || tempNotifLeadTime !== configData.notifLeadTime) {
-        await setDoc(uDoc('settings', 'main'), { notifEnabled: tempNotifEnabled, notifLeadTime: tempNotifLeadTime }, { merge: true });
-        useDash.setState(s => ({ configData: { ...s.configData, notifEnabled: tempNotifEnabled, notifLeadTime: tempNotifLeadTime } }));
+      if (tempNotifEnabled !== configData.notifEnabled) {
+        await setDoc(uDoc('settings', 'main'), { notifEnabled: tempNotifEnabled }, { merge: true });
+        useDash.setState(s => ({ configData: { ...s.configData, notifEnabled: tempNotifEnabled } }));
       }
       toast('Todas as alterações foram salvas!');
     } catch (e) {
@@ -131,7 +129,6 @@ export default function ConfiguracoesPage() {
     setTempCcNome(configData.cartaoNome || '');
     setTempCcVenc(configData.cartaoVenc || 1);
     setTempNotifEnabled(configData.notifEnabled !== false);
-    setTempNotifLeadTime(configData.notifLeadTime || 24);
   };
 
   const TABS = [
@@ -241,7 +238,7 @@ export default function ConfiguracoesPage() {
                   {profile.photoURL ? (
                     <img src={profile.photoURL} alt="Avatar" style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover' }} />
                   ) : (
-                    <div className="user-avatar" style={{ borderRadius: '50%', width: 64, height: 64, background: 'var(--bg3)', fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>👤</div>
+                    <img src={nonProfilePhoto} alt="Avatar" style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover', background: 'var(--bg3)' }} />
                   )}
                 </div>
               </div>
@@ -584,26 +581,6 @@ export default function ConfiguracoesPage() {
                     <span className="switch-slider"></span>
                   </label>
                 </div>
-
-                <div className="settings-row" style={{ opacity: tempNotifEnabled ? 1 : 0.5, pointerEvents: tempNotifEnabled ? 'auto' : 'none' }}>
-                  <div className="settings-row-info">
-                    <div className="settings-row-title">Antecedência do Alerta</div>
-                    <div className="settings-row-desc">Tempo antes do prazo para gerar a notificação.</div>
-                  </div>
-                  <select 
-                    className="form-input" 
-                    style={{ width: 140 }}
-                    value={tempNotifLeadTime}
-                    onChange={e => setTempNotifLeadTime(parseInt(e.target.value))}
-                  >
-                    <option value={1}>1 hora antes</option>
-                    <option value={6}>6 horas antes</option>
-                    <option value={12}>12 horas antes</option>
-                    <option value={24}>24 horas antes</option>
-                    <option value={48}>48 horas antes</option>
-                    <option value={72}>72 horas antes</option>
-                  </select>
-                </div>
               </div>
 
               <div className="settings-card" style={{ opacity: 0.6 }}>
@@ -644,9 +621,9 @@ export default function ConfiguracoesPage() {
                     {demoMode && <Badge status="Ativo">Demo On</Badge>}
                   </div>
                   <div className="settings-row-desc">
-                    Injeta ~100 registros fictícios em todos os módulos para você testar as funcionalidades. 
+                    Injeta diversos registros fictícios em todos os módulos para você testar as funcionalidades. 
                     <br/>
-                    <strong style={{ color: 'var(--amber)' }}>Obs:</strong> Interações em modo demo não são salvas no Firebase.
+                    <strong style={{ color: 'var(--amber)' }}>Obs:</strong> Interações em modo demo não são salvas no banco de dados.
                   </div>
                 </div>
                 <div>
@@ -819,7 +796,7 @@ export default function ConfiguracoesPage() {
                 <div className="settings-row-info">
                   <div className="settings-row-title">Build e Plataforma</div>
                 </div>
-                <div style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500 }}>v3.1.4 (LTS) - Enterprise</div>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500 }}>v4.0 - Enterprise</div>
               </div>
 
               <div className="settings-row">
@@ -837,8 +814,7 @@ export default function ConfiguracoesPage() {
               </div>
 
               <div style={{ marginTop: 40, textAlign: 'center', fontSize: 13, color: 'var(--text3)' }}>
-                Feito com excelência no ecossistema Vite & React.<br/>
-                &copy; Dashboard Maieski {new Date().getFullYear()}.
+                {new Date().getFullYear()} &copy; MSK Dashboard
               </div>
             </div>
           )}

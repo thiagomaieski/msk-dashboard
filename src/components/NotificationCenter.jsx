@@ -1,7 +1,7 @@
 import { useDash, fmtDate } from '../store/useStore';
 import { useRef, useEffect } from 'react';
 
-export default function NotificationCenter({ onClose }) {
+export default function NotificationCenter({ onClose, toggleRef }) {
   const data = useDash(s => s.data);
   const markAsRead = useDash(s => s.markAsRead);
   const markAllAsRead = useDash(s => s.markAllAsRead);
@@ -11,6 +11,9 @@ export default function NotificationCenter({ onClose }) {
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        // Se houver um toggleRef e o clique for nele, deixe o toggle tratar
+        if (toggleRef?.current && toggleRef.current.contains(event.target)) return;
+        
         onClose();
       }
     }
@@ -36,6 +39,25 @@ export default function NotificationCenter({ onClose }) {
     return 'Agora';
   };
 
+  const PriorityIcon = ({ priority }) => {
+    const p = priority || 'Baixa';
+    if (p === 'Alta') return (
+      <svg className="notif-priority-icon Alta" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    );
+    if (p === 'Média') return (
+      <svg className="notif-priority-icon Média" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    );
+    return (
+      <svg className="notif-priority-icon Baixa" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+    );
+  };
+
   return (
     <div className="notif-dropdown" ref={dropdownRef}>
       <div className="notif-header">
@@ -59,11 +81,11 @@ export default function NotificationCenter({ onClose }) {
           sortedNotifs.map(n => (
             <div 
               key={n.id} 
-              className={`notif-item ${!n.lida ? 'unread' : ''}`}
+              className={`notif-item ${!n.lida ? 'unread' : ''} ${n.priority || 'Baixa'}`}
               onClick={() => !n.lida && markAsRead(n.id)}
             >
               <div className="notif-icon-wrap">
-                <div className={`notif-priority-dot ${n.priority || 'Baixa'}`}></div>
+                <PriorityIcon priority={n.priority} />
               </div>
               <div className="notif-content">
                 <div className="notif-title">{n.title}</div>

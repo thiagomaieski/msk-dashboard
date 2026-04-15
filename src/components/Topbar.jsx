@@ -3,6 +3,7 @@ import { useDash } from '../store/useStore';
 import NotificationCenter from './NotificationCenter';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
+import nonProfilePhoto from '../assets/non-profile-photo.png';
 
 export default function Topbar() {
   const profile = useDash(s => s.profile);
@@ -16,12 +17,11 @@ export default function Topbar() {
   const logo = isLight ? logoLight : logoDark;
 
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifBtnRef = useRef(null);
   const unreadCount = data.notificacoes.filter(n => !n.lida).length;
 
   const AvatarFallback = () => (
-    <div className="user-avatar" style={{ background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 500, fontSize: 13 }}>
-      {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
-    </div>
+    <img className="user-avatar" src={nonProfilePhoto} alt="User" />
   );
 
   return (
@@ -67,6 +67,7 @@ export default function Topbar() {
 
         <div style={{ position: 'relative' }}>
           <button
+            ref={notifBtnRef}
             className={`btn-icon ${notifOpen ? 'active' : ''}`}
             onClick={() => setNotifOpen(!notifOpen)}
             title="Notificações"
@@ -76,7 +77,7 @@ export default function Topbar() {
             </svg>
             {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
           </button>
-          {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} />}
+          {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} toggleRef={notifBtnRef} />}
         </div>
 
         <button

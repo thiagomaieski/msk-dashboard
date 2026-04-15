@@ -74,10 +74,9 @@ const TOAST_STYLES = {
   },
 };
 
-function ToastItem({ msg, type = 'success' }) {
+function ToastItem({ msg, type = 'success', duration = 3400 }) {
   const ref = useRef(null);
   const style = TOAST_STYLES[type] || TOAST_STYLES.success;
-  const duration = 3000;
 
   useEffect(() => {
     const el = ref.current;
@@ -88,37 +87,19 @@ function ToastItem({ msg, type = 'success' }) {
   }, []);
 
   return (
-    <div ref={ref} className="toast-item" style={{
-      background: 'var(--bg2)',
-      border: style.border,
-      borderRadius: 10,
-      padding: '10px 14px',
-      boxShadow: '0 8px 32px rgba(0,0,0,.35)',
-      backdropFilter: 'blur(12px)',
-      minWidth: 240, maxWidth: 340,
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: style.background,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, color: style.accent,
-        }}>
+    <div ref={ref} className="toast-item">
+      <div className="toast-content">
+        <div className="toast-icon" style={{ background: style.background, color: style.accent }}>
           {ICONS[type] || ICONS.success}
         </div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', lineHeight: 1.4 }}>{msg}</span>
+        <span className="toast-msg">{msg}</span>
       </div>
-      {/* Progress bar at bottom */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-        background: style.track,
-      }}>
-        <div style={{
-          height: '100%', background: style.accent,
-          animation: `toastProg ${duration}ms linear forwards`,
-        }} />
+      
+      <div className="toast-progress-track" style={{ background: style.track }}>
+        <div 
+          className="toast-progress-fill" 
+          style={{ background: style.accent, animation: `toastProg ${duration}ms linear forwards` }} 
+        />
       </div>
     </div>
   );
@@ -128,7 +109,7 @@ export default function Toast() {
   const toasts = useDash(s => s.toasts);
   return (
     <div id="toast">
-      {toasts.map(t => <ToastItem key={t.id} msg={t.msg} type={t.type} />)}
+      {toasts.map(t => <ToastItem key={t.id} msg={t.msg} type={t.type} duration={t.duration} />)}
     </div>
   );
 }

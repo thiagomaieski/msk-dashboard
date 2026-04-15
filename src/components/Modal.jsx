@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDash } from '../store/useStore';
 import { NumberStepper } from './shared';
 
@@ -7,16 +7,28 @@ export default function Modal() {
   const modalType = useDash(s => s.modalType);
   const modalTitle = useDash(s => s.modalTitle);
   const closeModal = useDash(s => s.closeModal);
+  const overlayClickRef = useRef(false);
 
   if (!modalOpen) return null;
 
-  const handleOverlay = (e) => {
-    if (e.target === e.currentTarget) closeModal();
+  const handleMouseDown = (e) => {
+    overlayClickRef.current = e.target === e.currentTarget;
+  };
+
+  const handleMouseUp = (e) => {
+    if (e.target === e.currentTarget && overlayClickRef.current) {
+      closeModal();
+    }
+    overlayClickRef.current = false;
   };
 
   return (
-    <div className="modal-overlay open" onClick={handleOverlay}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+    <div 
+      className="modal-overlay open" 
+      onMouseDown={handleMouseDown} 
+      onMouseUp={handleMouseUp}
+    >
+      <div className="modal">
         <div className="modal-header">
           <div className="modal-title">{modalTitle}</div>
           <button className="modal-close" onClick={closeModal}>
@@ -46,11 +58,47 @@ function ModalContent({ type }) {
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'cliente') return <ClienteForm item={data.clientes.find(x => x.id === editingId.clientes)} />;
   if (type === 'lembrete') return <LembreteForm item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
+  if (type === 'verNota') return <VerNotaModal item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
   if (type === 'despesaFixa') return <DespesaFixaForm item={data.despesasFixas.find(x => x.id === editingId.despesasFixas)} />;
   if (type === 'csvInfo') return <CsvInfoModal />;
   if (type === 'csvProgress') return <CsvProgressModal />;
   if (type === 'changePassword') return <ChangePasswordForm />;
   return null;
+}
+
+// ── VER NOTA MODAL ──
+function VerNotaModal({ item }) {
+  const closeModal = useDash(s => s.closeModal);
+  if (!item) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ padding: '0 4px' }}>
+        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 8, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          Tarefa:
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
+          {item.titulo}
+        </div>
+      </div>
+
+      <div style={{ 
+        background: 'var(--bg3)', 
+        border: '1px solid var(--border)', 
+        borderRadius: 'var(--radius-sm)', 
+        padding: 16,
+        maxHeight: 300,
+        overflowY: 'auto'
+      }}>
+        <div style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {item.descricao || 'Nenhuma observação adicionada.'}
+        </div>
+      </div>
+
+      <div className="form-actions" style={{ marginTop: 8 }}>
+        <button className="btn btn-primary" onClick={closeModal}>Fechar</button>
+      </div>
+    </div>
+  );
 }
 
 // ── LEAD FORM ──
@@ -547,7 +595,9 @@ function LembreteForm({ item }) {
     horario: item?.horario || '12:00',
     descricao: item?.descricao || '',
     categoria: item?.categoria || 'Geral',
-    concluido: item?.concluido || false
+    concluido: item?.concluido || false,
+    avisoValor: item?.avisoValor || 24,
+    avisoUnidade: item?.avisoUnidade || 'h'
   });
   
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
@@ -567,6 +617,30 @@ function LembreteForm({ item }) {
           <select className="form-select" value={f.categoria} onChange={u('categoria')}>
             {CATS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+        </div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group">
+          <label className="form-label">Antecedência do Alerta</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <NumberStepper 
+              value={f.avisoValor} 
+              onChange={(v) => setF(p => ({ ...p, avisoValor: v }))} 
+              min={1} 
+              className="form-input" 
+              style={{ flex: 1 }}
+            />
+            <select 
+              className="form-select" 
+              value={f.avisoUnidade} 
+              onChange={u('avisoUnidade')}
+              style={{ width: 100 }}
+            >
+              <option value="m">Mins</option>
+              <option value="h">Horas</option>
+              <option value="d">Dias</option>
+            </select>
+          </div>
         </div>
         <div className="form-group">
           <label className="form-label">Prioridade</label>

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useDash } from '../store/useStore';
+import nonProfilePhoto from '../assets/non-profile-photo.png';
 
 const MODULES_LIST = [
   { id: 'leads', label: 'Leads / CRM', icon: <svg className="module-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
@@ -78,9 +79,7 @@ export default function SetupScreen() {
   };
 
   const avatarFallback = (
-    <div className="setup-avatar-preview" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, background: 'var(--bg3)', border: '2px dashed var(--border2)' }}>
-      👤
-    </div>
+    <img src={nonProfilePhoto} alt="Avatar" className="setup-avatar-preview" style={{ background: 'var(--bg3)', border: '2px dashed var(--border2)', objectFit: 'cover' }} />
   );
 
   return (

@@ -637,10 +637,10 @@ export const useDash = create((set, get) => ({
   setConfigTab: (tab) => set({ configActiveTab: tab }),
 
   // ── Toast ──
-  toast: (msg, type = 'success') => {
+  toast: (msg, type = 'success', duration = 3400) => {
     const id = Date.now();
-    set(s => ({ toasts: [...s.toasts, { id, msg, type }] }));
-    setTimeout(() => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), 3400);
+    set(s => ({ toasts: [...s.toasts, { id, msg, type, duration }] }));
+    setTimeout(() => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), duration);
   },
 
   // ── Custom Confirm ──
@@ -661,7 +661,8 @@ export const useDash = create((set, get) => ({
       lead: 'leads', projeto: 'projetos', recorrencia: 'recorrencia',
       negocioReceita: 'negocio', negocioDespesa: 'negocio',
       pessoalReceita: 'pessoal', pessoalDespesa: 'pessoal',
-      cliente: 'clientes', lembrete: 'lembretes', despesaFixa: 'despesasFixas'
+      cliente: 'clientes', lembrete: 'lembretes', despesaFixa: 'despesasFixas',
+      verNota: 'lembretes'
     };
     const titles = {
       lead: id ? 'Editar Lead' : 'Novo Lead',
@@ -676,6 +677,7 @@ export const useDash = create((set, get) => ({
       despesaFixa: id ? 'Editar Despesa F.' : 'Nova Despesa Fixa',
       csvInfo: 'Importar Leads via CSV',
       csvProgress: 'Importando CSV...',
+      verNota: 'Observações da Tarefa'
     };
 
     const colName = map[type];
@@ -826,8 +828,12 @@ export const useDash = create((set, get) => ({
       }));
       get()._refreshData();
       closeModal();
-      toast(`${label} atualizado`);
       updateDoc(uDoc(colName, id), payload).catch(e => toast('Sync Error: ' + e.message, 'error'));
+      
+      // Cleanup notifications if marking a reminder as completed
+      if (colName === 'lembretes' && payload.concluido) {
+        get()._cleanupNotif(id);
+      }
     } else {
       local.criadoEm = new Date().toISOString();
       payload.criadoEm = serverTimestamp();
@@ -907,6 +913,9 @@ export const useDash = create((set, get) => ({
     get()._refreshData();
     get().toast('Movido para a lixeira (restaurável por 15 dias)');
     updateDoc(uDoc(colName, id), { deletadoEm: now }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
+
+    // Cleanup notifications if it's a reminder
+    if (colName === 'lembretes') get()._cleanupNotif(id);
   },
   deleteLembrete: async (id) => {
     const isMock = id && id.toString().startsWith('m-');
@@ -915,6 +924,7 @@ export const useDash = create((set, get) => ({
     } else {
       set(s => ({ realData: { ...s.realData, lembretes: s.realData.lembretes.filter(x => x.id !== id) } }));
       deleteDoc(uDoc('lembretes', id)).catch(e => console.error('Lembrete delete sync error:', e));
+      get()._cleanupNotif(id);
     }
     get()._refreshData();
   },
@@ -935,6 +945,7 @@ export const useDash = create((set, get) => ({
         }
       }));
       updateDoc(uDoc('lembretes', id), { concluido: !atual }).catch(e => console.error('Lembrete toggle sync error:', e));
+      if (!atual) get()._cleanupNotif(id);
     }
     get()._refreshData();
   },
@@ -1389,11 +1400,17 @@ export const useDash = create((set, get) => ({
       if (r.concluido) return;
       if (!r.prazo) return;
       
+      // Calculate individual lead time in ms
+      const val = parseInt(r.avisoValor) || 24;
+      const unit = r.avisoUnidade || 'h';
+      const unitMs = { 'm': 60000, 'h': 3600000, 'd': 86400000 }[unit] || 3600000;
+      const leadMs = val * unitMs;
+      
       const deadlineStr = r.horario ? `${r.prazo}T${r.horario}` : r.prazo;
       const deadline = new Date(deadlineStr);
       const diff = deadline.getTime() - now.getTime();
       
-      // If deadline is within X hours
+      // If deadline is within X ms
       if (diff < leadMs && diff > -2 * 60 * 60 * 1000) {
         const exists = data.notificacoes.find(n => n.reminderId === r.id);
         if (!exists) {
@@ -1410,6 +1427,26 @@ export const useDash = create((set, get) => ({
     });
   },
 
+  _cleanupNotif: async (reminderId) => {
+    const data = get().data;
+    const notifs = data.notificacoes.filter(n => n.reminderId === reminderId);
+    if (notifs.length === 0) return;
+
+    // Delete from Firestore
+    for (const n of notifs) {
+      if (!n.id.toString().startsWith('m-')) {
+        await deleteDoc(uDoc('notificacoes', n.id)).catch(e => console.error('Cleanup sync error:', e));
+      }
+    }
+    
+    // Update local state
+    set(s => ({
+      realData: { ...s.realData, notificacoes: s.realData.notificacoes.filter(n => n.reminderId !== reminderId) },
+      mockData: { ...s.mockData, notificacoes: s.mockData.notificacoes.filter(n => n.reminderId !== reminderId) }
+    }));
+    get()._refreshData();
+  },
+
   addNotification: async (payload) => {
     const { toast } = get();
     const local = { ...payload, criadoEm: new Date().toISOString(), lida: false };
@@ -1424,6 +1461,12 @@ export const useDash = create((set, get) => ({
       }
     }));
     get()._refreshData();
+    
+    // Map priority to toast type
+    const priorityMap = { 'Alta': 'error', 'Média': 'warning', 'Baixa': 'info' };
+    const toastType = priorityMap[payload.priority] || 'info';
+    
+    toast(payload.title, toastType, 8000);
   },
 
   markAsRead: async (id) => {

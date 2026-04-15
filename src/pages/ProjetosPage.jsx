@@ -82,37 +82,8 @@ export default function ProjetosPage() {
         data.projetos.length === 0 ? (
           <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'flex-start' }}>
             <div 
-              className="proj-card card-in" 
-              style={{
-                background: 'var(--bg2)',
-                border: '2px dashed var(--border)',
-                borderRadius: 'var(--radius)',
-                padding: '40px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 16,
-                cursor: 'pointer',
-                transition: 'all .25s cubic-bezier(0.4, 0, 0.2, 1)',
-                minHeight: 220,
-                width: '100%',
-                maxWidth: 320,
-                textAlign: 'center'
-              }}
+              className="proj-card empty card-in" 
               onClick={() => openModal('projeto')}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--accent)';
-                e.currentTarget.style.background = 'var(--bg3)';
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 10px 30px -10px var(--accent-glow)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.background = 'var(--bg2)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
             >
               <div style={{ 
                 width: 64, 
@@ -161,16 +132,7 @@ export default function ProjetosPage() {
               const pct = total ? Math.round((feito / total) * 100) : 0;
               const isSelected = selectedItems.includes(p.id);
               return (
-                <div key={p.id} className="proj-card card-in" style={{
-                  background: 'var(--bg2)',
-                  border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius)', padding: 18,
-                  display: 'flex', flexDirection: 'column', gap: 12,
-                  transition: 'border-color .15s, box-shadow .15s', position: 'relative',
-                }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-                >
+                <div key={p.id} className={`proj-card card-in ${isSelected ? 'isSelected' : ''}`}>
                   <div style={{ position: 'absolute', top: 12, right: 12 }}>
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect('projetos', p.id)} />
                   </div>
@@ -204,7 +166,7 @@ export default function ProjetosPage() {
                       </div>
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: 6, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-sm btn-secondary" style={{ flex: 1 }} onClick={() => openProjectView(p.id)}>Ver detalhes</button>
                     <button className="btn btn-sm btn-secondary" onClick={() => openModal('projeto', p.id)} title="Editar">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>

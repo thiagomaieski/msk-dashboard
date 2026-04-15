@@ -77,7 +77,7 @@ export default function LeadsPage() {
   }, [data.leads, search, status, nicho, ddd, sort, columnSort, page, resolvedPageSize]);
 
   const totalLeads = data.leads.length;
-  const allIds = list.map(x => x.id).join(',');
+  const pageIds = paginated.map(x => x.id).join(',');
 
   const updateFilter = (setter) => (e) => {
     setter(e.target.value);
@@ -263,7 +263,11 @@ export default function LeadsPage() {
           <thead>
             <tr>
               <th style={{ width: 30 }}>
-                <input type="checkbox" onChange={() => selectAll('leads', allIds)} checked={selectedItems.length === list.length && list.length > 0} />
+                <input 
+                  type="checkbox" 
+                  onChange={() => selectAll('leads', pageIds)} 
+                  checked={paginated.length > 0 && paginated.every(p => selectedItems.includes(p.id))} 
+                />
               </th>
               <th onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</th>
               <th onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</th>

@@ -12,6 +12,7 @@ export default function ProjectView() {
   const openModal = useDash(s => s.openModal);
 
   const [activeTab, setActiveTab] = useState('detalhes');
+  const overlayClickRef = useRef(false);
 
   if (!activeProjectView) return null;
   const p = data.projetos.find(x => x.id === activeProjectView);
@@ -19,8 +20,23 @@ export default function ProjectView() {
 
   const handleClose = () => { closeProjectView(); setActiveTab('detalhes'); };
 
+  const handleMouseDown = (e) => {
+    overlayClickRef.current = e.target === e.currentTarget;
+  };
+
+  const handleMouseUp = (e) => {
+    if (e.target === e.currentTarget && overlayClickRef.current) {
+      handleClose();
+    }
+    overlayClickRef.current = false;
+  };
+
   return (
-    <div className="pv-overlay open" onClick={e => { if (e.target === e.currentTarget) handleClose(); }}>
+    <div 
+      className="pv-overlay open" 
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
       <div className="pv-modal">
         <div className="pv-head">
           <div className="pv-head-info">
@@ -88,6 +104,8 @@ function PVDetalhes({ p, onEdit }) {
 function PVTarefas({ p, onUpdate }) {
   const [tarefas, setTarefas] = useState(p.tarefas || []);
   const [newTask, setNewTask] = useState({ col: null, titulo: '', prio: 'Baixa' });
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dropTargetCol, setDropTargetCol] = useState(null);
 
   const save = async (newTs) => {
     setTarefas(newTs);
@@ -101,37 +119,76 @@ function PVTarefas({ p, onUpdate }) {
     await save([...tarefas, t]);
   };
 
-  const moveTask = async (idx, nextCol) => {
-    await save(tarefas.map((t, i) => i === idx ? { ...t, col: nextCol } : t));
-  };
-
   const delTask = async (idx) => {
     await save(tarefas.filter((_, i) => i !== idx));
   };
 
+  const handleDragStart = (e, idx) => {
+    setDraggedIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    // Adiciona uma classe pequena de delay para não sumir o elemento que está sendo arrastado imediatamente
+    setTimeout(() => {
+      e.target.classList.add('dragging');
+    }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    setDraggedIdx(null);
+    setDropTargetCol(null);
+    e.target.classList.remove('dragging');
+  };
+
+  const handleDragOver = (e, colKey) => {
+    e.preventDefault();
+    setDropTargetCol(colKey);
+  };
+
+  const handleDrop = async (e, colKey) => {
+    e.preventDefault();
+    if (draggedIdx === null) return;
+    
+    const newTs = tarefas.map((t, i) => i === draggedIdx ? { ...t, col: colKey } : t);
+    setDraggedIdx(null);
+    setDropTargetCol(null);
+    await save(newTs);
+  };
+
   const COLS = [
-    { key: 'afazer', label: 'A Fazer', next: 'andamento' },
-    { key: 'andamento', label: 'Em Andamento', next: 'feito' },
-    { key: 'feito', label: 'Concluído', next: 'afazer' },
+    { key: 'afazer', label: 'A Fazer' },
+    { key: 'andamento', label: 'Em Andamento' },
+    { key: 'feito', label: 'Concluído' },
   ];
 
   return (
     <div className="kanban">
-      {COLS.map(({ key, label, next }) => {
+      {COLS.map(({ key, label }) => {
         const colItems = tarefas.map((t, i) => ({ t, i })).filter(({ t }) => t.col === key);
+        const isOver = dropTargetCol === key;
+
         return (
-          <div key={key} className="kanban-col">
+          <div 
+            key={key} 
+            className={`kanban-col ${isOver ? 'drag-over' : ''}`}
+            onDragOver={(e) => handleDragOver(e, key)}
+            onDragLeave={() => setDropTargetCol(null)}
+            onDrop={(e) => handleDrop(e, key)}
+          >
             <div className="kanban-col-head">
               <span className="kanban-col-label">{label}</span>
               <span className="kanban-count">{colItems.length}</span>
             </div>
             {colItems.map(({ t, i }) => (
-              <div key={i} className="kanban-card card-in">
+              <div 
+                key={i} 
+                className="kanban-card card-in"
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragEnd={handleDragEnd}
+              >
                 <div className="kanban-card-title">{t.titulo}</div>
                 <div className="kanban-card-foot">
                   <Badge status={t.prio || 'Baixa'} />
                   <div className="kanban-card-acts">
-                    <button className="row-btn" onClick={() => moveTask(i, next)} title="Mover">→</button>
                     <button className="row-btn del" onClick={() => delTask(i)} title="Remover">✕</button>
                   </div>
                 </div>
