@@ -19,7 +19,7 @@ export default function Topbar() {
   const unreadCount = data.notificacoes.filter(n => !n.lida).length;
 
   const AvatarFallback = () => (
-    <div className="user-avatar" style={{ background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+    <div className="user-avatar" style={{ background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 500, fontSize: 13 }}>
       {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
     </div>
   );

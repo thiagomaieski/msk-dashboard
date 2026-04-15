@@ -83,7 +83,7 @@ export default function RecorrenciaPage() {
                 <td><input type="checkbox" checked={selectedItems.includes(r.id)} onChange={() => toggleSelect('recorrencia', r.id)} /></td>
                 <td style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text)' }} onClick={() => openModal('recorrencia', r.id)}>{r.cliente || '-'}</td>
                 <td><span style={{ fontSize: 12 }}>{r.plano || '-'}</span></td>
-                <td style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>{fmtBRL(r.valor)}</td>
+                <td style={{ fontFamily: 'var(--sans)', fontSize: 13 }}>{fmtBRL(r.valor)}</td>
                 <td style={{ fontSize: 13 }}>
                   {r.periodicidade === 'Anual' ? `Renovação: ${r.renovacao || '-'}` : `Dia ${r.vencimento || '-'}`}
                 </td>

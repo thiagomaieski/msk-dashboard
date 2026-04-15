@@ -23,7 +23,19 @@ export default function LoadingScreen() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexDirection: 'column', background: 'var(--bg)'
     }}>
-      <div className="loader-logo-wrap">
+      <div 
+        className="loader-logo-wrap"
+        style={{ 
+          maskImage: `url(${logo})`, 
+          WebkitMaskImage: `url(${logo})`,
+          maskSize: 'contain',
+          WebkitMaskSize: 'contain',
+          maskRepeat: 'no-repeat',
+          WebkitMaskRepeat: 'no-repeat',
+          maskPosition: 'center',
+          WebkitMaskPosition: 'center'
+        }}
+      >
         <img src={logo} alt="Dashboard Maieski" style={{ height: 52, filter: 'brightness(0.4)' }} />
         <div className="loader-shimmer" />
       </div>

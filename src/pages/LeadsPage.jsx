@@ -168,7 +168,7 @@ export default function LeadsPage() {
                 cursor: 'pointer',
               }}
             >
-              <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text3)', fontWeight: 700 }}>
+              <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text3)', fontWeight: 500 }}>
                 {item.label}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -182,7 +182,7 @@ export default function LeadsPage() {
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                <span style={{ fontSize: 22, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--sans)' }}>
                   {item.value.toLocaleString('pt-BR')}
                 </span>
               </div>
@@ -323,7 +323,7 @@ export default function LeadsPage() {
 
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '0 4px' }}>
-          <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+          <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--sans)' }}>
             {((safePage - 1) * resolvedPageSize) + 1}–{Math.min(safePage * resolvedPageSize, totalItems)} de {totalItems.toLocaleString('pt-BR')} leads
           </span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -348,7 +348,7 @@ export default function LeadsPage() {
                   key={p}
                   className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setPage(p)}
-                  style={{ minWidth: 30, padding: '5px 6px', fontFamily: 'var(--mono)', fontSize: 12 }}
+                  style={{ minWidth: 30, padding: '5px 6px', fontFamily: 'var(--sans)', fontSize: 12 }}
                 >
                   {p}
                 </button>

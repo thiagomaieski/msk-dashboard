@@ -38,8 +38,8 @@ class ErrorBoundary extends Component {
           color: 'var(--text)', gap: 16, padding: 32, textAlign: 'center'
         }}>
           <div style={{ fontSize: 32 }}>⚠️</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Erro ao renderizar</div>
-          <div style={{ fontSize: 13, color: 'var(--text3)', maxWidth: 480, fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: 16, borderRadius: 8 }}>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Erro ao renderizar</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', maxWidth: 480, fontFamily: 'var(--sans)', background: 'var(--bg3)', padding: 16, borderRadius: 8 }}>
             {this.state.error?.message || String(this.state.error)}
           </div>
           <button className="btn btn-primary" onClick={() => window.location.reload()}>Recarregar</button>

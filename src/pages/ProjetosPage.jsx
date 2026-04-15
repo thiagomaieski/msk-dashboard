@@ -42,7 +42,7 @@ export default function ProjetosPage() {
         <div className="page-actions">
           {selectedItems.length > 0 && currentBulkCol === 'projetos' && (
             <div id="proj-bulk-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{selectedItems.length} selecionado(s)</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{selectedItems.length} selecionado(s)</span>
               <button className="btn btn-sm btn-danger" onClick={bulkDelete}>Excluir</button>
               <button className="btn btn-sm btn-secondary" style={{ padding: '0 6px' }} onClick={clearBulk}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -130,7 +130,7 @@ export default function ProjetosPage() {
                 </svg>
               </div>
               <div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Comece seu primeiro projeto</div>
+                <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Comece seu primeiro projeto</div>
                 <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.5 }}>Organize suas tarefas, prazos e pagamentos em um só lugar.</div>
               </div>
               <div className="btn btn-primary" style={{ marginTop: 8, pointerEvents: 'none' }}>
@@ -175,15 +175,15 @@ export default function ProjetosPage() {
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect('projetos', p.id)} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">{p.cliente || 'Sem nome'}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">{p.cliente || 'Sem nome'}</div>
                     <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.descricao || ''}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 -10px' }}>
-                    <span className="indicator-glow-wrap" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>
+                    <span className="indicator-glow-wrap" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 500, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>
                       <span className="indicator-glow"></span>
                       {p.status || 'Em andamento'}
                     </span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: pc, background: pc + '1a', borderRadius: 99, padding: '4px 10px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500, color: pc, background: pc + '1a', borderRadius: 99, padding: '4px 10px' }}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
                         <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                       </svg>
@@ -191,7 +191,7 @@ export default function ProjetosPage() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--text)' }}>{fmtBRL(p.valor)}</span>
+                    <span style={{ fontSize: 18, fontWeight: 500, fontFamily: 'var(--sans)', color: 'var(--text)' }}>{fmtBRL(p.valor)}</span>
                     <span style={{ fontSize: 12, color: 'var(--text3)' }}>Prazo: {fmtDate(p.prazo)}</span>
                   </div>
                   {total > 0 && (

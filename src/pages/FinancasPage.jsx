@@ -23,7 +23,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
           {showNf && m.nf && <><span>&bull;</span><span>{m.nf === 'sim' ? 'Com NF' : 'Sem NF'}</span></>}
           {m.entidade && <><span>&bull;</span><span>{m.entidade}</span></>}
           {m.categoria && <><span>&bull;</span><span>{m.categoria}</span></>}
-          {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 600 }}>Cartão</span></>}
+          {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 500 }}>Cartão</span></>}
         </div>
         <div className="finance-card-actions row-actions">
           <button className="row-btn" onClick={() => onEdit(m.id)} title="Editar">
@@ -120,7 +120,7 @@ export function FinancasNegocioPage() {
             </div>
             <span className="finance-col-total green">{fmtBRL(rec)}</span>
           </div>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg3)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
@@ -143,7 +143,7 @@ export function FinancasNegocioPage() {
             </div>
             <span className="finance-col-total red">{fmtBRL(desp)}</span>
           </div>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg3)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasNegocioDespesa || []).map(c => <option key={c}>{c}</option>)}
@@ -239,7 +239,7 @@ export function FinancasPessoaisPage() {
         <div className="summary-card" style={{ borderColor: 'rgba(59,130,246,.3)', background: 'var(--blue-bg)', position: 'relative', paddingBottom: 28 }}>
           <div className="summary-card-label" style={{ color: 'var(--blue)' }}>Fatura Cartão ({mesNome})</div>
           <div className="summary-card-val" style={{ color: 'var(--blue)' }}>{fmtBRL(cartao)}</div>
-          {cartaoExtra && <div style={{ position: 'absolute', bottom: 8, right: 12, fontSize: 11, fontWeight: 600, opacity: .8 }}>{cartaoExtra}</div>}
+          {cartaoExtra && <div style={{ position: 'absolute', bottom: 8, right: 12, fontSize: 11, fontWeight: 500, opacity: .8 }}>{cartaoExtra}</div>}
         </div>
       </div>
       <div className="finance-cols">
@@ -253,7 +253,7 @@ export function FinancasPessoaisPage() {
             </div>
             <span className="finance-col-total green">{fmtBRL(rec)}</span>
           </div>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg3)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
@@ -276,7 +276,7 @@ export function FinancasPessoaisPage() {
             </div>
             <span className="finance-col-total red">{fmtBRL(desp)}</span>
           </div>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg3)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasPessoal || []).map(c => <option key={c}>{c}</option>)}

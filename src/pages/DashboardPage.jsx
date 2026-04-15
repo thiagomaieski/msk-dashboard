@@ -40,7 +40,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="dash-greeting">
-        <h2>{period}, {firstName}!</h2>
+        <h2>{period}, <span className="serif">{firstName}!</span></h2>
         <p>{dateStr}</p>
       </div>
 

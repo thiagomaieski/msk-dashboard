@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useDash } from '../store/useStore';
 
 const PAGES = [
@@ -31,6 +32,9 @@ export default function NavBar() {
   const activePage = useDash(s => s.activePage);
   const goTo = useDash(s => s.goTo);
   const modules = useDash(s => s.configData.modules || {});
+  
+  const navRef = useRef(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({});
 
   const filteredPages = PAGES.filter(p => {
     if (p.id === 'dashboard') return true;
@@ -42,8 +46,33 @@ export default function NavBar() {
     return false;
   });
 
+  const updateIndicator = () => {
+    if (!navRef.current) return;
+    const activeBtn = navRef.current.querySelector('.nav-btn.active');
+    if (activeBtn) {
+      const isTrash = activeBtn.classList.contains('nav-trash');
+      setIndicatorStyle({
+        transform: `translateX(${activeBtn.offsetLeft}px)`,
+        width: activeBtn.offsetWidth,
+        height: activeBtn.offsetHeight,
+        background: isTrash ? 'var(--red-bg)' : 'var(--accent-bg)',
+        opacity: 1
+      });
+    } else {
+      setIndicatorStyle({ opacity: 0 });
+    }
+  };
+
+  useEffect(() => {
+    updateIndicator();
+    window.addEventListener('resize', updateIndicator);
+    return () => window.removeEventListener('resize', updateIndicator);
+  }, [activePage, filteredPages]);
+
   return (
-    <nav className="nav">
+    <nav className="nav" ref={navRef}>
+      <div className="nav-indicator" style={indicatorStyle} />
+      
       {filteredPages.map(p => (
         <button
           key={p.id}
@@ -71,3 +100,4 @@ export default function NavBar() {
     </nav>
   );
 }
+

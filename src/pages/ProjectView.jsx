@@ -56,19 +56,19 @@ function PVDetalhes({ p, onEdit }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div className="summary-card">
           <div className="summary-card-label">Valor do Projeto</div>
-          <div className="summary-card-val" style={{ fontFamily: 'var(--mono)' }}>{fmtBRL(p.valor)}</div>
+          <div className="summary-card-val" style={{ fontFamily: 'var(--sans)' }}>{fmtBRL(p.valor)}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Prazo</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{fmtDate(p.prazo)}</div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>{fmtDate(p.prazo)}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Status</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: sc }}>{p.status || '-'}</div>
+          <div style={{ fontSize: 16, fontWeight: 500, color: sc }}>{p.status || '-'}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Pagamento</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: pc }}>{p.pagamento || '-'}</div>
+          <div style={{ fontSize: 16, fontWeight: 500, color: pc }}>{p.pagamento || '-'}</div>
         </div>
       </div>
       <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -77,7 +77,7 @@ function PVDetalhes({ p, onEdit }) {
         </svg>
         <div>
           <div className="summary-card-label">Nota Fiscal</div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : 'var(--text3)' }}>{p.nf === 'sim' ? 'Emitida' : 'Não emitida'}</div>
+          <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : 'var(--text3)' }}>{p.nf === 'sim' ? 'Emitida' : 'Não emitida'}</div>
         </div>
       </div>
       <button className="btn btn-secondary" style={{ width: '100%' }} onClick={onEdit}>Editar Projeto</button>
@@ -203,7 +203,7 @@ function PVArquivos({ p, onAdd, onDel }) {
   return (
     <div>
       <div className="file-upload-form">
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Upload Direto para Servidor (Hospedagem)</div>
+        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Upload Direto para Servidor (Hospedagem)</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <input className="form-input" placeholder="Nome (Ex: Logo Final)" value={nome} onChange={e => setNome(e.target.value)} />
           <select className="form-select" value={tipo} onChange={e => setTipo(e.target.value)}>
@@ -216,7 +216,7 @@ function PVArquivos({ p, onAdd, onDel }) {
           <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => setSelectedFile(e.target.files[0] || null)} />
         </label>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-          <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>{progress}</div>
+          <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 500 }}>{progress}</div>
           <button className="btn btn-sm btn-primary" disabled={uploading} onClick={handleUpload}>{uploading ? 'Enviando...' : 'Upload Arquivo'}</button>
         </div>
       </div>

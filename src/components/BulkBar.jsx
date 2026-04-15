@@ -18,7 +18,7 @@ export default function BulkBar() {
       alignItems: 'center', gap: 16, boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
       zIndex: 900,
     }}>
-      <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap' }}>
         {selectedItems.length} selecionado(s)
       </span>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

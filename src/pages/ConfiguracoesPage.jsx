@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDash, sortData, fmtBRL } from '../store/useStore';
+import { useDash, sortData, fmtBRL, uDoc } from '../store/useStore';
+import { setDoc } from '../firebase';
 import { Badge, EmptyState, NumberStepper } from '../components/shared';
 
 export default function ConfiguracoesPage() {
-  const [activeTab, setActiveTab] = useState('cfg-conta');
+  const activeTab = useDash(s => s.configActiveTab);
+  const setConfigTab = useDash(s => s.setConfigTab);
   
   const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
@@ -57,6 +59,13 @@ export default function ConfiguracoesPage() {
   const [ccVenc, setCcVenc] = useState(configData.cartaoVenc || '');
   const [cliSearch, setCliSearch] = useState('');
   const [cliSort] = useState('criadoDesc');
+
+  // Safety checks for configData arrays
+  const nichos = configData?.nichos || [];
+  const categoriasPessoal = configData?.categoriasPessoal || [];
+  const categoriasNegocioDespesa = configData?.categoriasNegocioDespesa || [];
+  const categoriasReceita = configData?.categoriasReceita || [];
+  const modules = configData?.modules || {};
 
   // --- LOCAL BUFFER STATES ---
   const [tempName, setTempName] = useState(profile.name || '');
@@ -137,7 +146,7 @@ export default function ConfiguracoesPage() {
     { id: 'cfg-sobre', label: 'Sobre', icon: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4"/><path d="M12 8h.01" /></> },
   ];
 
-  let cliList = data.clientes.filter(c =>
+  let cliList = (data?.clientes || []).filter(c =>
     !cliSearch || (c.nome || '').toLowerCase().includes(cliSearch.toLowerCase())
   );
   cliList = sortData(cliList, cliSort);
@@ -152,9 +161,9 @@ export default function ConfiguracoesPage() {
         
         {/* Sidebar Tabs */}
         <div className="settings-tabs">
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12, paddingLeft: 14 }}>Menu</div>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12, paddingLeft: 14 }}>Menu</div>
           {TABS.map(t => (
-            <button key={t.id} className={`settings-tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+            <button key={t.id} className={`settings-tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setConfigTab(t.id)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {t.icon}
               </svg>
@@ -258,18 +267,18 @@ export default function ConfiguracoesPage() {
               </div>
 
               <div style={{ marginTop: 32 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 16 }}>Assinatura & Plano</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 16 }}>Assinatura & Plano</div>
                 <div className="plan-box">
                   <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                       <div className="badge badge-novo" style={{ fontSize: 13, padding: '4px 12px' }}>Plano de Sistema</div>
                     </div>
-                    <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Membro Pro</div>
+                    <div style={{ fontSize: 24, fontWeight: 500, marginBottom: 8 }}>Membro Pro</div>
                     <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24, maxWidth: 300 }}>Seu acesso é ilimitado até o momento. Todos os módulos desbloqueados.</div>
                     
                     <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                       <span style={{ color: 'var(--text2)' }}>Uso de Espaço</span>
-                      <span style={{ fontWeight: 600 }}>100% Livre</span>
+                      <span style={{ fontWeight: 500 }}>100% Livre</span>
                     </div>
                     <div className="loader-bar-track" style={{ width: '100%', marginBottom: 24, background: 'var(--bg2)' }}>
                       <div className="loader-bar-fill" style={{ width: '100%' }}></div>
@@ -302,18 +311,18 @@ export default function ConfiguracoesPage() {
                       { id: 'negocio', label: 'Negócio', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: 18, height: 18}}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg> },
                       { id: 'pessoal', label: 'Pessoal', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: 18, height: 18}}><rect x="1" y="6" width="22" height="14" rx="2"/><path d="M1 10h22"/><path d="M7 15h2M11 15h4"/></svg> },
                     ].map(mod => (
-                      <label key={mod.id} className={`module-card ${tempModules?.[mod.id] ? 'active' : ''}`} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+                      <label 
+                        key={mod.id} 
+                        className={`module-card ${tempModules?.[mod.id] ? 'active' : ''}`} 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}
+                        onClick={() => {
+                          setTempModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }));
+                        }}
+                      >
                         <div style={{ color: tempModules?.[mod.id] ? 'var(--accent)' : 'var(--text3)', display: 'flex' }}>
                           {mod.icon}
                         </div>
-                        <input 
-                          type="checkbox" 
-                          checked={!!tempModules?.[mod.id]} 
-                          onChange={() => {
-                            setTempModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }));
-                          }} 
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{mod.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>{mod.label}</span>
                       </label>
                     ))}
                   </div>
@@ -373,14 +382,14 @@ export default function ConfiguracoesPage() {
               </div>
 
               <div style={{ marginBottom: 32 }}>
-                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: 'var(--text)' }}>Nichos de Leads Atendidos</div>
+                <div style={{ fontWeight: 500, marginBottom: 12, fontSize: 14, color: 'var(--text)' }}>Nichos de Leads Atendidos</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400 }}>
                   <input type="text" className="form-input" placeholder="Ex: Advogados" value={nichoInput} onChange={e => setNichoInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { addNicho(nichoInput); setNichoInput(''); } }} />
                   <button className="btn btn-primary" onClick={() => { addNicho(nichoInput); setNichoInput(''); }}>Adicionar</button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {configData.nichos.map((n, i) => (
+                  {nichos.map((n, i) => (
                     <span key={i} style={tagStyle}>{n} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delNicho(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                   ))}
                 </div>
@@ -388,7 +397,7 @@ export default function ConfiguracoesPage() {
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Diretório Global de Clientes</div>
+                  <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)' }}>Diretório Global de Clientes</div>
                   <button className="btn btn-sm btn-primary" onClick={() => openModal('cliente')}>Novo Cliente</button>
                 </div>
                 
@@ -441,7 +450,7 @@ export default function ConfiguracoesPage() {
 
               {/* Cartão */}
               <div style={{ marginBottom: 32 }}>
-                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: 'var(--text)' }}>Dados do Cartão (Vencimento)</div>
+                <div style={{ fontWeight: 500, marginBottom: 12, fontSize: 14, color: 'var(--text)' }}>Dados do Cartão (Vencimento)</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', maxWidth: 500 }}>
                   <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Apelido do Cartão Principal</label>
@@ -457,10 +466,10 @@ export default function ConfiguracoesPage() {
               {/* Despesas Fixas */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, marginBottom: 32 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Despesas Fixas e Contas Básicas</div>
+                  <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)' }}>Despesas Fixas e Contas Básicas</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-sm btn-secondary" onClick={() => openModal('despesaFixa')}>Nova Despesa FIXA</button>
-                    <button className="btn btn-sm btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={lancarDespesasMensais}>Pagar/Lançar neste mês</button>
+                    <button className="btn btn-sm btn-primary" onClick={lancarDespesasMensais}>Pagar/Lançar neste mês</button>
                   </div>
                 </div>
                 
@@ -477,7 +486,7 @@ export default function ConfiguracoesPage() {
                       ) : data.despesasFixas.map(d => (
                         <tr key={d.id} className="row-in">
                           <td>{d.descricao}</td><td>{d.categoria || '-'}</td>
-                          <td style={{ fontFamily: 'var(--mono)' }}>{fmtBRL(d.valor)}</td>
+                          <td style={{ fontFamily: 'var(--sans)' }}>{fmtBRL(d.valor)}</td>
                           <td>{d.dia || '1'}</td>
                           <td>{d.cartao ? 'Cartão' : 'Conta'}</td>
                           <td>
@@ -496,7 +505,7 @@ export default function ConfiguracoesPage() {
               {/* Categorias */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 40 }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 500, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--red)' }}><line x1="5" y1="12" x2="19" y2="12" /></svg>
                     Categoria de Despesa Pessoal
                   </div>
@@ -507,14 +516,14 @@ export default function ConfiguracoesPage() {
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {(configData.categoriasPessoal || []).map((c, i) => (
+                    {categoriasPessoal.map((c, i) => (
                       <span key={i} style={tagStyle}>{c} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delCatPessoal(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 500, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--red)' }}><line x1="5" y1="12" x2="19" y2="12" /></svg>
                     Categoria de Despesa do Negócio
                   </div>
@@ -525,14 +534,14 @@ export default function ConfiguracoesPage() {
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {(configData.categoriasNegocioDespesa || []).map((c, i) => (
+                    {categoriasNegocioDespesa.map((c, i) => (
                       <span key={i} style={tagStyle}>{c} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delCatNegocioDespesa(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 500, marginBottom: 12, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: 12, height: 12, color: 'var(--green)' }}><path d="M12 5v14M5 12h14" /></svg>
                     Criar Categoria de Entrada
                   </div>
@@ -543,7 +552,7 @@ export default function ConfiguracoesPage() {
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {(configData.categoriasReceita || []).map((c, i) => (
+                    {categoriasReceita.map((c, i) => (
                       <span key={i} style={tagStyle}>{c} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delCatReceita(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                     ))}
                   </div>
@@ -554,7 +563,7 @@ export default function ConfiguracoesPage() {
 
           {/* === NOTIFICAÇÕES === */}
           {activeTab === 'cfg-notificacoes' && (
-            <div className="settings-panel">
+            <>
               <div className="settings-card">
                 <div className="settings-card-header">
                   <div className="settings-card-title">Notificações Inteligentes</div>
@@ -617,7 +626,7 @@ export default function ConfiguracoesPage() {
                   <div style={{ color: 'var(--text3)', fontSize: 12 }}>Indisponível</div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* === SISTEMA E DADOS === */}
@@ -708,7 +717,7 @@ export default function ConfiguracoesPage() {
               </div>
 
               <div style={{ marginBottom: 32 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 16 }}>Dispositivos e Sessões Ativas</div>
+                <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text)', marginBottom: 16 }}>Dispositivos e Sessões Ativas</div>
                 <div className="table-wrap">
                   <table>
                     <tbody>
@@ -731,7 +740,7 @@ export default function ConfiguracoesPage() {
                             </td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 13 }}>{s.os} • {s.location}</span>
+                                <span style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}>{s.os} • {s.location}</span>
                                 {s.isCurrent && <Badge status="Ativo">Este Dispositivo</Badge>}
                               </div>
                               <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{s.ip} • Ativo desde {s.lastActive ? new Date(s.lastActive.seconds * 1000).toLocaleString('pt-BR') : 'agora'}</div>
@@ -793,7 +802,7 @@ export default function ConfiguracoesPage() {
               </div>
               <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--bg3)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ width: 48, height: 48, marginBottom: 16 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Fase de Lançamento</div>
+                <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Fase de Lançamento</div>
                 <div style={{ fontSize: 13, color: 'var(--text2)' }}>Tokens RD Station e API Asaas serão disponibilizados conforme a demanda comercial no Open Beta desta plataforma.</div>
               </div>
             </div>
@@ -810,7 +819,7 @@ export default function ConfiguracoesPage() {
                 <div className="settings-row-info">
                   <div className="settings-row-title">Build e Plataforma</div>
                 </div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600 }}>v3.1.4 (LTS) - Enterprise</div>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500 }}>v3.1.4 (LTS) - Enterprise</div>
               </div>
 
               <div className="settings-row">

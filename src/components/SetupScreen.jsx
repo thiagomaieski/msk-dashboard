@@ -73,6 +73,10 @@ export default function SetupScreen() {
     }
   };
 
+  const handleModuleToggle = (id) => {
+    setSelectedModules(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const avatarFallback = (
     <div className="setup-avatar-preview" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, background: 'var(--bg3)', border: '2px dashed var(--border2)' }}>
       👤
@@ -105,7 +109,7 @@ export default function SetupScreen() {
               accept=".png,.jpg,.jpeg,.webp,.avif"
               onChange={handleFileUpload}
             />
-            {progress && <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{progress}</div>}
+            {progress && <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 500 }}>{progress}</div>}
           </div>
 
           <div className="setup-info">
@@ -125,7 +129,7 @@ export default function SetupScreen() {
         </div>
 
         <div style={{ marginTop: 40 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Quais módulos deseja ativar?</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 500, marginBottom: 12 }}>Quais módulos deseja ativar?</h3>
           <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>Você pode mudar isso a qualquer momento nas configurações.</p>
           
           <div className="module-grid">
@@ -136,10 +140,7 @@ export default function SetupScreen() {
                 onClick={() => handleModuleToggle(m.id)}
               >
                 <span>{m.icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{m.label}</span>
-                <div style={{ marginLeft: 'auto' }}>
-                  <input type="checkbox" checked={selectedModules[m.id]} readOnly />
-                </div>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{m.label}</span>
               </div>
             ))}
           </div>

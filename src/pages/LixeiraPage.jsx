@@ -62,13 +62,15 @@ export default function LixeiraPage() {
   };
 
   const handleHardDelete = async (colName, id) => {
-    await hardDeleteItem(colName, id);
-    load();
+    if (await hardDeleteItem(colName, id)) {
+      load();
+    }
   };
 
   const handleEmpty = async () => {
-    await emptyTrash();
-    load();
+    if (await emptyTrash()) {
+      load();
+    }
   };
 
   return (
@@ -94,7 +96,7 @@ export default function LixeiraPage() {
       {items === null ? null : items.length === 0 ? (
         <div className="trash-empty">
           <IcoTrash />
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>Lixeira vazia</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text2)', marginBottom: 6 }}>Lixeira vazia</div>
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum item excluído recentemente.</div>
         </div>
       ) : items.map(({ colName, items: colItems }) => (

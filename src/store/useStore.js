@@ -194,6 +194,7 @@ export const useDash = create((set, get) => ({
   profile: { name: '', email: '', photoURL: '', photoPath: '', setupCompleted: false },
   editingId: { ...EMPTY_EDITING },
   activePage: 'dashboard',
+  configActiveTab: 'cfg-conta',
   requiresSetup: false,
   activeProjectView: null,
   selectedItems: [],
@@ -632,6 +633,8 @@ export const useDash = create((set, get) => ({
   goTo: (page) => {
     set({ activePage: page, selectedItems: [], currentBulkCol: null });
   },
+
+  setConfigTab: (tab) => set({ configActiveTab: tab }),
 
   // ── Toast ──
   toast: (msg, type = 'success') => {
@@ -1265,19 +1268,21 @@ export const useDash = create((set, get) => ({
     get().toast('Item restaurado!');
   },
   hardDeleteItem: async (colName, id) => {
-    if (!await get().showConfirm('Apagar permanentemente?', 'Esta ação é irreversível. O item não poderá ser recuperado.')) return;
+    if (!await get().showConfirm('Apagar permanentemente?', 'Esta ação é irreversível. O item não poderá ser recuperado.')) return false;
     await deleteDoc(uDoc(colName, id));
     get().toast('Apagado permanentemente');
+    return true;
   },
   emptyTrash: async () => {
-    if (!await get().showConfirm('Esvaziar a lixeira?', 'Todos os itens serão apagados permanentemente. Esta ação não pode ser desfeita.')) return;
+    if (!await get().showConfirm('Esvaziar a lixeira?', 'Todos os itens serão apagados permanentemente. Esta ação não pode ser desfeita.')) return false;
     const { currentUser } = get();
     for (const colName of TRASH_COLS) {
       const snap = await getDocs(uCol(colName));
       const trashed = snap.docs.filter(d => d.data().deletadoEm);
-      for (const d of trashed) deleteDoc(uDoc(colName, d.id));
+      for (const d of trashed) deleteDoc(uDoc(colName, d.id)).catch(() => {});
     }
     get().toast('Lixeira esvaziada!');
+    return true;
   },
 
   importLeadsCSV: async (text, onProgress) => {

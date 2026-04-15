@@ -58,6 +58,11 @@ function LeadForm({ item }) {
   const configData = useDash(s => s.configData);
   const saveLead = useDash(s => s.saveLead);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+  
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
     nicho: item?.nicho || configData.nichos[0] || '',
@@ -75,6 +80,14 @@ function LeadForm({ item }) {
           <select className="form-select" value={f.nicho} onChange={u('nicho')}>
             {configData.nichos.map(n => <option key={n}>{n}</option>)}
           </select>
+          <div 
+            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+            onClick={() => navTo('cfg-negocios')}
+          >
+            Gerenciar nichos →
+          </div>
         </div>
         <div className="form-group"><label className="form-label">Status</label>
           <select className="form-select" value={f.status} onChange={u('status')}>
@@ -178,6 +191,11 @@ function ProjetoForm({ item }) {
   const data = useDash(s => s.data);
   const saveProjeto = useDash(s => s.saveProjeto);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+
   const [f, setF] = useState({
     cliente: item?.cliente || '', valor: item?.valor || '',
     descricao: item?.descricao || '', status: item?.status || 'Em andamento',
@@ -185,7 +203,33 @@ function ProjetoForm({ item }) {
     nf: item?.nf || 'nao',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
-  const noCli = !data.clientes.length && <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>⚠ Cadastre clientes em Configurações → Clientes antes de criar projetos.</div>;
+  const noCli = !data.clientes.length && (
+    <div style={{ 
+      fontSize: 12, 
+      color: 'var(--amber)', 
+      marginTop: 10, 
+      padding: '10px 12px', 
+      background: 'rgba(245, 158, 11, 0.08)', 
+      border: '1px solid rgba(245, 158, 11, 0.2)', 
+      borderRadius: 'var(--radius-sm)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      lineHeight: 1.4
+    }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>
+        Cadastre clientes em <span 
+          style={{ textDecoration: 'underline', cursor: 'pointer', color: 'inherit', fontWeight: 600, transition: 'opacity 0.2s' }} 
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          onClick={() => navTo('cfg-negocios')}
+        >Configurações &rarr; Clientes</span> antes de criar projetos.
+      </span>
+    </div>
+  );
   return (
     <div className="form-grid">
       <div className="form-grid form-grid-2">
@@ -232,6 +276,11 @@ function RecorrenciaForm({ item }) {
   const data = useDash(s => s.data);
   const saveRecorrencia = useDash(s => s.saveRecorrencia);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+
   const [f, setF] = useState({
     cliente: item?.cliente || '', valor: item?.valor || '',
     plano: item?.plano || '', periodicidade: item?.periodicidade || 'Mensal',
@@ -240,7 +289,33 @@ function RecorrenciaForm({ item }) {
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const isAnual = f.periodicidade === 'Anual';
-  const noCli = !data.clientes.length && <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>⚠ Cadastre clientes em Configurações → Clientes antes de criar recorrências.</div>;
+  const noCli = !data.clientes.length && (
+    <div style={{ 
+      fontSize: 12, 
+      color: 'var(--amber)', 
+      marginTop: 10, 
+      padding: '10px 12px', 
+      background: 'rgba(245, 158, 11, 0.08)', 
+      border: '1px solid rgba(245, 158, 11, 0.2)', 
+      borderRadius: 'var(--radius-sm)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      lineHeight: 1.4
+    }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>
+        Cadastre clientes em <span 
+          style={{ textDecoration: 'underline', cursor: 'pointer', color: 'inherit', fontWeight: 600, transition: 'opacity 0.2s' }} 
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          onClick={() => navTo('cfg-negocios')}
+        >Configurações &rarr; Clientes</span> antes de criar recorrências.
+      </span>
+    </div>
+  );
   return (
     <div className="form-grid">
       <div className="form-grid form-grid-2">
@@ -291,6 +366,11 @@ function FinancaForm({ item, defaultTipo }) {
   const configData = useDash(s => s.configData);
   const saveNegocio = useDash(s => s.saveNegocio);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+  
   const tipo = item ? item.tipo : defaultTipo;
   const isReceita = tipo === 'Receita';
   const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasNegocioDespesa || []);
@@ -313,6 +393,14 @@ function FinancaForm({ item, defaultTipo }) {
           <select className="form-select" value={f.categoria} onChange={u('categoria')}>
             {cats.map(c => <option key={c}>{c}</option>)}
           </select>
+          <div 
+            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+            onClick={() => navTo('cfg-financas')}
+          >
+            Gerenciar categorias →
+          </div>
         </div>
         <div className="form-group"><label className="form-label">Entidade (Cliente/Forn.)</label><input className="form-input" value={f.entidade} onChange={u('entidade')} /></div>
       </div>
@@ -337,6 +425,11 @@ function PessoalForm({ item, defaultTipo }) {
   const configData = useDash(s => s.configData);
   const savePessoal = useDash(s => s.savePessoal);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+
   const tipo = item ? item.tipo : defaultTipo;
   const isReceita = tipo === 'Receita';
   const isDespesa = !isReceita;
@@ -360,6 +453,14 @@ function PessoalForm({ item, defaultTipo }) {
           <select className="form-select" value={f.categoria} onChange={u('categoria')}>
             {cats.map(c => <option key={c}>{c}</option>)}
           </select>
+          <div 
+            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+            onClick={() => navTo('cfg-financas')}
+          >
+            Gerenciar categorias →
+          </div>
         </div>
       </div>
       {isDespesa && (
@@ -386,6 +487,11 @@ function DespesaFixaForm({ item }) {
   const configData = useDash(s => s.configData);
   const saveDespesaFixa = useDash(s => s.saveDespesaFixa);
   const closeModal = useDash(s => s.closeModal);
+  const goTo = useDash(s => s.goTo);
+  const setConfigTab = useDash(s => s.setConfigTab);
+
+  const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+
   const cats = configData.categoriasPessoal || [];
   const [f, setF] = useState({
     descricao: item?.descricao || '', valor: item?.valor || '',
@@ -403,6 +509,14 @@ function DespesaFixaForm({ item }) {
         <select className="form-select" value={f.categoria} onChange={u('categoria')}>
           {cats.map(c => <option key={c}>{c}</option>)}
         </select>
+        <div 
+          style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+          onClick={() => navTo('cfg-financas')}
+        >
+          Gerenciar categorias →
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 'var(--radius-sm)' }}>
         <input type="checkbox" id="f-despesa-fixa-cartao" className="checkbox-blue" checked={f.cartao} onChange={e => setF(p => ({ ...p, cartao: e.target.checked }))} />
@@ -511,17 +625,17 @@ function CsvInfoModal() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 6 }}>✓ Formato aceito</div>
+        <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 6 }}>✓ Formato aceito</div>
         <div style={{ fontSize: 13, color: 'var(--text)' }}>Arquivo <strong>.csv</strong> com separador por <strong>vírgula (,)</strong></div>
       </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>Ordem das colunas (cabeçalho obrigatório)</div>
+        <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>Ordem das colunas (cabeçalho obrigatório)</div>
         <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead><tr style={{ background: 'var(--bg4)' }}>
-              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--text3)' }}>Coluna</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--text3)' }}>Campo</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--text3)' }}>Obrigatório?</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, color: 'var(--text3)' }}>Coluna</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, color: 'var(--text3)' }}>Campo</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, color: 'var(--text3)' }}>Obrigatório?</th>
             </tr></thead>
             <tbody>
               {[
@@ -531,7 +645,7 @@ function CsvInfoModal() {
                 ['D (4ª)', 'Qualificação / Obs.', 'Não', 'var(--text3)'],
               ].map(([col, campo, obrig, color], i) => (
                 <tr key={i} style={{ borderTop: '1px solid var(--border)', background: i % 2 ? 'var(--bg3)' : 'transparent' }}>
-                  <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{col}</td>
+                  <td style={{ padding: '8px 12px', fontFamily: 'var(--sans)', color: 'var(--accent)' }}>{col}</td>
                   <td style={{ padding: '8px 12px', color: 'var(--text)' }}>{campo}</td>
                   <td style={{ padding: '8px 12px', color }}>{obrig}</td>
                 </tr>
@@ -541,8 +655,8 @@ function CsvInfoModal() {
         </div>
       </div>
       <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Exemplo de arquivo</div>
-        <code style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text2)', display: 'block' }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Exemplo de arquivo</div>
+        <code style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--text2)', display: 'block' }}>
           nome,telefone,site,observacoes<br />
           Clínica do João,(11) 99999-0000,clinicajoao.com.br,Interesse em site<br />
           Advocacia Silva,(21) 98888-1111,,
