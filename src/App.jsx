@@ -57,6 +57,8 @@ function AppInner() {
   const requiresSetup = useDash(s => s.requiresSetup);
   const currentUser = useDash(s => s.currentUser);
   const activePage = useDash(s => s.activePage);
+  const maintenanceMode = useDash(s => s.maintenanceMode);
+  const userRole = useDash(s => s.userRole);
 
   useEffect(() => {
     initAuth();
@@ -66,6 +68,24 @@ function AppInner() {
   if (!currentUser) return <AuthScreen />;
   if (requiresSetup) return <SetupScreen />;
   if (!appReady) return <LoadingScreen />;
+
+  // Tela de manutenção para usuários comuns
+  if (maintenanceMode && userRole !== 'admin') return (
+    <div style={{
+      position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', gap: 20, padding: 32, textAlign: 'center'
+    }}>
+      <div style={{ fontSize: 56 }}>🔧</div>
+      <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em' }}>Em Manutenção</div>
+      <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 400, lineHeight: 1.7 }}>
+        O sistema está passando por uma atualização e estará de volta em breve.<br/>
+        Agradecemos sua paciência.
+      </div>
+      <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={() => window.location.reload()}>
+        Verificar novamente
+      </button>
+    </div>
+  );
 
   return (
     <div id="app">

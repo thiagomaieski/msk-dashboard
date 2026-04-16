@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDash, sortData, fmtBRL, uDoc } from '../store/useStore';
+import { useDash, sortData, fmtBRL, uDoc, isAdminEmail } from '../store/useStore';
 import { setDoc } from '../firebase';
 import { Badge, EmptyState, NumberStepper } from '../components/shared';
 import nonProfilePhoto from '../assets/non-profile-photo.png';
+import AdminPanel from './AdminPanel';
 
 export default function ConfiguracoesPage() {
   const activeTab = useDash(s => s.configActiveTab);
@@ -51,6 +52,8 @@ export default function ConfiguracoesPage() {
   const demoMode = useDash(s => s.demoMode);
   const setDemoMode = useDash(s => s.setDemoMode);
   const showConfirm = useDash(s => s.showConfirm);
+  const userRole = useDash(s => s.userRole);
+  const isAdmin = userRole === 'admin';
 
   const [nichoInput, setNichoInput] = useState('');
   const [catInput, setCatInput] = useState('');
@@ -154,6 +157,8 @@ export default function ConfiguracoesPage() {
     { id: 'cfg-sobre', label: 'Sobre', icon: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4"/><path d="M12 8h.01" /></> },
   ];
 
+  const adminTab = { id: 'cfg-admin', label: 'Painel Admin', icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></> };
+
   let cliList = (data?.clientes || []).filter(c =>
     !cliSearch || (c.nome || '').toLowerCase().includes(cliSearch.toLowerCase())
   );
@@ -178,6 +183,20 @@ export default function ConfiguracoesPage() {
               {t.label}
             </button>
           ))}
+          {/* Admin Tab — separador visual */}
+          {isAdmin && (
+            <>
+              <div style={{ height: 1, background: 'var(--border)', margin: '12px 14px' }} />
+              <button
+                className={`settings-tab-btn ${activeTab === adminTab.id ? 'active' : ''}`}
+                onClick={() => setConfigTab(adminTab.id)}
+                style={{ color: activeTab === adminTab.id ? 'var(--accent)' : 'var(--amber)' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{adminTab.icon}</svg>
+                {adminTab.label}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Content Panel */}
@@ -838,6 +857,17 @@ export default function ConfiguracoesPage() {
               <div style={{ marginTop: 40, textAlign: 'center', fontSize: 13, color: 'var(--text3)' }}>
                 {new Date().getFullYear()} &copy; MSK Dashboard
               </div>
+            </div>
+          )}
+
+          {/* === PAINEL ADMIN === */}
+          {activeTab === 'cfg-admin' && isAdmin && (
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-title">🛡 Painel Administrativo</div>
+                <div className="settings-card-desc">Ferramentas técnicas exclusivas para administradores do sistema.</div>
+              </div>
+              <AdminPanel />
             </div>
           )}
 

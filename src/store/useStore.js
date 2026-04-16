@@ -15,6 +15,10 @@ export const fmtBRL = (v) => 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR',
 export const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
 export const g = (id) => document.getElementById(id)?.value?.trim() || '';
 
+// ── Admin ──
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
+export const isAdminEmail = (email) => email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
 // Standard path helpers for user-isolated data
 export const uCol = (name) => {
   const uid = auth.currentUser?.uid;
@@ -179,6 +183,12 @@ const normalizeImportedStatus = (value) => {
 const getCurrentMonthKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 const clampDay = (value) => Math.min(31, Math.max(1, parseInt(value, 10) || 1));
 const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDay(day)).padStart(2, '0')}`;
+const fmtDateISO = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 export const useDash = create((set, get) => ({
   // ── State ──
@@ -190,8 +200,10 @@ export const useDash = create((set, get) => ({
   mockData: { ...EMPTY_DATA },
   demoMode: localStorage.getItem('demoMode') === 'true',
 
-   configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false },
+  configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false },
   isSyncingAutomations: false,
+  userRole: 'user', // 'admin' | 'user'
+  maintenanceMode: false,
   profile: { name: '', email: '', photoURL: '', photoPath: '', setupCompleted: false },
   editingId: { ...EMPTY_EDITING },
   activePage: 'dashboard',
@@ -205,6 +217,7 @@ export const useDash = create((set, get) => ({
   notifications: [],
   sessions: [],
   sessionUnsubscribe: null,
+  roleUnsubscribe: null,
 
   _refreshData: () => {
     const { realData, mockData, demoMode } = get();
@@ -265,6 +278,9 @@ export const useDash = create((set, get) => ({
         const profileRef = uDoc('profile', 'info');
         const profileSnap = await getDoc(profileRef);
         
+        // Define role dinâmico: Prioridade para o Master Email, senão busca no perfil
+        let role = isAdminEmail(user.email) ? 'admin' : 'user';
+        
         if (!profileSnap.exists()) {
           // Initialize profile
           const initialProfile = {
@@ -273,17 +289,66 @@ export const useDash = create((set, get) => ({
             photoURL: user.photoURL || '',
             photoPath: '',
             setupCompleted: false,
+            role,
             criadoEm: serverTimestamp()
           };
           await setDoc(profileRef, initialProfile);
           set({ profile: { ...initialProfile, criadoEm: new Date().toISOString() }, requiresSetup: true });
         } else {
           const profileData = profileSnap.data();
+          // Se não for o email master, assume o que está no banco
+          if (role !== 'admin') {
+            role = profileData.role || 'user';
+          }
           set({ 
             profile: { ...profileData, criadoEm: profileData.criadoEm?.toDate?.()?.toISOString() || profileData.criadoEm }, 
             requiresSetup: !profileData.setupCompleted 
           });
         }
+        
+        // Listener em tempo real para mudanças de cargo (RBAC Reativo)
+        if (get().roleUnsubscribe) get().roleUnsubscribe();
+        const roleUnsub = onSnapshot(profileRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            const isMaster = isAdminEmail(user.email);
+            const newRole = isMaster ? 'admin' : (data.role || 'user');
+            
+            if (get().userRole !== newRole) {
+              set({ userRole: newRole });
+              // Se perdeu o admin e estava no painel, volta pro dashboard
+              if (newRole !== 'admin' && get().activePage === 'configuracoes' && get().configActiveTab === 'cfg-admin') {
+                get().goTo('dashboard');
+                get().toast('Seu nível de acesso foi alterado.', 'info');
+              }
+            }
+          }
+        });
+        set({ roleUnsubscribe: roleUnsub });
+
+        set({ userRole: isAdminEmail(user.email) ? 'admin' : (profileSnap.data()?.role || 'user') });
+
+        // Update publicProfile (always, to keep lastActive fresh)
+        try {
+          const pubRef = doc(db, 'publicProfiles', user.uid);
+          const profileData = (await getDoc(profileRef)).data() || {};
+          await setDoc(pubRef, {
+            name: profileData.name || user.displayName || '',
+            email: user.email,
+            photoURL: profileData.photoURL || user.photoURL || '',
+            role,
+            ultimoAcesso: serverTimestamp(),
+            criadoEm: profileData.criadoEm || serverTimestamp()
+          }, { merge: true });
+        } catch(e) { console.warn('publicProfile sync error', e); }
+
+        // Load maintenance mode from systemConfig
+        try {
+          const sysSnap = await getDoc(doc(db, 'systemConfig', 'main'));
+          if (sysSnap.exists() && sysSnap.data().maintenanceMode && role !== 'admin') {
+            set({ maintenanceMode: true });
+          }
+        } catch(e) { /* ignore */ }
 
         await get().loadAll();
         get().listenToSession();
@@ -405,11 +470,12 @@ export const useDash = create((set, get) => ({
   },
 
   signOut: async (silent = false) => {
-    const { sessionUnsubscribe, toast } = get();
+    const { sessionUnsubscribe, roleUnsubscribe, toast } = get();
     if (sessionUnsubscribe) sessionUnsubscribe();
+    if (roleUnsubscribe) roleUnsubscribe();
     await fbSignOut(auth);
     localStorage.removeItem('dash_session_id');
-    set({ currentUser: null, appReady: false, data: { ...EMPTY_DATA }, requiresSetup: false, sessionUnsubscribe: null });
+    set({ currentUser: null, appReady: false, data: { ...EMPTY_DATA }, requiresSetup: false, sessionUnsubscribe: null, roleUnsubscribe: null });
     if (!silent) toast('Sessão encerrada.');
   },
 
@@ -645,9 +711,9 @@ export const useDash = create((set, get) => ({
   },
 
   // ── Custom Confirm ──
-  showConfirm: (msg, sub = '', danger = true) => {
+  showConfirm: (msg, sub = '', danger = true, confirmLabel = '') => {
     return new Promise(resolve => {
-      set({ confirm: { msg, sub, danger, resolve } });
+      set({ confirm: { msg, sub, danger, confirmLabel, resolve } });
     });
   },
   closeConfirm: (result) => {
@@ -1436,42 +1502,110 @@ export const useDash = create((set, get) => ({
 
   // ── Notificações ──
   checkNotifications: () => {
-    const { data, configData } = get();
+    const { data, configData, addNotification } = get();
     if (!configData.notifEnabled) return;
     
     const now = new Date();
-    const leadMs = (configData.notifLeadTime || 24) * 60 * 60 * 1000;
+    const todayStr = fmtDateISO(now);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = fmtDateISO(tomorrow);
     
-    // Scan reminders
+    // 1. Lembretes Individuais (Existente)
     data.lembretes.forEach(r => {
-      if (r.concluido) return;
-      if (!r.prazo) return;
-      
-      // Calculate individual lead time in ms
+      if (r.concluido || !r.prazo) return;
       const val = parseInt(r.avisoValor) || 24;
       const unit = r.avisoUnidade || 'h';
       const unitMs = { 'm': 60000, 'h': 3600000, 'd': 86400000 }[unit] || 3600000;
       const leadMs = val * unitMs;
-      
       const deadlineStr = r.horario ? `${r.prazo}T${r.horario}` : r.prazo;
       const deadline = new Date(deadlineStr);
       const diff = deadline.getTime() - now.getTime();
       
-      // If deadline is within X ms
       if (diff < leadMs && diff > -2 * 60 * 60 * 1000) {
-        const exists = data.notificacoes.find(n => n.reminderId === r.id);
-        if (!exists) {
-          const timeLabel = r.horario ? ` às ${r.horario}` : '';
-          get().addNotification({
+        const rid = `rem-${r.id}`;
+        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          addNotification({
             title: `Tarefa Próxima: ${r.titulo}`,
-            message: `Vence em breve: ${fmtDate(r.prazo)}${timeLabel}`,
-            type: 'alert',
+            message: `Vence em breve: ${fmtDate(r.prazo)}${r.horario ? ' às ' + r.horario : ''}`,
             priority: r.prioridade,
-            reminderId: r.id
+            reminderId: rid
           });
         }
       }
     });
+
+    // 2. Recorrências (NF Pendente)
+    data.negocio.forEach(item => {
+      if (item.tipo === 'Receita' && item.nf === 'pendente' && item.origemAutomatica === 'recorrencia') {
+        if (item.data === todayStr) {
+          const rid = `nf-hoje-${item.id}`;
+          if (!data.notificacoes.some(n => n.reminderId === rid)) {
+            addNotification({
+              title: "Emitir NF Hoje",
+              message: `Recorrência pendente: ${item.descricao}`,
+              priority: 'Alta',
+              reminderId: rid
+            });
+          }
+        } else if (item.data === tomorrowStr) {
+          const rid = `nf-amanha-${item.id}`;
+          if (!data.notificacoes.some(n => n.reminderId === rid)) {
+            addNotification({
+              title: "Emitir NF Amanhã",
+              message: `Recorrência pendente: ${item.descricao}`,
+              priority: 'Média',
+              reminderId: rid
+            });
+          }
+        }
+      }
+    });
+
+    // 3. Prazos de Projetos
+    data.projetos.forEach(proj => {
+      if (proj.status === 'Concluido' || !proj.prazo) return;
+      const deadline = new Date(proj.prazo + 'T12:00:00');
+      const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) {
+        const rid = `proj-prazo-hoje-${proj.id}`;
+        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          addNotification({
+            title: "Prazo Final: Hoje",
+            message: `Conclua o projeto "${proj.nome || proj.descricao}" agora!`,
+            priority: 'Alta',
+            reminderId: rid
+          });
+        }
+      } else if (diffDays === 1 || diffDays === 2) {
+        const rid = `proj-prazo-prox-${proj.id}-${diffDays}`;
+        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          addNotification({
+            title: "Prazo vindo aí",
+            message: `O projeto "${proj.nome || proj.descricao}" vence em ${diffDays} dia(s).`,
+            priority: 'Média',
+            reminderId: rid
+          });
+        }
+      }
+    });
+
+    // 4. Leads Qualificados (Segunda-feira)
+    if (now.getDay() === 1) { // Segunda
+      const leadsQualificados = data.leads.filter(l => l.status === 'Novo' && l.qualificacao?.trim()).length;
+      if (leadsQualificados > 0) {
+        const rid = `leads-weekly-${todayStr.substring(0, 10)}`;
+        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          addNotification({
+            title: "Leads Qualificados",
+            message: `Você tem ${leadsQualificados} leads já qualificados esperando sua abordagem.`,
+            priority: 'Baixa',
+            reminderId: rid
+          });
+        }
+      }
+    }
   },
 
   _cleanupNotif: async (reminderId) => {
@@ -1557,6 +1691,147 @@ export const useDash = create((set, get) => ({
     
     const snap = await getDocs(uCol('notificacoes'));
     snap.docs.forEach(d => deleteDoc(uDoc('notificacoes', d.id)));
+  },
+
+  // ── Admin Functions ──
+  adminFetchAllUsers: async () => {
+    try {
+      const snap = await getDocs(collection(db, 'publicProfiles'));
+      return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    } catch(e) {
+      console.error('adminFetchAllUsers error', e);
+      return [];
+    }
+  },
+
+  adminSetUserRole: async (uid, newRole) => {
+    const { toast } = get();
+    try {
+      // Atualiza na coleção pública (para listagem no painel admin)
+      await setDoc(doc(db, 'publicProfiles', uid), { role: newRole }, { merge: true });
+      
+      // Atualiza na coleção privada do usuário (fonte de verdade para o login dele)
+      await setDoc(doc(db, 'users', uid, 'profile', 'info'), { role: newRole }, { merge: true });
+      
+      toast(`Role atualizado para ${newRole}.`);
+    } catch(e) {
+      toast('Erro ao atualizar role: ' + e.message, 'error');
+    }
+  },
+
+  adminBroadcast: async (title, message, priority = 'Baixa') => {
+    const { toast } = get();
+    try {
+      const usersSnap = await getDocs(collection(db, 'publicProfiles'));
+      let successCount = 0;
+      let failCount = 0;
+
+      const promises = usersSnap.docs.map(async (userDoc) => {
+        try {
+          const uid = userDoc.id;
+          const colRef = collection(db, 'users', uid, 'notificacoes');
+          await addDoc(colRef, {
+            title,
+            message,
+            priority,
+            lida: false,
+            criadoEm: serverTimestamp(),
+            reminderId: `broadcast-${Date.now()}-${uid}`
+          });
+          successCount++;
+        } catch (err) {
+          console.error(`Falha ao enviar para ${userDoc.id}:`, err);
+          failCount++;
+        }
+      });
+
+      await Promise.all(promises);
+      
+      if (failCount === 0) {
+        toast(`Broadcast enviado com sucesso para todos os ${successCount} usuários!`);
+      } else {
+        toast(`Broadcast concluído: ${successCount} envios realizados, ${failCount} falhas (verifique permissões).`, 'warning');
+      }
+    } catch(e) {
+      toast('Erro fatal ao iniciar broadcast: ' + e.message, 'error');
+    }
+  },
+
+  adminToggleMaintenance: async (enabled) => {
+    const { toast } = get();
+    try {
+      await setDoc(doc(db, 'systemConfig', 'main'), { maintenanceMode: enabled }, { merge: true });
+      set({ maintenanceMode: enabled });
+      toast(enabled ? 'Modo de manutenção ATIVADO.' : 'Modo de manutenção desativado.');
+    } catch(e) {
+      toast('Erro: ' + e.message, 'error');
+    }
+  },
+
+  adminFireTestNotification: async (type) => {
+    const { addNotification } = get();
+    const now = new Date();
+    const testMap = {
+      'nf_hoje':     { title: '[TESTE] Emitir NF Hoje', message: 'Recorrência pendente: Serviço de Marketing Digital', priority: 'Alta' },
+      'nf_amanha':   { title: '[TESTE] Emitir NF Amanhã', message: 'Recorrência pendente: Gestão de Redes Sociais', priority: 'Média' },
+      'proj_hoje':   { title: '[TESTE] Prazo Final: Hoje', message: 'Conclua o projeto "Identidade Visual" agora!', priority: 'Alta' },
+      'proj_prox':   { title: '[TESTE] Prazo vindo aí', message: 'O projeto "Redesign do Site" vence em 2 dia(s).', priority: 'Média' },
+      'leads_week':  { title: '[TESTE] Leads Qualificados', message: 'Você tem 3 leads já qualificados esperando sua abordagem.', priority: 'Baixa' },
+    };
+    const payload = testMap[type];
+    if (!payload) return;
+    await addNotification({ ...payload, reminderId: `test-${type}-${now.getTime()}` });
+  },
+
+  adminRunAutomations: async () => {
+    const { toast, runFinancialAutomations, checkNotifications, data, configData } = get();
+    toast('Executando automações...', 'info');
+    try {
+      await runFinancialAutomations(data, configData);
+      checkNotifications();
+      toast('Automações executadas com sucesso!');
+    } catch(e) {
+      toast('Erro nas automações: ' + e.message, 'error');
+    }
+  },
+
+  adminClearTestNotifications: async () => {
+    const { data, toast } = get();
+    const testNotifs = data.notificacoes.filter(n => n.reminderId?.startsWith('test-') || n.title?.startsWith('[TESTE]'));
+    if (!testNotifs.length) { toast('Nenhuma notificação de teste encontrada.', 'info'); return; }
+    for (const n of testNotifs) {
+      await deleteDoc(uDoc('notificacoes', n.id)).catch(() => {});
+    }
+    set(s => ({
+      realData: {
+        ...s.realData,
+        notificacoes: s.realData.notificacoes.filter(n => !n.reminderId?.startsWith('test-') && !n.title?.startsWith('[TESTE]'))
+      }
+    }));
+    get()._refreshData();
+    toast(`${testNotifs.length} notificação(ões) de teste removida(s).`);
+  },
+
+  adminLogActivity: async (action, details = '') => {
+    try {
+      const { profile } = get();
+      await addDoc(collection(db, 'systemLogs'), {
+        action,
+        details,
+        adminName: profile.name || 'Admin',
+        adminEmail: profile.email || '',
+        criadoEm: serverTimestamp()
+      });
+    } catch(e) { /* non-critical */ }
+  },
+
+  adminFetchLogs: async () => {
+    try {
+      const snap = await getDocs(query(collection(db, 'systemLogs'), orderBy('criadoEm', 'desc')));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {
+      return [];
+    }
   },
 }));
 

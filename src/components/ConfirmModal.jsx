@@ -48,7 +48,7 @@ export default function ConfirmModal() {
             style={{ background: danger ? 'var(--red)' : 'var(--accent)', color: '#fff', border: 'none' }}
             onClick={() => closeConfirm(true)}
           >
-            {danger ? 'Excluir' : 'Confirmar'}
+            {confirm.confirmLabel || 'Confirmar'}
           </button>
         </div>
       </div>
