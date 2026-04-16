@@ -37,8 +37,8 @@
   --serif: 'Instrument Serif', serif;
 
   /* Tooltip Tokens */
-  --tooltip-bg: rgba(23, 23, 23, 0.95);
-  --tooltip-border: rgba(255, 255, 255, 0.08);
+  --tooltip-bg: rgba(13, 13, 17, 0.98);
+  --tooltip-border: rgba(255, 255, 255, 0.1);
   --tooltip-text: #FCFCFA;
 }
 
@@ -3812,4 +3812,18 @@ input:checked+.switch-slider:before {
 body.light .status-badge-mini {
   background: rgba(34, 197, 94, 0.08);
   border-color: rgba(34, 197, 94, 0.15);
+}
+
+/* ─── Recharts Global Overrides ─────────────────────────────────────── */
+.recharts-tooltip-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.recharts-default-tooltip {
+  background-color: var(--tooltip-bg) !important;
+  border: 1px solid var(--tooltip-border) !important;
+  border-radius: 8px !important;
 }

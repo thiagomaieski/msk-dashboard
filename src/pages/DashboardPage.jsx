@@ -32,7 +32,7 @@ const MESES_COMPLETOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Jun
 
 const STATUS_LEAD_ORDER = ['Novo', 'Abordado', 'Follow-up', 'Em negociação', 'Fechado', 'Perdido'];
 const STATUS_COLORS = {
-  'Novo': '#00C573',
+  'Novo': '#cbd5e1',
   'Abordado': '#3b82f6',
   'Follow-up': '#f59e0b',
   'Em negociação': '#a855f7',
@@ -40,9 +40,10 @@ const STATUS_COLORS = {
   'Perdido': '#ef4444',
 };
 const PROJETO_STATUS_COLORS = {
-  'Em andamento': '#00C573',
-  'Concluído': '#3b82f6',
-  'Pausado': '#f59e0b',
+  'Em andamento': '#3b82f6',
+  'Concluído': '#22c55e',
+  'Aguardando cliente': '#f59e0b',
+  'Pausado': '#737373',
   'Cancelado': '#ef4444',
 };
 
@@ -124,9 +125,11 @@ const CustomBarTooltip = ({ active, payload, label }) => {
 };
 
 // ─── Trend Indicator ──────────────────────────────────────────────────────────
-function Trend({ value, suffix = '' }) {
+function Trend({ value, suffix = '', invert = false }) {
   const isPositive = value >= 0;
-  const color = isPositive ? 'var(--accent)' : 'var(--red)';
+  let color = isPositive ? 'var(--accent)' : 'var(--red)';
+  if (invert) color = isPositive ? 'var(--red)' : 'var(--accent)';
+  
   const arrow = isPositive ? '↑' : '↓';
   return (
     <span style={{ fontSize: 11, color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -164,7 +167,7 @@ function Sparkline({ data, color = '#00C573', id }) {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, trend, trendLabel, sparkData, sparkColor, accentColor, index }) {
+function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData, sparkColor, accentColor, index }) {
   return (
     <motion.div
       custom={index}
@@ -176,14 +179,14 @@ function KpiCard({ icon, label, value, trend, trendLabel, sparkData, sparkColor,
       style={{ '--kpi-accent': accentColor }}
     >
       <div className="dash-kpi-top">
-        <div className="dash-kpi-icon" style={{ background: `${accentColor}18`, color: accentColor }}>
+        <div className="dash-kpi-icon" style={{ background: `color-mix(in srgb, ${accentColor}, transparent 88%)`, color: accentColor }}>
           {icon}
         </div>
         <div className="dash-kpi-meta">
           <div className="dash-kpi-label">{label}</div>
           {trend !== undefined && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Trend value={trend} />
+              <Trend value={trend} invert={trendInvert} />
               {trendLabel && <span style={{ fontSize: 10, color: 'var(--text3)' }}>{trendLabel}</span>}
             </div>
           )}
@@ -205,7 +208,9 @@ const IconReceita = () => (
 );
 const IconDespesa = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
-    <path d="M3 3h18v5H3zM3 10h18M6 14h.01M6 17h.01M3 10v9a2 2 0 002 2h14a2 2 0 002-2v-9" />
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+    <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
   </svg>
 );
 const IconLeads = () => (
@@ -319,9 +324,10 @@ export default function DashboardPage() {
     const despMesAtual = getMonthTotal(pessoal, 'Despesa', mesAtual, anoAtual);
     const despMesPrev  = getMonthTotal(pessoal, 'Despesa', mesPrev, anoPrev);
     const leadsNovos = leads.filter(l => l.status === 'Novo').length;
-    const leadsTotal = leads.length;
     const leadsFechados = leads.filter(l => l.status === 'Fechado').length;
-    const conversionRate = leadsTotal > 0 ? (leadsFechados / leadsTotal) * 100 : 0;
+    const leadsTotal = leads.length;
+    const leadsTrabalhados = leads.filter(l => l.status !== 'Novo').length;
+    const conversionRate = leadsTrabalhados > 0 ? (leadsFechados / leadsTrabalhados) * 100 : 0;
 
     const projAtivos = projetos.filter(p => p.status === 'Em andamento').length;
 
@@ -468,7 +474,8 @@ export default function DashboardPage() {
             icon={<IconDespesa />}
             label="Despesas Pessoais"
             value={fmtBRL(stats.despMesAtual)}
-            trend={-Math.abs(stats.trendDesp)}
+            trend={stats.trendDesp}
+            trendInvert={true}
             trendLabel={`vs ${mesLabel}`}
             sparkData={stats.sparkDesp}
             sparkColor="var(--red)"
@@ -585,7 +592,7 @@ export default function DashboardPage() {
               </div>
               {stats.isLeadsOn && (
                 <span className="status-badge-mini">
-                  {stats.conversionRate.toFixed(1)}% Conversão
+                  {stats.conversionRate.toFixed(2)}% Conversão
                 </span>
               )}
             </div>
@@ -855,7 +862,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomBarTooltip />} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
                     <Bar dataKey="value" name="Projetos" radius={[4, 4, 0, 0]} animationDuration={800}>
                       {stats.projetosByStatus.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
