@@ -474,7 +474,6 @@ export const useDash = create((set, get) => ({
     if (sessionUnsubscribe) sessionUnsubscribe();
     if (roleUnsubscribe) roleUnsubscribe();
     await fbSignOut(auth);
-    localStorage.removeItem('dash_session_id');
     set({ currentUser: null, appReady: false, data: { ...EMPTY_DATA }, requiresSetup: false, sessionUnsubscribe: null, roleUnsubscribe: null });
     if (!silent) toast('Sessão encerrada.');
   },

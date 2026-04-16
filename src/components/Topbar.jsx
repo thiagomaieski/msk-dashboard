@@ -17,8 +17,20 @@ export default function Topbar() {
   const logo = isLight ? logoLight : logoDark;
 
   const [notifOpen, setNotifOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const notifBtnRef = useRef(null);
+  const logoutBtnRef = useRef(null);
   const unreadCount = data.notificacoes.filter(n => !n.lida).length;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showLogoutConfirm && logoutBtnRef.current && !logoutBtnRef.current.contains(e.target)) {
+        setShowLogoutConfirm(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLogoutConfirm]);
 
   const AvatarFallback = () => (
     <img className="user-avatar" src={nonProfilePhoto} alt="User" />
@@ -91,8 +103,48 @@ export default function Topbar() {
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
           </svg>
         </button>
-        <button className="btn-signout" onClick={signOut}>Sair</button>
+        
+        <div style={{ position: 'relative' }} ref={logoutBtnRef}>
+          <button 
+            className={`btn-signout ${showLogoutConfirm ? 'active' : ''}`} 
+            onClick={() => setShowLogoutConfirm(!showLogoutConfirm)}
+          >
+            Sair
+          </button>
+          
+          {showLogoutConfirm && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+              background: 'var(--bg3)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)', padding: '12px', width: 180,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 100,
+              display: 'flex', flexDirection: 'column', gap: 10
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Deseja sair do sistema?</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button 
+                  className="btn btn-sm btn-secondary" 
+                  style={{ flex: 1, fontSize: 11 }}
+                  onClick={() => setShowLogoutConfirm(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="btn btn-sm btn-danger" 
+                  style={{ flex: 1, fontSize: 11, background: 'var(--red)', color: '#fff' }}
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    signOut();
+                  }}
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
