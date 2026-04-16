@@ -5,10 +5,11 @@ import {
   query, where, serverTimestamp, getDoc, setDoc, fbSignOut, onAuthStateChanged, signInWithPopup, deleteUser,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
-  orderBy, onSnapshot
+  orderBy, onSnapshot, fetchSignInMethodsForEmail
 } from '../firebase';
 
 import { MOCK_DATA } from './mockData';
+import { getFriendlyErrorMessage } from '../utils/errorUtils';
 
 // ── Helpers ──
 export const fmtBRL = (v) => 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -366,7 +367,7 @@ export const useDash = create((set, get) => ({
       return res.user;
     }
     catch (e) { 
-      get().toast('Erro ao entrar com Google: ' + e.message, 'error');
+      get().toast('Erro ao entrar com Google: ' + getFriendlyErrorMessage(e), 'error');
       throw e;
     }
   },
@@ -376,7 +377,7 @@ export const useDash = create((set, get) => ({
       const res = await signInWithEmailAndPassword(auth, email, password);
       return res.user;
     } catch (e) {
-      get().toast('Erro no login: ' + e.message, 'error');
+      get().toast('Erro no login: ' + getFriendlyErrorMessage(e), 'error');
       throw e;
     }
   },
@@ -386,7 +387,7 @@ export const useDash = create((set, get) => ({
       const res = await createUserWithEmailAndPassword(auth, email, password);
       return res.user;
     } catch (e) {
-      get().toast('Erro no cadastro: ' + e.message, 'error');
+      get().toast('Erro no cadastro: ' + getFriendlyErrorMessage(e), 'error');
       throw e;
     }
   },
@@ -396,8 +397,17 @@ export const useDash = create((set, get) => ({
       await sendPasswordResetEmail(auth, email);
       get().toast('E-mail de recuperação enviado!');
     } catch (e) {
-      get().toast('Erro: ' + e.message, 'error');
+      get().toast('Erro: ' + getFriendlyErrorMessage(e), 'error');
       throw e;
+    }
+  },
+
+  getSignInMethods: async (email) => {
+    try {
+      return await fetchSignInMethodsForEmail(auth, email);
+    } catch (e) {
+      console.error('Error fetching sign in methods', e);
+      return [];
     }
   },
 
@@ -421,7 +431,7 @@ export const useDash = create((set, get) => ({
       
       toast('Configuração concluída!');
     } catch (e) {
-      toast('Erro ao salvar setup: ' + e.message, 'error');
+      toast('Erro ao salvar setup: ' + getFriendlyErrorMessage(e), 'error');
       throw e;
     }
   },

@@ -4,7 +4,8 @@ import {
   onAuthStateChanged, signOut as fbSignOut, deleteUser,
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, updateProfile, updatePassword,
-  reauthenticateWithCredential, EmailAuthProvider
+  reauthenticateWithCredential, EmailAuthProvider,
+  fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import {
   getFirestore, collection, addDoc, getDocs, doc,
@@ -44,5 +45,6 @@ export {
   sendPasswordResetEmail, updateProfile, updatePassword,
   reauthenticateWithCredential, EmailAuthProvider,
   collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
-  query, where, serverTimestamp, getDoc, setDoc, orderBy, onSnapshot
+  query, where, serverTimestamp, getDoc, setDoc, orderBy, onSnapshot,
+  fetchSignInMethodsForEmail
 };

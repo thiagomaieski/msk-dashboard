@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDash } from '../store/useStore';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
+import { getFriendlyErrorMessage } from '../utils/errorUtils';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('login'); // login, signup, forgot
@@ -9,13 +10,15 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const { signInWithGoogle, signInEmail, signUpEmail, resetPasswordEmail, theme } = useDash();
+  const { signInWithGoogle, signInEmail, signUpEmail, resetPasswordEmail, getSignInMethods, theme } = useDash();
   const logo = theme === 'light' ? logoLight : logoDark;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
     try {
       if (mode === 'login') {
@@ -23,11 +26,28 @@ export default function AuthScreen() {
       } else if (mode === 'signup') {
         await signUpEmail(email, password);
       } else {
+        // Modo recuperação
+        try {
+          const methods = await getSignInMethods(email);
+          
+          if (methods.includes('google.com') && !methods.includes('password')) {
+            setError(getFriendlyErrorMessage('auth/google-account-detected'));
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.warn('Não foi possível verificar métodos de login', err);
+        }
+
         await resetPasswordEmail(email);
-        setMode('login');
+        setSuccessMsg('Se este e-mail estiver cadastrado e possuir uma senha, você receberá um link de recuperação em instantes. Verifique sua caixa de entrada e spam.');
       }
     } catch (e) {
-      setError(e.message);
+      if (mode === 'forgot' && e.code === 'auth/user-not-found') {
+        setError(getFriendlyErrorMessage('auth/user-not-found-forgot'));
+      } else {
+        setError(getFriendlyErrorMessage(e));
+      }
     } finally {
       setLoading(false);
     }
@@ -49,12 +69,13 @@ export default function AuthScreen() {
 
         {mode !== 'forgot' && (
           <div className="auth-tabs">
-            <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); }}>Entrar</button>
-            <button className={`auth-tab ${mode === 'signup' ? 'active' : ''}`} onClick={() => { setMode('signup'); setError(''); }}>Cadastrar</button>
+            <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}>Entrar</button>
+            <button className={`auth-tab ${mode === 'signup' ? 'active' : ''}`} onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}>Cadastrar</button>
           </div>
         )}
 
         {error && <div className="auth-error">{error}</div>}
+        {successMsg && <div className="auth-success" style={{ padding: '12px', background: 'rgba(52, 168, 83, 0.15)', color: '#34A853', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(52, 168, 83, 0.2)' }}>{successMsg}</div>}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
@@ -96,7 +117,7 @@ export default function AuthScreen() {
 
         {mode === 'forgot' && (
           <div className="auth-links">
-            <button className="auth-link" onClick={() => setMode('login')}>Voltar para o login</button>
+            <button className="auth-link" onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}>Voltar para o login</button>
           </div>
         )}
 
