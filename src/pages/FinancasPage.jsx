@@ -20,7 +20,14 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
         </div>
         <div className="finance-card-meta">
           <span>{fmtDate(m.data)}</span>
-          {showNf && m.nf && <><span>&bull;</span><span>{m.nf === 'sim' ? 'Com NF' : 'Sem NF'}</span></>}
+          {showNf && m.nf && (
+            <>
+              <span>&bull;</span>
+              <span style={{ color: m.nf === 'pendente' ? 'var(--amber)' : 'inherit', fontWeight: m.nf === 'pendente' ? 600 : 400 }}>
+                {m.nf === 'sim' ? 'Com NF' : m.nf === 'pendente' ? 'NF Pendente' : 'Sem NF'}
+              </span>
+            </>
+          )}
           {m.entidade && <><span>&bull;</span><span>{m.entidade}</span></>}
           {m.categoria && <><span>&bull;</span><span>{m.categoria}</span></>}
           {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 500 }}>Cartão</span></>}

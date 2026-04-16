@@ -74,6 +74,7 @@ export default function ConfiguracoesPage() {
   const [tempCcNome, setTempCcNome] = useState(configData.cartaoNome || '');
   const [tempCcVenc, setTempCcVenc] = useState(configData.cartaoVenc || 1);
   const [tempNotifEnabled, setTempNotifEnabled] = useState(configData.notifEnabled !== false);
+  const [tempLancarDespesasAuto, setTempLancarDespesasAuto] = useState(configData.lancarDespesasAuto || false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync with store when data arrives/changes
@@ -94,14 +95,19 @@ export default function ConfiguracoesPage() {
     setTempNotifEnabled(configData.notifEnabled !== false);
   }, [configData.notifEnabled]);
 
+  useEffect(() => {
+    setTempLancarDespesasAuto(configData.lancarDespesasAuto || false);
+  }, [configData.lancarDespesasAuto]);
+
   const hasChanges = useMemo(() => {
     const nameChanged = tempName !== (profile.name || '');
     const modulesChanged = JSON.stringify(tempModules) !== JSON.stringify(configData.modules || {});
     const ccNomeChanged = tempCcNome !== (configData.cartaoNome || '');
     const ccVencChanged = tempCcVenc !== (configData.cartaoVenc || 1);
     const notifEnabledChanged = tempNotifEnabled !== (configData.notifEnabled !== false);
-    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged;
-  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, profile, configData]);
+    const autoChanged = tempLancarDespesasAuto !== (configData.lancarDespesasAuto || false);
+    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || autoChanged;
+  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempLancarDespesasAuto, profile, configData]);
 
   const handleSaveAll = async () => {
     setIsSaving(true);
@@ -114,6 +120,10 @@ export default function ConfiguracoesPage() {
       if (tempNotifEnabled !== configData.notifEnabled) {
         await setDoc(uDoc('settings', 'main'), { notifEnabled: tempNotifEnabled }, { merge: true });
         useDash.setState(s => ({ configData: { ...s.configData, notifEnabled: tempNotifEnabled } }));
+      }
+      if (tempLancarDespesasAuto !== configData.lancarDespesasAuto) {
+        await setDoc(uDoc('settings', 'main'), { lancarDespesasAuto: tempLancarDespesasAuto }, { merge: true });
+        useDash.setState(s => ({ configData: { ...s.configData, lancarDespesasAuto: tempLancarDespesasAuto } }));
       }
       toast('Todas as alterações foram salvas!');
     } catch (e) {
@@ -129,6 +139,7 @@ export default function ConfiguracoesPage() {
     setTempCcNome(configData.cartaoNome || '');
     setTempCcVenc(configData.cartaoVenc || 1);
     setTempNotifEnabled(configData.notifEnabled !== false);
+    setTempLancarDespesasAuto(configData.lancarDespesasAuto || false);
   };
 
   const TABS = [
@@ -463,10 +474,21 @@ export default function ConfiguracoesPage() {
               {/* Despesas Fixas */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, marginBottom: 32 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)' }}>Despesas Fixas e Contas Básicas</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)' }}>Despesas Fixas e Contas Básicas</div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <label className="switch-label" style={{ marginBottom: 0 }}>
+                        <input type="checkbox" checked={tempLancarDespesasAuto} onChange={e => setTempLancarDespesasAuto(e.target.checked)} />
+                        <span className="switch-slider"></span>
+                      </label>
+                      <span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500 }}>Lançar Automaticamente</span>
+                    </label>
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-sm btn-secondary" onClick={() => openModal('despesaFixa')}>Nova Despesa FIXA</button>
-                    <button className="btn btn-sm btn-primary" onClick={lancarDespesasMensais}>Pagar/Lançar neste mês</button>
+                    {!tempLancarDespesasAuto && (
+                      <button className="btn btn-sm btn-primary" onClick={lancarDespesasMensais}>Pagar/Lançar neste mês</button>
+                    )}
                   </div>
                 </div>
                 

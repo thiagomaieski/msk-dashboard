@@ -190,7 +190,8 @@ export const useDash = create((set, get) => ({
   mockData: { ...EMPTY_DATA },
   demoMode: localStorage.getItem('demoMode') === 'true',
 
-  configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24 },
+   configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false },
+  isSyncingAutomations: false,
   profile: { name: '', email: '', photoURL: '', photoPath: '', setupCompleted: false },
   editingId: { ...EMPTY_EDITING },
   activePage: 'dashboard',
@@ -872,6 +873,7 @@ export const useDash = create((set, get) => ({
   saveRecorrencia: async (fields) => {
     if (!fields.cliente) return get().toast('Cliente obrigatório', 'error');
     await get().saveGeneric('recorrencia', { ...fields, modificadoEm: serverTimestamp() }, 'Cliente');
+    get().runFinancialAutomations();
   },
   saveNegocio: async (fields) => {
     if (!fields.descricao) return get().toast('Descrição obrigatória', 'error');
@@ -884,6 +886,7 @@ export const useDash = create((set, get) => ({
   saveDespesaFixa: async (fields) => {
     if (!fields.descricao) return get().toast('Descrição obrigatória', 'error');
     await get().saveGeneric('despesasFixas', { ...fields, modificadoEm: serverTimestamp() }, 'Despesa');
+    get().runFinancialAutomations();
   },
   saveLembrete: async (fields) => {
     if (!fields.titulo) return get().toast('Título obrigatório', 'error');
@@ -1018,75 +1021,97 @@ export const useDash = create((set, get) => ({
     toast('Cartão atualizado');
   },
   runFinancialAutomations: async (loadedData = null, loadedConfig = null) => {
-    const { currentUser } = get();
-    const dataSource = loadedData || get().data;
-    const configSource = loadedConfig || get().configData;
-    const monthKey = getCurrentMonthKey();
-    const createdNegocio = [];
-    const createdPessoal = [];
+    const { currentUser, isSyncingAutomations } = get();
+    if (isSyncingAutomations) return;
+    
+    set({ isSyncingAutomations: true });
+    
+    try {
+      const dataSource = loadedData || get().data;
+      const configSource = loadedConfig || get().configData;
+      const monthKey = getCurrentMonthKey();
+      const createdNegocio = [];
+      const createdPessoal = [];
 
-    for (const recorrencia of (dataSource.recorrencia || [])) {
-      if (recorrencia.status !== 'Ativo' || recorrencia.periodicidade === 'Anual') continue;
-      const alreadyExists = (dataSource.negocio || []).some(item =>
-        item.tipo === 'Receita' &&
-        ((item.origemAutomatica === 'recorrencia' && item.recorrenciaId === recorrencia.id && item.referenciaMes === monthKey) ||
-        ((item.entidade || '') === (recorrencia.cliente || '') && (item.descricao || '') === (recorrencia.plano || '') && String(item.data || '').startsWith(monthKey)))
-      );
-      if (alreadyExists) continue;
+      for (const recorrencia of (dataSource.recorrencia || [])) {
+        if (recorrencia.status !== 'Ativo') continue;
 
-      const payload = {
-        data: buildMonthlyDate(recorrencia.vencimento || 1),
-        tipo: 'Receita',
-        descricao: recorrencia.plano || `Recorrência ${recorrencia.cliente || ''}`.trim(),
-        categoria: (configSource.categoriasReceita || [])[0] || 'Receita Recorrente',
-        entidade: recorrencia.cliente || '',
-        nf: 'nao',
-        observacoes: 'Lançamento automático da recorrência mensal.',
-        valor: Number(recorrencia.valor || 0),
-        origemAutomatica: 'recorrencia',
-        recorrenciaId: recorrencia.id,
-        referenciaMes: monthKey,
-        modificadoEm: serverTimestamp(),
-        criadoEm: serverTimestamp()
-      };
-      const res = await addDoc(uCol('negocio'), payload);
-      createdNegocio.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
-    }
-
-    for (const despesa of (dataSource.despesasFixas || [])) {
-      const alreadyExists = (dataSource.pessoal || []).some(item =>
-        item.tipo === 'Despesa' &&
-        ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === despesa.id && item.referenciaMes === monthKey) ||
-        ((item.descricao || '') === (despesa.descricao || '') && Number(item.valor || 0) === Number(despesa.valor || 0) && String(item.data || '').startsWith(monthKey)))
-      );
-      if (alreadyExists) continue;
-
-      const payload = {
-        data: buildMonthlyDate(despesa.dia || 1),
-        tipo: 'Despesa',
-        descricao: despesa.descricao,
-        valor: Number(despesa.valor || 0),
-        categoria: despesa.categoria || '',
-        cartao: !!despesa.cartao,
-        origemAutomatica: 'despesaFixa',
-        despesaFixaId: despesa.id,
-        referenciaMes: monthKey,
-        modificadoEm: serverTimestamp(),
-        criadoEm: serverTimestamp()
-      };
-      const res = await addDoc(uCol('pessoal'), payload);
-      createdPessoal.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
-    }
-
-    if (createdNegocio.length || createdPessoal.length) {
-      set(s => ({
-        realData: {
-          ...s.realData,
-          negocio: [...createdNegocio, ...s.realData.negocio],
-          pessoal: [...createdPessoal, ...s.realData.pessoal]
+        // Se for anual, só lança se o mês de renovação (YYYY-MM) for o mês atual
+        let targetDay = recorrencia.vencimento || 1;
+        if (recorrencia.periodicidade === 'Anual') {
+          const monthRenovacao = recorrencia.renovacao?.substring(0, 7);
+          if (monthRenovacao !== monthKey) continue;
+          // Extrair o dia da renovação (YYYY-MM-DD)
+          targetDay = parseInt(recorrencia.renovacao?.substring(8, 10), 10) || 1;
         }
-      }));
-      get()._refreshData();
+
+        const alreadyExists = (dataSource.negocio || []).some(item =>
+          item.tipo === 'Receita' &&
+          ((item.origemAutomatica === 'recorrencia' && item.recorrenciaId === recorrencia.id && item.referenciaMes === monthKey) ||
+          ((item.entidade || '') === (recorrencia.cliente || '') && (item.descricao || '') === (recorrencia.plano || '') && String(item.data || '').startsWith(monthKey)))
+        );
+        if (alreadyExists) continue;
+
+        const payload = {
+          data: buildMonthlyDate(targetDay),
+          tipo: 'Receita',
+          descricao: recorrencia.plano || `Recorrência ${recorrencia.cliente || ''}`.trim(),
+          categoria: (configSource.categoriasReceita || [])[0] || 'Receita Recorrente',
+          entidade: recorrencia.cliente || '',
+          nf: 'pendente', // NF Pendente por padrão para recorrências
+          observacoes: 'Lançamento automático da recorrência mensal.',
+          valor: Number(recorrencia.valor || 0),
+          origemAutomatica: 'recorrencia',
+          recorrenciaId: recorrencia.id,
+          referenciaMes: monthKey,
+          modificadoEm: serverTimestamp(),
+          criadoEm: serverTimestamp()
+        };
+        const res = await addDoc(uCol('negocio'), payload);
+        createdNegocio.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
+      }
+
+      if (configSource.lancarDespesasAuto) {
+        for (const despesa of (dataSource.despesasFixas || [])) {
+          const alreadyExists = (dataSource.pessoal || []).some(item =>
+            item.tipo === 'Despesa' &&
+            ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === despesa.id && item.referenciaMes === monthKey) ||
+            ((item.descricao || '') === (despesa.descricao || '') && Number(item.valor || 0) === Number(despesa.valor || 0) && String(item.data || '').startsWith(monthKey)))
+          );
+          if (alreadyExists) continue;
+
+          const payload = {
+            data: buildMonthlyDate(despesa.dia || 1),
+            tipo: 'Despesa',
+            descricao: despesa.descricao,
+            valor: Number(despesa.valor || 0),
+            categoria: despesa.categoria || '',
+            cartao: !!despesa.cartao,
+            origemAutomatica: 'despesaFixa',
+            despesaFixaId: despesa.id,
+            referenciaMes: monthKey,
+            modificadoEm: serverTimestamp(),
+            criadoEm: serverTimestamp()
+          };
+          const res = await addDoc(uCol('pessoal'), payload);
+          createdPessoal.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
+        }
+      }
+
+      if (createdNegocio.length || createdPessoal.length) {
+        set(s => ({
+          realData: {
+            ...s.realData,
+            negocio: [...createdNegocio, ...s.realData.negocio],
+            pessoal: [...createdPessoal, ...s.realData.pessoal]
+          }
+        }));
+        get()._refreshData();
+      }
+    } catch (e) {
+      get().toast('Erro na automação: ' + e.message, 'error');
+    } finally {
+      set({ isSyncingAutomations: false });
     }
   },
   lancarDespesasMensais: async () => {
@@ -1138,7 +1163,29 @@ export const useDash = create((set, get) => ({
           projetos: s.realData.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p)
         }
       }));
-      updateDoc(uDoc('projetos', activeProjectView), { tarefas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+      updateDoc(uDoc('projetos', activeProjectView), { tareas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+  },
+  
+  updateProjectField: async (id, field, value) => {
+    const { toast } = get();
+    const isMock = id && id.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          projetos: s.mockData.projetos.map(p => p.id === id ? { ...p, [field]: value } : p)
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          projetos: s.realData.projetos.map(p => p.id === id ? { ...p, [field]: value } : p)
+        }
+      }));
+      updateDoc(uDoc('projetos', id), { [field]: value }).catch(e => toast('Sync Error: ' + e.message, 'error'));
     }
     get()._refreshData();
   },

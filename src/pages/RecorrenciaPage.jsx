@@ -14,7 +14,7 @@ export default function RecorrenciaPage() {
   const [status, setStatus] = useState('');
   const [sort, setSort] = useState('criadoDesc');
 
-  const { list, allIds, totalRec, ativosCount } = useMemo(() => {
+  const { list, allIds, totalMensal, totalAnual, ativosCount } = useMemo(() => {
     let filtered = data.recorrencia.filter(r => {
       if (search && !((r.cliente || '').toLowerCase().includes(search) || (r.plano || '').toLowerCase().includes(search))) return false;
       return status ? r.status === status : true;
@@ -22,12 +22,28 @@ export default function RecorrenciaPage() {
     filtered = sortData(filtered, sort);
     
     const activeItems = data.recorrencia.filter(r => r.status === 'Ativo');
-    const total = activeItems.reduce((s, r) => s + (r.valor || 0), 0);
+    const currMonth = new Date().getMonth();
+
+    const tM = activeItems.reduce((s, r) => {
+      const v = Number(r.valor || 0);
+      if (r.periodicidade === 'Anual') {
+        // Only count if it's the renewal month
+        if (!r.renovacao) return s;
+        const renMonth = new Date(r.renovacao + 'T12:00:00').getMonth();
+        return s + (renMonth === currMonth ? v : 0);
+      }
+      return s + v;
+    }, 0);
+    const tA = activeItems.reduce((s, r) => {
+      const v = Number(r.valor || 0);
+      return s + (r.periodicidade === 'Anual' ? v : v * 12);
+    }, 0);
 
     return { 
       list: filtered, 
       allIds: filtered.map(x => x.id).join(','),
-      totalRec: total,
+      totalMensal: tM,
+      totalAnual: tA,
       ativosCount: activeItems.length
     };
   }, [data.recorrencia, search, status, sort]);
@@ -45,9 +61,9 @@ export default function RecorrenciaPage() {
       </div>
 
       <div className="summary-cards">
-        <div className="summary-card"><div className="summary-card-label">Receita Mensal</div><div className="summary-card-val green">{fmtBRL(totalRec)}</div></div>
+        <div className="summary-card"><div className="summary-card-label">Receita Mensal</div><div className="summary-card-val green">{fmtBRL(totalMensal)}</div></div>
         <div className="summary-card"><div className="summary-card-label">Clientes Ativos</div><div className="summary-card-val accent">{ativosCount}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Receita Anual Est.</div><div className="summary-card-val">{fmtBRL(totalRec * 12)}</div></div>
+        <div className="summary-card"><div className="summary-card-label">Receita Anual Est.</div><div className="summary-card-val">{fmtBRL(totalAnual)}</div></div>
       </div>
 
       <div className="filters">

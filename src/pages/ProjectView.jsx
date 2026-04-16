@@ -10,6 +10,7 @@ export default function ProjectView() {
   const addArquivo = useDash(s => s.addArquivo);
   const delArquivo = useDash(s => s.delArquivo);
   const openModal = useDash(s => s.openModal);
+  const updateProjectField = useDash(s => s.updateProjectField);
 
   const [activeTab, setActiveTab] = useState('detalhes');
   const overlayClickRef = useRef(false);
@@ -40,8 +41,8 @@ export default function ProjectView() {
       <div className="pv-modal">
         <div className="pv-head">
           <div className="pv-head-info">
-            <div className="pv-title">{p.cliente || 'Projeto'}</div>
-            <div className="pv-subtitle">{p.descricao || ''}</div>
+            <div className="pv-title">{p.descricao || 'Projeto'}</div>
+            <div className="pv-subtitle">{p.cliente || ''}</div>
           </div>
           <div className="pv-tabs">
             {['detalhes', 'arquivos', 'tarefas'].map(tab => (
@@ -55,7 +56,7 @@ export default function ProjectView() {
           </button>
         </div>
         <div className="pv-body">
-          {activeTab === 'detalhes' && <PVDetalhes p={p} onEdit={() => { openModal('projeto', p.id); handleClose(); }} />}
+          {activeTab === 'detalhes' && <PVDetalhes p={p} onEdit={() => { openModal('projeto', p.id); handleClose(); }} updateField={updateProjectField} />}
           {activeTab === 'tarefas' && <PVTarefas p={p} onUpdate={updateProjectTarefas} />}
           {activeTab === 'arquivos' && <PVArquivos p={p} onAdd={addArquivo} onDel={delArquivo} />}
         </div>
@@ -64,9 +65,19 @@ export default function ProjectView() {
   );
 }
 
-function PVDetalhes({ p, onEdit }) {
+function PVDetalhes({ p, onEdit, updateField }) {
+  const [notes, setNotes] = useState(p.anotacoes || '');
+  const [saving, setSaving] = useState(false);
   const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
   const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' }[p.pagamento] || 'var(--text3)';
+  
+  const handleSaveNotes = async () => {
+    if (notes === p.anotacoes) return;
+    setSaving(true);
+    await updateField(p.id, 'anotacoes', notes);
+    setSaving(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -88,15 +99,57 @@ function PVDetalhes({ p, onEdit }) {
         </div>
       </div>
       <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--accent)' : 'var(--text3)'} strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)'} strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}>
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
         </svg>
         <div>
           <div className="summary-card-label">Nota Fiscal</div>
-          <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : 'var(--text3)' }}>{p.nf === 'sim' ? 'Emitida' : 'Não emitida'}</div>
+          <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)' }}>
+            {p.nf === 'sim' ? 'Emitida' : p.nf === 'pendente' ? 'Pendente' : 'Não emitida'}
+          </div>
         </div>
       </div>
-      <button className="btn btn-secondary" style={{ width: '100%' }} onClick={onEdit}>Editar Projeto</button>
+
+      <div className="summary-card" style={{ display: 'block' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div className="summary-card-label" style={{ marginBottom: 0 }}>Anotações e Estrutura</div>
+          {notes !== p.anotacoes && (
+            <button 
+              className="btn btn-sm btn-primary" 
+              onClick={handleSaveNotes}
+              disabled={saving}
+              style={{ padding: '2px 8px', fontSize: 11 }}
+            >
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          )}
+        </div>
+        <textarea 
+          style={{ 
+            width: '100%',
+            minHeight: 120,
+            fontSize: 13, 
+            color: 'var(--text2)', 
+            lineHeight: 1.6, 
+            background: 'var(--bg3)', 
+            padding: 12, 
+            borderRadius: 'var(--radius-sm)', 
+            border: '1px solid var(--border)',
+            fontFamily: 'inherit',
+            resize: 'vertical',
+            outline: 'none',
+            transition: 'border-color 0.2s'
+          }}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Adicione anotações sobre o projeto..."
+          onBlur={handleSaveNotes}
+        />
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+        <button className="btn btn-secondary" style={{ padding: '8px 24px' }} onClick={onEdit}>Editar Projeto</button>
+      </div>
     </div>
   );
 }

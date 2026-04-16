@@ -137,8 +137,8 @@ export default function ProjetosPage() {
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect('projetos', p.id)} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">{p.cliente || 'Sem nome'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.descricao || ''}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">{p.descricao || 'Sem projeto'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.cliente || ''}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 -10px' }}>
                     <span className="indicator-glow-wrap" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 500, color: sc, background: sc + '1a', borderRadius: 99, padding: '4px 10px' }}>

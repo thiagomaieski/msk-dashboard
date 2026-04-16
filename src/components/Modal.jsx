@@ -248,7 +248,7 @@ function ProjetoForm({ item }) {
     cliente: item?.cliente || '', valor: item?.valor || '',
     descricao: item?.descricao || '', status: item?.status || 'Em andamento',
     pagamento: item?.pagamento || 'Pendente', prazo: item?.prazo || '',
-    nf: item?.nf || 'nao',
+    nf: item?.nf || 'nao', anotacoes: item?.anotacoes || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const noCli = !data.clientes.length && (
@@ -290,7 +290,17 @@ function ProjetoForm({ item }) {
         </div>
         <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
-      <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
+      <div className="form-group"><label className="form-label">Nome do Projeto</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Landing Page para Advogados" /></div>
+      <div className="form-group">
+        <label className="form-label">Anotações do Projeto</label>
+        <textarea 
+          className="form-textarea" 
+          placeholder="Anote aqui a estrutura do projeto, acessos, observações importantes..." 
+          style={{ minHeight: 100, fontSize: 13, lineHeight: 1.5 }} 
+          value={f.anotacoes} 
+          onChange={u('anotacoes')} 
+        />
+      </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Status</label>
           <select className="form-select" value={f.status} onChange={u('status')}>
@@ -307,7 +317,9 @@ function ProjetoForm({ item }) {
         <div className="form-group"><label className="form-label">Prazo de entrega</label><input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} /></div>
         <div className="form-group"><label className="form-label">NF emitida?</label>
           <select className="form-select" value={f.nf} onChange={u('nf')}>
-            <option value="nao">Não</option><option value="sim">Sim</option>
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+            <option value="pendente">Pendente</option>
           </select>
         </div>
       </div>
@@ -455,7 +467,9 @@ function FinancaForm({ item, defaultTipo }) {
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">NF emitida?</label>
           <select className="form-select" value={f.nf} onChange={u('nf')}>
-            <option value="nao">Não</option><option value="sim">Sim</option>
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+            <option value="pendente">Pendente</option>
           </select>
         </div>
         <div className="form-group"><label className="form-label">Observações</label><input className="form-input" value={f.observacoes} onChange={u('observacoes')} /></div>
