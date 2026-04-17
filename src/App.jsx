@@ -29,6 +29,9 @@ class ErrorBoundary extends Component {
   static getDerivedStateFromError(err) {
     return { error: err };
   }
+  componentDidCatch(err, info) {
+    useDash.getState().reportAutomaticError(err, true);
+  }
   render() {
     if (this.state.error) {
       return (

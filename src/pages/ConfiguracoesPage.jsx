@@ -3,6 +3,7 @@ import { useDash, sortData, fmtBRL, uDoc, isAdminEmail } from '../store/useStore
 import { setDoc } from '../firebase';
 import { Badge, EmptyState, NumberStepper } from '../components/shared';
 import nonProfilePhoto from '../assets/non-profile-photo.png';
+import LegalModals from '../components/LegalModals';
 import AdminPanel from './AdminPanel';
 
 export default function ConfiguracoesPage() {
@@ -78,6 +79,7 @@ export default function ConfiguracoesPage() {
   const [tempCcVenc, setTempCcVenc] = useState(configData.cartaoVenc || 1);
   const [tempNotifEnabled, setTempNotifEnabled] = useState(configData.notifEnabled !== false);
   const [tempLancarDespesasAuto, setTempLancarDespesasAuto] = useState(configData.lancarDespesasAuto || false);
+  const [legalModal, setLegalModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync with store when data arrives/changes
@@ -153,7 +155,6 @@ export default function ConfiguracoesPage() {
     { id: 'cfg-notificacoes', label: 'Notificações', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></> },
     { id: 'cfg-dados', label: 'Sistema & Dados', icon: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /> },
     { id: 'cfg-seguranca', label: 'Segurança', icon: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></> },
-    { id: 'cfg-integracoes', label: 'Integrações', icon: <path d="M22 12h-4l-3 9L9 3l-3 9H2" /> },
     { id: 'cfg-sobre', label: 'Sobre', icon: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4"/><path d="M12 8h.01" /></> },
   ];
 
@@ -290,6 +291,24 @@ export default function ConfiguracoesPage() {
                 <div className="settings-row-info">
                   <div className="settings-row-title">E-mail Cadastrado</div>
                   <div className="settings-row-desc">{profile.email || '-'}</div>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-info">
+                  <div className="settings-row-title">Segurança de Acesso</div>
+                  <div className="settings-row-desc">
+                    {currentUser?.providerData?.some(p => p.providerId === 'password') 
+                      ? 'Gerencie sua senha de login interna do sistema.'
+                      : 'Sua conta está vinculada ao Google. A senha deve ser gerenciada no painel do Google.'}
+                  </div>
+                </div>
+                <div style={{ paddingLeft: 24 }}>
+                  {currentUser?.providerData?.some(p => p.providerId === 'password') ? (
+                    <button className="btn btn-secondary" onClick={() => openModal('changePassword')}>Alterar Senha</button>
+                  ) : (
+                    <Badge status="Inativo">Login via Google</Badge>
+                  )}
                 </div>
               </div>
 
@@ -752,8 +771,8 @@ export default function ConfiguracoesPage() {
                               <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)' }}>
                                 {isWin && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:18}}><path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 21h6"/></svg>}
                                 {isApple && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:18}}><path d="m12 20-.01.01M17 21a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"/></svg>}
-                                {isAndroid && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:18}}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>}
-                                {!isWin && !isApple && !isAndroid && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:18}}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>}
+                                {isAndroid && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:18}}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>}
+                                {!isWin && !isApple && !isAndroid && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                               </div>
                             </td>
                             <td>
@@ -776,25 +795,6 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, marginBottom: 32 }}>
-                <div className="settings-row" style={{ padding: 0 }}>
-                  <div className="settings-row-info">
-                    <div className="settings-row-title">Alterar Senha de Acesso</div>
-                    <div className="settings-row-desc">
-                      {currentUser?.providerData?.some(p => p.providerId === 'password') 
-                        ? 'Recomendamos uma senha forte com símbolos e números para sua proteção.'
-                        : 'Sua conta está vinculada ao Google. A senha deve ser gerenciada diretamente no painel do Google.'}
-                    </div>
-                  </div>
-                  <div style={{ paddingLeft: 24 }}>
-                    {currentUser?.providerData?.some(p => p.providerId === 'password') ? (
-                      <button className="btn btn-secondary" onClick={() => openModal('changePassword')}>Alterar Senha</button>
-                    ) : (
-                      <Badge status="Inativo">Login via Google</Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24 }}>
                 <div className="settings-row" style={{ padding: 0 }}>
@@ -811,20 +811,6 @@ export default function ConfiguracoesPage() {
             </div>
           )}
 
-          {/* === INTEGRAÇÕES === */}
-          {activeTab === 'cfg-integracoes' && (
-            <div className="settings-card">
-              <div className="settings-card-header">
-                <div className="settings-card-title">Hub de Conexões</div>
-                <div className="settings-card-desc">Conecte com ferramentas do seu fluxo de caixa e banco aberto de maneira segura.</div>
-              </div>
-              <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--bg3)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ width: 48, height: 48, marginBottom: 16 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Fase de Lançamento</div>
-                <div style={{ fontSize: 13, color: 'var(--text2)' }}>Tokens RD Station e API Asaas serão disponibilizados conforme a demanda comercial no Open Beta desta plataforma.</div>
-              </div>
-            </div>
-          )}
 
           {/* === SOBRE === */}
           {activeTab === 'cfg-sobre' && (
@@ -844,14 +830,14 @@ export default function ConfiguracoesPage() {
                 <div className="settings-row-info">
                   <div className="settings-row-title">Central e Termos</div>
                 </div>
-                <div><button className="btn btn-secondary">Acessar Jurídico</button></div>
+                <div><button className="btn btn-secondary" onClick={() => setLegalModal('terms')}>Acessar Jurídico</button></div>
               </div>
 
               <div className="settings-row">
                 <div className="settings-row-info">
                   <div className="settings-row-title">Certificado de Privacidade</div>
                 </div>
-                <div><button className="btn btn-secondary">Termos LGPD</button></div>
+                <div><button className="btn btn-secondary" onClick={() => setLegalModal('privacy')}>Termos LGPD</button></div>
               </div>
 
               <div style={{ marginTop: 40, textAlign: 'center', fontSize: 13, color: 'var(--text3)' }}>
@@ -886,6 +872,12 @@ export default function ConfiguracoesPage() {
           </button>
         </div>
       </div>
+
+      <LegalModals 
+        show={!!legalModal} 
+        type={legalModal} 
+        onClose={() => setLegalModal(null)} 
+      />
     </div>
   );
 }

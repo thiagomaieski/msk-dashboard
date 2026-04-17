@@ -48,6 +48,7 @@ export default function Modal() {
 function ModalContent({ type }) {
   const data = useDash(s => s.data);
   const editingId = useDash(s => s.editingId);
+  const closeModal = useDash(s => s.closeModal);
 
   if (type === 'lead') return <LeadForm item={data.leads.find(x => x.id === editingId.leads)} />;
   if (type === 'projeto') return <ProjetoForm item={data.projetos.find(x => x.id === editingId.projetos)} />;
@@ -63,8 +64,11 @@ function ModalContent({ type }) {
   if (type === 'csvInfo') return <CsvInfoModal />;
   if (type === 'csvProgress') return <CsvProgressModal />;
   if (type === 'changePassword') return <ChangePasswordForm />;
+  if (type === 'feedback') return <FeedbackModal onClose={closeModal} />;
   return null;
 }
+
+import FeedbackModal from './FeedbackModal';
 
 // ── VER NOTA MODAL ──
 function VerNotaModal({ item }) {
@@ -779,38 +783,103 @@ function ChangePasswordForm() {
   const closeModal = useDash(s => s.closeModal);
   const [f, setF] = useState({ current: '', new: '', confirm: '' });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
-    if (!f.current || !f.new || !f.confirm) return alert('Preencha todos os campos.');
-    if (f.new !== f.confirm) return alert('As senhas não coincidem.');
-    if (f.new.length < 6) return alert('A nova senha deve ter pelo menos 6 caracteres.');
+    setError('');
+    if (!f.current || !f.new || !f.confirm) return setError('Preencha todos os campos.');
+    if (f.new !== f.confirm) return setError('As senhas novas não coincidem.');
+    if (f.new.length < 6) return setError('A nova senha deve ter pelo menos 6 caracteres.');
     
     setLoading(true);
-    const success = await changePassword(f.current, f.new);
+    const ok = await changePassword(f.current, f.new);
     setLoading(false);
-    if (success) closeModal();
+    
+    if (ok) {
+      setSuccess(true);
+      setTimeout(() => closeModal(), 2000);
+    }
   };
+
+  if (success) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--green-bg)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 30, height: 30 }}><polyline points="20 6 9 17 4 12" /></svg>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Senha Alterada!</div>
+        <div style={{ fontSize: 14, color: 'var(--text2)' }}>Sua credencial de acesso foi atualizada com sucesso.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="form-grid">
+      {error && (
+        <div style={{ padding: '10px 14px', background: 'var(--red-bg)', border: '1px solid var(--red)', borderRadius: 'var(--radius-sm)', color: 'var(--red)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
+        </div>
+      )}
+
       <div className="form-group">
         <label className="form-label">Senha Atual</label>
-        <input className="form-input" type="password" value={f.current} onChange={e => setF(p => ({ ...p, current: e.target.value }))} />
+        <div style={{ position: 'relative' }}>
+          <input 
+            className="form-input" 
+            type="password" 
+            placeholder="••••••••"
+            value={f.current} 
+            onChange={e => setF(p => ({ ...p, current: e.target.value }))} 
+            style={{ paddingLeft: 40 }}
+          />
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ width: 16, height: 16, position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
       </div>
+
       <div className="form-grid form-grid-2">
         <div className="form-group">
           <label className="form-label">Nova Senha</label>
-          <input className="form-input" type="password" value={f.new} onChange={e => setF(p => ({ ...p, new: e.target.value }))} />
+          <input 
+            className="form-input" 
+            type="password" 
+            placeholder="Mín. 6 caracteres"
+            value={f.new} 
+            onChange={e => setF(p => ({ ...p, new: e.target.value }))} 
+          />
         </div>
         <div className="form-group">
           <label className="form-label">Confirmar Nova Senha</label>
-          <input className="form-input" type="password" value={f.confirm} onChange={e => setF(p => ({ ...p, confirm: e.target.value }))} />
+          <input 
+            className="form-input" 
+            type="password" 
+            placeholder="Repita a senha"
+            value={f.confirm} 
+            onChange={e => setF(p => ({ ...p, confirm: e.target.value }))} 
+          />
         </div>
       </div>
-      <div className="form-actions">
+
+      <div style={{ fontSize: 12, color: 'var(--text3)', background: 'var(--bg3)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+        <p style={{ margin: 0 }}><strong>Dica de Segurança:</strong> Use uma senha forte com letras, números e símbolos.</p>
+      </div>
+
+      <div className="form-actions" style={{ marginTop: 8 }}>
         <button className="btn btn-secondary" onClick={closeModal} disabled={loading}>Cancelar</button>
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Processando...' : 'Alterar Senha'}
+        <button 
+          className="btn btn-primary" 
+          onClick={handleSubmit} 
+          disabled={loading}
+          style={{ minWidth: 140 }}
+        >
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="spinner-small" /> Processando...
+            </div>
+          ) : 'Atualizar Senha'}
         </button>
       </div>
     </div>

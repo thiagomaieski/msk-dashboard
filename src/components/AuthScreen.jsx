@@ -3,6 +3,7 @@ import { useDash } from '../store/useStore';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
+import LegalModals from './LegalModals';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('login'); // login, signup, forgot
@@ -12,11 +13,20 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Legal Acceptance State
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [legalModal, setLegalModal] = useState(null); // 'terms' | 'privacy' | null
+
   const { signInWithGoogle, signInEmail, signUpEmail, resetPasswordEmail, getSignInMethods, theme } = useDash();
   const logo = theme === 'light' ? logoLight : logoDark;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (mode === 'signup' && !acceptedTerms) {
+      setError('Você precisa aceitar os Termos de Uso para continuar.');
+      return;
+    }
+    
     setError('');
     setSuccessMsg('');
     setLoading(true);
@@ -49,6 +59,17 @@ export default function AuthScreen() {
         setError(getFriendlyErrorMessage(e));
       }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(getFriendlyErrorMessage(e));
       setLoading(false);
     }
   };
@@ -104,6 +125,17 @@ export default function AuthScreen() {
             </div>
           )}
 
+          {mode === 'signup' && (
+            <div className={`auth-consent ${acceptedTerms ? 'active' : ''}`} onClick={() => setAcceptedTerms(!acceptedTerms)}>
+              <div className="auth-consent-cb">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div className="auth-consent-text" onClick={e => e.stopPropagation()}>
+                Li e aceito os <span onClick={() => setLegalModal('terms')}>Termos de Uso</span> e a <span onClick={() => setLegalModal('privacy')}>Política de Privacidade</span>.
+              </div>
+            </div>
+          )}
+
           <button className="btn btn-primary" style={{ width: '100%', padding: '12px', justifyContent: 'center' }} disabled={loading}>
             {loading ? 'Processando...' : mode === 'login' ? 'Entrar no Sistema' : mode === 'signup' ? 'Criar Minha Conta' : 'Enviar Link de Reset'}
           </button>
@@ -126,7 +158,7 @@ export default function AuthScreen() {
           <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg2)', padding: '0 10px', fontSize: 12, color: 'var(--text3)' }}>OU</span>
         </div>
 
-        <button className="btn-google" onClick={signInWithGoogle} disabled={loading}>
+        <button className="btn-google" onClick={handleGoogleLogin} disabled={loading}>
           <svg viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -136,6 +168,12 @@ export default function AuthScreen() {
           Continuar com Google
         </button>
       </div>
+
+      <LegalModals 
+        show={!!legalModal} 
+        type={legalModal} 
+        onClose={() => setLegalModal(null)} 
+      />
     </div>
   );
 }

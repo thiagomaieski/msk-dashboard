@@ -13,6 +13,8 @@ export default function Topbar() {
   const signOut = useDash(s => s.signOut);
   const goTo = useDash(s => s.goTo);
   const activePage = useDash(s => s.activePage);
+  const openModal = useDash(s => s.openModal);
+  
   const isLight = theme === 'light';
   const logo = isLight ? logoLight : logoDark;
 
@@ -93,6 +95,19 @@ export default function Topbar() {
         </div>
 
         <button
+          className="btn-icon"
+          onClick={() => openModal('feedback')}
+          title="Feedback & Suporte"
+          style={{ position: 'relative' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <line x1="12" y1="7" x2="12" y2="11"/>
+            <line x1="12" y1="15" x2="12.01" y2="15"/>
+          </svg>
+        </button>
+
+        <button
           className={`btn-icon ${activePage === 'configuracoes' ? 'active' : ''}`}
           id="btn-settings"
           onClick={() => goTo('configuracoes')}
@@ -147,4 +162,3 @@ export default function Topbar() {
     </div>
   );
 }
-

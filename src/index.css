@@ -3120,19 +3120,21 @@ input:checked+.switch-slider:before {
 /* NOTIFICATIONS CENTER */
 .notif-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   background: var(--red);
   color: #fff;
-  font-size: 10px;
-  font-weight: 500;
-  width: 16px;
-  height: 16px;
+  font-size: 9px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--bg2);
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .notif-dropdown {
@@ -3182,9 +3184,9 @@ input:checked+.switch-slider:before {
   background: var(--bg3);
 }
 
-.notif-item.unread {
-  background: rgba(59, 130, 246, 0.05);
-}
+.notif-item.unread.Alta { background: var(--red-bg); }
+.notif-item.unread.Média { background: var(--amber-bg); }
+.notif-item.unread.Baixa { background: var(--blue-bg); }
 
 .notif-item.unread.Alta::before { background: var(--red); }
 .notif-item.unread.Média::before { background: var(--amber); }
@@ -3812,6 +3814,151 @@ input:checked+.switch-slider:before {
 body.light .status-badge-mini {
   background: rgba(34, 197, 94, 0.08);
   border-color: rgba(34, 197, 94, 0.15);
+}
+
+/* ─── Legal Modals & Consent ───────────────────────────────────────── */
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9999;
+}
+
+.legal-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.legal-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legal-modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(135deg, var(--text) 0%, var(--text2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.legal-close {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.legal-close:hover {
+  color: var(--text);
+}
+
+.legal-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text2);
+}
+
+.legal-modal-body h3 {
+  color: var(--text);
+  font-size: 15px;
+  margin: 24px 0 12px 0;
+}
+
+.legal-modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.legal-modal-body p {
+  margin-bottom: 16px;
+}
+
+.legal-modal-body strong {
+  color: var(--text);
+}
+
+.legal-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Consent Checkbox */
+.auth-consent {
+  margin: 20px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-consent-cb {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  margin-top: 2px;
+}
+
+.auth-consent.active .auth-consent-cb {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.auth-consent-cb svg {
+  color: white;
+  width: 12px;
+  height: 12px;
+  display: none;
+}
+
+.auth-consent.active .auth-consent-cb svg {
+  display: block;
+}
+
+.auth-consent-text {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+.auth-consent-text span {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s;
+}
+
+.auth-consent-text span:hover {
+  color: var(--accent2);
 }
 
 /* ─── Recharts Global Overrides ─────────────────────────────────────── */

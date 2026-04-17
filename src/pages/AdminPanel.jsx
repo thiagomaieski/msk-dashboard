@@ -26,7 +26,9 @@ const ICONS = {
   testing: "M10 2v7.5M14 2v7.5M8.5 2h7M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L14.5 7.5h-5L8 9.5c-2 1.6-3 3.5-3 5.5a7 7 0 0 0 7 7z",
   automations: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z",
   audit: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M12 11h4 M12 16h4 M8 11h.01 M8 16h.01 M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z",
-  stats: "M18 20V10M12 20V4M6 20v-6"
+  stats: "M18 20V10M12 20V4M6 20v-6",
+  msg: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+  error: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
 };
 
 // ── Seção: Cabeçalho com stats do sistema
@@ -273,8 +275,9 @@ function BroadcastSection({ onBroadcast }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ padding: '12px', background: 'rgba(59,130,246,0.05)', borderRadius: 8, fontSize: 12, color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.1)' }}>
-        📣 Envie uma notificação para <strong>todos os usuários</strong> do sistema simultaneamente.
+      <div style={{ padding: '12px', background: 'rgba(59,130,246,0.05)', borderRadius: 8, fontSize: 12, color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Icon d={ICONS.broadcast} color="var(--blue)" size={16} />
+        <span>Envie uma notificação para <strong>todos os usuários</strong> do sistema simultaneamente.</span>
       </div>
       <div className="form-group">
         <label className="form-label">Título</label>
@@ -345,9 +348,13 @@ export default function AdminPanel() {
   const currentUser = useDash(s => s.currentUser);
   const data = useDash(s => s.data);
   const maintenanceMode = useDash(s => s.maintenanceMode);
+
   const adminFetchAllUsers = useDash(s => s.adminFetchAllUsers);
   const adminSetUserRole = useDash(s => s.adminSetUserRole);
   const adminBroadcast = useDash(s => s.adminBroadcast);
+  const adminFetchFeedback = useDash(s => s.adminFetchFeedback);
+  const adminFetchErrors = useDash(s => s.adminFetchErrors);
+
   const adminToggleMaintenance = useDash(s => s.adminToggleMaintenance);
   const adminFireTestNotification = useDash(s => s.adminFireTestNotification);
   const adminRunAutomations = useDash(s => s.adminRunAutomations);
@@ -358,7 +365,10 @@ export default function AdminPanel() {
 
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [errors, setErrors] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingHealth, setLoadingHealth] = useState(true);
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [activeSection, setActiveSection] = useState('overview');
   const [isTogglingMaint, setIsTogglingMaint] = useState(false);
@@ -380,10 +390,19 @@ export default function AdminPanel() {
     setLoadingLogs(false);
   }, [adminFetchLogs]);
 
+  const fetchHealth = useCallback(async () => {
+    setLoadingHealth(true);
+    const [fb, errs] = await Promise.all([adminFetchFeedback(), adminFetchErrors()]);
+    setFeedback(fb);
+    setErrors(errs);
+    setLoadingHealth(false);
+  }, [adminFetchFeedback, adminFetchErrors]);
+
   useEffect(() => {
     fetchUsers();
     fetchLogs();
-  }, [fetchUsers, fetchLogs]);
+    fetchHealth();
+  }, [fetchUsers, fetchLogs, fetchHealth]);
 
   const handleToggleMaintenance = async () => {
     setIsTogglingMaint(true);
@@ -433,6 +452,7 @@ export default function AdminPanel() {
     { id: 'overview', label: 'Estatísticas', icon: ICONS.stats },
     { id: 'users', label: 'Usuários', icon: ICONS.users },
     { id: 'broadcast', label: 'Broadcast', icon: ICONS.broadcast },
+    { id: 'health', label: 'Suporte & Saúde', icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
     { id: 'notifications', label: 'Testes', icon: ICONS.testing },
     { id: 'automations', label: 'Automações', icon: ICONS.automations },
     { id: 'logs', label: 'Auditoria', icon: ICONS.audit },
@@ -544,19 +564,71 @@ export default function AdminPanel() {
         )}
 
         {activeSection === 'logs' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div className="settings-card-title">Auditoria de Atividades</div>
-              <button className="btn btn-sm btn-secondary" onClick={fetchLogs}>↻ Atualizar</button>
+          <div className="settings-card">
+            <div className="settings-card-header">
+              <div className="settings-card-title">Histórico de Auditoria</div>
+              <div className="settings-card-desc">Log técnico de todas as ações administrativas recentes.</div>
             </div>
-            {loadingLogs
-              ? <div style={{ color: 'var(--text3)', fontSize: 13 }}>Carregando histórico...</div>
-              : <ActivityLog logs={logs} />
-            }
+            {loadingLogs ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>Carregando logs...</div> : <ActivityLog logs={logs} />}
+          </div>
+        )}
+
+        {activeSection === 'health' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon d={ICONS.msg} color="var(--accent)" size={18} />
+                  Feedback de Usuários ({feedback.length})
+                </div>
+                <div className="settings-card-desc">Sugestões e relatos manuais enviados pelo modal de suporte.</div>
+              </div>
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto', paddingRight: 6 }}>
+                {feedback.length === 0 ? <p style={{ textAlign: 'center', padding: 20, color: 'var(--text3)' }}>Nenhum feedback recebido.</p> : feedback.map(f => (
+                  <div key={f.id} style={{ background: 'var(--bg3)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: f.type === 'bug' ? 'var(--red)' : (f.type === 'sugestao' ? 'var(--amber)' : 'var(--green)') }}>
+                        {f.type?.toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>{fmtDateTime(f.criadoEm)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{f.message}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>De: {f.userName} ({f.userEmail})</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-title" style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon d={ICONS.error} color="var(--red)" size={18} />
+                  Erros Automáticos ({errors.length})
+                </div>
+                <div className="settings-card-desc">Erros capturados pelo sistema (Error Boundary e Logs Globais).</div>
+              </div>
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 450, overflowY: 'auto', paddingRight: 6 }}>
+                {errors.length === 0 ? <p style={{ textAlign: 'center', padding: 20, color: 'var(--text3)' }}>Nenhum erro registrado. Sistema saudável!</p> : errors.map(e => (
+                  <div key={e.id} style={{ background: 'var(--bg4)', padding: 14, borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)' }}>{e.fatal ? 'FALHA CRÍTICA' : 'ERRO SILENCIOSO'}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>{fmtDateTime(e.criadoEm)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{e.message}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>Página: {e.page} • URL: {e.url}</div>
+                    {e.stack && (
+                      <details style={{ marginTop: 10 }}>
+                        <summary style={{ fontSize: 11, cursor: 'pointer', color: 'var(--blue)' }}>Ver Stack Trace</summary>
+                        <pre style={{ fontSize: 10, background: '#000', color: '#0f0', padding: 10, borderRadius: 4, marginTop: 6, overflowX: 'auto' }}>{e.stack}</pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
-

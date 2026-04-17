@@ -11,6 +11,9 @@ import {
 import { MOCK_DATA } from './mockData';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
 
+// Variável de controle para evitar loops infinitos em falhas de reporte
+let IS_REPORTING_AUTOMATIC_ERROR = false;
+
 // ── Helpers ──
 export const fmtBRL = (v) => 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 export const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
@@ -199,7 +202,7 @@ export const useDash = create((set, get) => ({
   data: { ...EMPTY_DATA },
   realData: { ...EMPTY_DATA },
   mockData: { ...EMPTY_DATA },
-  demoMode: localStorage.getItem('demoMode') === 'true',
+  demoMode: false,
 
   configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false },
   isSyncingAutomations: false,
@@ -230,20 +233,31 @@ export const useDash = create((set, get) => ({
     get().checkNotifications();
   },
 
-  setDemoMode: (enabled) => {
-    localStorage.setItem('demoMode', enabled ? 'true' : 'false');
+  setDemoMode: async (enabled) => {
+    const { currentUser, configData } = get();
     if (enabled) {
       set({ demoMode: true, mockData: JSON.parse(JSON.stringify(MOCK_DATA)) });
     } else {
       set({ demoMode: false, mockData: { ...EMPTY_DATA } });
     }
     get()._refreshData();
+
+    if (currentUser) {
+      set({ configData: { ...configData, demoMode: enabled } });
+      await updateDoc(uDoc('settings', 'main'), { demoMode: enabled }).catch(console.error);
+    }
   },
 
-  setZoom: (level) => {
+  setZoom: async (level) => {
+    const { currentUser, configData } = get();
     document.documentElement.style.setProperty('--app-scale', (parseInt(level) / 100).toString());
-    localStorage.setItem('zoom', level);
     set({ zoomControl: level });
+
+    if (currentUser) {
+      set({ configData: { ...configData, zoom: level } });
+      await updateDoc(uDoc('settings', 'main'), { zoom: level }).catch(console.error);
+    }
+    localStorage.setItem('zoom', level);
   },
 
   // ── Modal State ──
@@ -272,6 +286,16 @@ export const useDash = create((set, get) => ({
     if (savedZoom) {
       document.documentElement.style.setProperty('--app-scale', (parseInt(savedZoom) / 100).toString());
     }
+
+    // Configurar Captura Automática de Erros Globais
+    window.onerror = (msg, url, line, col, error) => {
+      get().reportAutomaticError(error || msg, false);
+      return false; // permite que o erro continue no console
+    };
+    window.onunhandledrejection = (event) => {
+      get().reportAutomaticError(event.reason, false);
+    };
+
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         set({ currentUser: user, authReady: true, appReady: false });
@@ -488,16 +512,22 @@ export const useDash = create((set, get) => ({
     if (!silent) toast('Sessão encerrada.');
   },
 
-  toggleTheme: () => {
-    const isLight = document.body.classList.contains('light');
-    if (isLight) {
-      document.body.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-      set({ theme: 'dark' });
-    } else {
+  toggleTheme: async () => {
+    const { theme, currentUser, configData } = get();
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    
+    if (newTheme === 'light') {
       document.body.classList.add('light');
-      localStorage.setItem('theme', 'light');
-      set({ theme: 'light' });
+    } else {
+      document.body.classList.remove('light');
+    }
+    
+    set({ theme: newTheme });
+    localStorage.setItem('theme', newTheme);
+
+    if (currentUser) {
+      set({ configData: { ...configData, theme: newTheme } });
+      await updateDoc(uDoc('settings', 'main'), { theme: newTheme }).catch(console.error);
     }
   },
 
@@ -527,25 +557,54 @@ export const useDash = create((set, get) => ({
 
   deleteAccount: async () => {
     const { currentUser, showConfirm, signOut, toast } = get();
-    if (!await showConfirm('DANGER: Excluir Conta Permanentemente?', 'Todos os dados e a conta serão apagados da nossa nuvem. AÇÃO SEM VOLTA.', true)) return;
+    if (!await showConfirm('Atenção: Excluir Conta Permanentemente?', 'Esta ação apagará todos os seus dados e não pode ser desfeita. Digite "EXCLUIR" abaixo para confirmar.', true, 'Excluir Definitivamente', 'EXCLUIR')) return;
     
-    // Delete all collections
-    for (const colName of ALL_COLS) {
-      const snap = await getDocs(uCol(colName));
-      for (const d of snap.docs) await deleteDoc(uDoc(colName, d.id)).catch(() => {});
-    }
-    
-    // Delete settings & profile
-    await deleteDoc(uDoc('settings', 'main')).catch(() => {});
-    await deleteDoc(uDoc('profile', 'info')).catch(() => {});
-    await deleteDoc(doc(db, 'users', currentUser.uid)).catch(() => {});
+    // Início do processo
+    const tid = Date.now();
+    set(s => ({ toasts: [...s.toasts, { id: tid, msg: 'Validando credenciais...', type: 'info', duration: 10000 }] }));
 
     try {
+      // 1. Tentar deletar o usuário do Auth PRIMEIRO.
+      // Se a sessão for antiga, o Firebase vai dar erro aqui e o processo para SEM apagar os dados.
       await deleteUser(currentUser);
+      
+      // Se chegamos aqui, o usuário Auth já foi deletado com sucesso.
+      // 2. Agora limpamos os dados do Firestore em background/paralelo.
+      set(s => ({ toasts: s.toasts.map(t => t.id === tid ? { ...t, msg: 'Limpando banco de dados...' } : t) }));
+
+      const deletionPromises = ALL_COLS.map(async (colName) => {
+        try {
+          const snap = await getDocs(uCol(colName));
+          const docPromises = snap.docs.map(d => deleteDoc(uDoc(colName, d.id)));
+          return Promise.all(docPromises);
+        } catch (e) {
+          console.warn(`Erro ao limpar coleção ${colName}:`, e);
+          return Promise.resolve();
+        }
+      });
+
+      // Rodamos as deleções mas não travamos a saída do usuário se o Auth já foi.
+      await Promise.all([
+        ...deletionPromises,
+        deleteDoc(uDoc('settings', 'main')),
+        deleteDoc(uDoc('profile', 'info')),
+        deleteDoc(doc(db, 'publicProfiles', currentUser.uid)), // Limpa da listagem admin
+        deleteDoc(doc(db, 'users', currentUser.uid))
+      ]);
+
+      set(s => ({ toasts: s.toasts.filter(t => t.id !== tid) }));
+      toast("Conta excluída com sucesso.", "success");
       signOut();
-      toast("Conta deletada com sucesso.");
     } catch (e) {
-      toast("Erro! Relogue caso precise de re-autenticação: " + e.message, "error");
+      set(s => ({ toasts: s.toasts.filter(t => t.id !== tid) }));
+      console.error(e);
+      let msg = "Erro ao excluir conta.";
+      if (e.code === 'auth/requires-recent-login') {
+        msg = "Segurança: É necessário um login recente para excluir a conta. Por favor, saia e entre novamente no sistema para validar sua identidade.";
+      } else {
+        msg += " Verifique sua conexão ou tente re-logar.";
+      }
+      toast(msg, "error", 8000);
     }
   },
 
@@ -680,9 +739,29 @@ export const useDash = create((set, get) => ({
       await setDoc(uDoc('settings', 'main'), configData);
     }
 
-    set({ realData: newData, configData });
+    // Apply visual preferences from cloud
+    const cloudTheme = configData.theme || 'dark';
+    const cloudZoom = configData.zoom || '100';
+    const cloudDemo = configData.demoMode || false;
+
+    if (cloudTheme === 'light') document.body.classList.add('light');
+    else document.body.classList.remove('light');
+
+    document.documentElement.style.setProperty('--app-scale', (parseInt(cloudZoom) / 100).toString());
+
+    set({ 
+      realData: newData, 
+      configData, 
+      theme: cloudTheme, 
+      zoomControl: cloudZoom,
+      demoMode: cloudDemo
+    });
+
     get()._refreshData();
-    if (get().demoMode) get().setDemoMode(true); // Populate mock on load
+    if (cloudDemo) {
+      set({ mockData: JSON.parse(JSON.stringify(MOCK_DATA)) });
+      get()._refreshData();
+    }
 
     await get().runFinancialAutomations(newData, configData);
     get().autoPurgeTrash();
@@ -720,9 +799,9 @@ export const useDash = create((set, get) => ({
   },
 
   // ── Custom Confirm ──
-  showConfirm: (msg, sub = '', danger = true, confirmLabel = '') => {
+  showConfirm: (msg, sub = '', danger = true, confirmLabel = '', requiredText = '') => {
     return new Promise(resolve => {
-      set({ confirm: { msg, sub, danger, confirmLabel, resolve } });
+      set({ confirm: { msg, sub, danger, confirmLabel, requiredText, resolve } });
     });
   },
   closeConfirm: (result) => {
@@ -753,7 +832,9 @@ export const useDash = create((set, get) => ({
       despesaFixa: id ? 'Editar Despesa F.' : 'Nova Despesa Fixa',
       csvInfo: 'Importar Leads via CSV',
       csvProgress: 'Importando CSV...',
-      verNota: 'Observações da Tarefa'
+      verNota: 'Observações da Tarefa',
+      changePassword: 'Alterar Senha de Acesso',
+      feedback: 'Feedback & Suporte'
     };
 
     const colName = map[type];
@@ -1838,9 +1919,78 @@ export const useDash = create((set, get) => ({
     try {
       const snap = await getDocs(query(collection(db, 'systemLogs'), orderBy('criadoEm', 'desc')));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch(e) {
-      return [];
+    } catch(e) { return []; }
+  },
+
+  // ── Suporte e Saúde (Feedback & Erros) ──
+  reportUserFeedback: async (type, message) => {
+    const { currentUser, profile, toast } = get();
+    try {
+      if (!db) throw new Error("Banco de dados não inicializado");
+      
+      await addDoc(collection(db, 'userFeedback'), {
+        uid: currentUser?.uid || 'anon',
+        userName: profile?.name || 'Anônimo',
+        userEmail: profile?.email || currentUser?.email || 'anon@msk.com',
+        type, // 'bug' | 'sugestao' | 'elogio'
+        message,
+        status: 'novo',
+        criadoEm: serverTimestamp()
+      });
+      toast('Feedback enviado! Obrigado pela colaboração.', 'success');
+      return true;
+    } catch (e) {
+      console.error('Erro ao enviar feedback:', e);
+      toast('Falha ao enviar feedback. Verifique sua conexão ou permissões.', 'error');
+      return false;
     }
+  },
+
+  reportAutomaticError: async (err, fatal = false) => {
+    if (IS_REPORTING_AUTOMATIC_ERROR) return;
+    const { currentUser, activePage } = get();
+    
+    try {
+      IS_REPORTING_AUTOMATIC_ERROR = true;
+      const errorMsg = err?.message || String(err);
+      const stack = err?.stack || '';
+      
+      // Evitar loop infinito se o erro for no próprio reporte ou cotas
+      const lowerMsg = errorMsg.toLowerCase();
+      if (lowerMsg.includes('quota') || lowerMsg.includes('permission-denied') || lowerMsg.includes('permission_denied')) {
+        console.warn('Erro silenciado para evitar loop de reporte:', errorMsg);
+        return;
+      }
+
+      await addDoc(collection(db, 'systemErrors'), {
+        uid: currentUser?.uid || 'anon',
+        userEmail: currentUser?.email || 'anon',
+        page: activePage,
+        message: errorMsg,
+        stack,
+        fatal,
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        criadoEm: serverTimestamp(),
+        resolvido: false
+      });
+    } catch (e) {
+      console.warn('Silent error reporting failed:', e);
+    }
+  },
+
+  adminFetchFeedback: async () => {
+    try {
+      const snap = await getDocs(query(collection(db, 'userFeedback'), orderBy('criadoEm', 'desc')));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) { return []; }
+  },
+
+  adminFetchErrors: async () => {
+    try {
+      const snap = await getDocs(query(collection(db, 'systemErrors'), orderBy('criadoEm', 'desc')));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) { return []; }
   },
 }));
 
