@@ -5,7 +5,7 @@ import {
   query, where, serverTimestamp, getDoc, setDoc, fbSignOut, onAuthStateChanged, signInWithPopup, deleteUser,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
-  orderBy, onSnapshot, fetchSignInMethodsForEmail
+  orderBy, onSnapshot, fetchSignInMethodsForEmail, writeBatch
 } from '../firebase';
 
 import { MOCK_DATA } from './mockData';
@@ -21,7 +21,7 @@ export const g = (id) => document.getElementById(id)?.value?.trim() || '';
 
 // ── Admin ──
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
-export const isAdminEmail = (email) => email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+export const isAdminEmail = (user) => user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.emailVerified === true;
 
 // Standard path helpers for user-isolated data
 export const uCol = (name) => {
@@ -303,8 +303,8 @@ export const useDash = create((set, get) => ({
         const profileRef = uDoc('profile', 'info');
         const profileSnap = await getDoc(profileRef);
         
-        // Define role dinâmico: Prioridade para o Master Email, senão busca no perfil
-        let role = isAdminEmail(user.email) ? 'admin' : 'user';
+        // Define role dinâmico: Prioridade para o Master Email verificado, senão busca no perfil
+        let role = isAdminEmail(user) ? 'admin' : 'user';
         
         if (!profileSnap.exists()) {
           // Initialize profile
@@ -336,7 +336,7 @@ export const useDash = create((set, get) => ({
         const roleUnsub = onSnapshot(profileRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            const isMaster = isAdminEmail(user.email);
+            const isMaster = isAdminEmail(user);
             const newRole = isMaster ? 'admin' : (data.role || 'user');
             
             if (get().userRole !== newRole) {
@@ -351,7 +351,7 @@ export const useDash = create((set, get) => ({
         });
         set({ roleUnsubscribe: roleUnsub });
 
-        set({ userRole: isAdminEmail(user.email) ? 'admin' : (profileSnap.data()?.role || 'user') });
+        set({ userRole: isAdminEmail(user) ? 'admin' : (profileSnap.data()?.role || 'user') });
 
         // Update publicProfile (always, to keep lastActive fresh)
         try {
@@ -559,52 +559,74 @@ export const useDash = create((set, get) => ({
     const { currentUser, showConfirm, signOut, toast } = get();
     if (!await showConfirm('Atenção: Excluir Conta Permanentemente?', 'Esta ação apagará todos os seus dados e não pode ser desfeita. Digite "EXCLUIR" abaixo para confirmar.', true, 'Excluir Definitivamente', 'EXCLUIR')) return;
     
-    // Início do processo
     const tid = Date.now();
-    set(s => ({ toasts: [...s.toasts, { id: tid, msg: 'Validando credenciais...', type: 'info', duration: 10000 }] }));
+    set(s => ({ toasts: [...s.toasts, { id: tid, msg: 'Levantando registro de dados...', type: 'info', duration: 10000 }] }));
 
     try {
-      // 1. Tentar deletar o usuário do Auth PRIMEIRO.
-      // Se a sessão for antiga, o Firebase vai dar erro aqui e o processo para SEM apagar os dados.
-      await deleteUser(currentUser);
+      // 1. Buscando todas as referências dos documentos atrelados ao usuário
+      const allRefs = [];
       
-      // Se chegamos aqui, o usuário Auth já foi deletado com sucesso.
-      // 2. Agora limpamos os dados do Firestore em background/paralelo.
-      set(s => ({ toasts: s.toasts.map(t => t.id === tid ? { ...t, msg: 'Limpando banco de dados...' } : t) }));
-
-      const deletionPromises = ALL_COLS.map(async (colName) => {
+      for (const colName of ALL_COLS) {
         try {
           const snap = await getDocs(uCol(colName));
-          const docPromises = snap.docs.map(d => deleteDoc(uDoc(colName, d.id)));
-          return Promise.all(docPromises);
+          snap.docs.forEach(d => allRefs.push(uDoc(colName, d.id)));
         } catch (e) {
-          console.warn(`Erro ao limpar coleção ${colName}:`, e);
-          return Promise.resolve();
+          console.warn(`Erro ao listar coleção ${colName}:`, e);
         }
-      });
+      }
 
-      // Rodamos as deleções mas não travamos a saída do usuário se o Auth já foi.
-      await Promise.all([
-        ...deletionPromises,
-        deleteDoc(uDoc('settings', 'main')),
-        deleteDoc(uDoc('profile', 'info')),
-        deleteDoc(doc(db, 'publicProfiles', currentUser.uid)), // Limpa da listagem admin
-        deleteDoc(doc(db, 'users', currentUser.uid))
-      ]);
+      allRefs.push(uDoc('settings', 'main'));
+      allRefs.push(uDoc('profile', 'info'));
+      allRefs.push(doc(db, 'publicProfiles', currentUser.uid));
+      allRefs.push(doc(db, 'users', currentUser.uid));
+
+      // 2. Apagando dados em lotes (Firestore Batch suporta até 500 operações por vez)
+      set(s => ({ toasts: s.toasts.map(t => t.id === tid ? { ...t, msg: 'Destruindo pastas no servidor...' } : t) }));
+      
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < allRefs.length; i += CHUNK_SIZE) {
+        const chunk = allRefs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+
+      // 3. Destruindo Mídias no Servidor Externo (wipe.php)
+      set(s => ({ toasts: s.toasts.map(t => t.id === tid ? { ...t, msg: 'Apagando arquivos e mídia (Hostinger)...' } : t) }));
+      try {
+        const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+        const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+        const token = await currentUser.getIdToken();
+        await fetch(`${apiDomain}/wipe.php`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-Storage-API-Key': apiKey 
+          },
+          body: JSON.stringify({ userId: currentUser.uid, apiKey })
+        });
+      } catch (e) {
+        console.warn('Erro na purga de arquivos externos:', e);
+      }
+
+      // 4. Excluindo a conta de autenticação por último
+      set(s => ({ toasts: s.toasts.map(t => t.id === tid ? { ...t, msg: 'Desvinculando conta remanescente...' } : t) }));
+      await deleteUser(currentUser);
 
       set(s => ({ toasts: s.toasts.filter(t => t.id !== tid) }));
-      toast("Conta excluída com sucesso.", "success");
+      toast("Conta inteiramente excluída com sucesso.", "success");
       signOut();
     } catch (e) {
       set(s => ({ toasts: s.toasts.filter(t => t.id !== tid) }));
       console.error(e);
-      let msg = "Erro ao excluir conta.";
+      let msg = "Erro na exclusão de conta.";
       if (e.code === 'auth/requires-recent-login') {
-        msg = "Segurança: É necessário um login recente para excluir a conta. Por favor, saia e entre novamente no sistema para validar sua identidade.";
+        msg = "Dados e CRMs apagados com sucesso, mas para apagar o e-mail centralizado faça login novamente (Segurança da conta expirada).";
       } else {
-        msg += " Verifique sua conexão ou tente re-logar.";
+        msg += " Verifique sua conexão com a internet.";
       }
-      toast(msg, "error", 8000);
+      toast(msg, "error", 9000);
     }
   },
 
@@ -1352,6 +1374,9 @@ export const useDash = create((set, get) => ({
     if (!currentUser) throw new Error('Usuário não autenticado');
 
     const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+    const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+    const token = await currentUser.getIdToken();
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('userId', currentUser.uid);
@@ -1360,9 +1385,12 @@ export const useDash = create((set, get) => ({
     formData.append('apiKey', apiKey);
 
     try {
-      const res = await fetch('upload.php', {
+      const res = await fetch(`${apiDomain}/upload.php`, {
         method: 'POST',
-        headers: { 'X-Storage-API-Key': apiKey },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Storage-API-Key': apiKey 
+        },
         body: formData
       });
       const result = await res.json();
@@ -1379,11 +1407,15 @@ export const useDash = create((set, get) => ({
     if (!currentUser) return;
 
     const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+    const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+    const token = await currentUser.getIdToken();
+    
     try {
-      const res = await fetch('delete.php', {
+      const res = await fetch(`${apiDomain}/delete.php`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           'X-Storage-API-Key': apiKey
         },
         body: JSON.stringify({ path, userId: currentUser.uid, apiKey })

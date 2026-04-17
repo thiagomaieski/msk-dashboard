@@ -49,9 +49,10 @@ export default function LegalModals({ show, type, onClose }) {
         
         <h3>1. Coleta de Informações</h3>
         <p>Coletamos informações básicas de identificação, como <strong>Nome, E-mail e Foto de Perfil</strong>, fornecidas voluntariamente no cadastro ou através do Google Login.</p>
+        <p>Para fins de auditoria e segurança, também coletamos automaticamente seu <strong>Endereço IP, Sistema Operacional e Geolocalização (Cidade/Estado)</strong> a cada acesso, permitindo o controle de sessões ativas por você.</p>
 
         <h3>2. Uso dos Dados</h3>
-        <p>Seus dados são utilizados exclusivamente para o funcionamento do sistema, personalização da sua experiência e envio de notificações importantes sobre suas atividades.</p>
+        <p>Seus dados são utilizados exclusivamente para o funcionamento do sistema, controle da sua própria segurança e acesso, personalização da sua experiência e envio de notificações importantes sobre suas atividades.</p>
 
         <h3>3. Proteção de Dados (LGPD)</h3>
         <p>Em conformidade com a Lei Geral de Proteção de Dados (LGPD), garantimos que você tem total controle sobre suas informações. Seus dados de leads e projetos são isolados e protegidos por regras de segurança rigorosas.</p>

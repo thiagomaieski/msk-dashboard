@@ -41,6 +41,43 @@ if (empty($userId)) {
     exit;
 }
 
+// 2.5 Validação JWT Firebase (Evita Spoofing)
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+$jwt = '';
+if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+    $jwt = $matches[1];
+}
+
+function shallowVerifyToken($jwt, $expectedUserId) {
+    if (empty($jwt)) return ['valid' => false, 'error' => 'Token ausente'];
+    $parts = explode('.', $jwt);
+    if (count($parts) !== 3) return ['valid' => false, 'error' => 'Token malformado'];
+    
+    $payloadData = base64_decode(strtr($parts[1], '-_', '+/'));
+    if ($payloadData === false) return ['valid' => false, 'error' => 'Payload inválido'];
+    
+    $payload = json_decode($payloadData, true);
+    if (!$payload) return ['valid' => false, 'error' => 'JSON inválido no token'];
+    
+    if (isset($payload['exp']) && time() >= $payload['exp']) {
+        return ['valid' => false, 'error' => 'Token expirado'];
+    }
+    
+    $sub = $payload['sub'] ?? '';
+    if (empty($sub) || $sub !== $expectedUserId) {
+         return ['valid' => false, 'error' => 'Identidade forjada. UID divergente.'];
+    }
+    
+    return ['valid' => true];
+}
+
+$val = shallowVerifyToken($jwt, $userId);
+if (!$val['valid']) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Auth JWT Falhou: ' . $val['error']]);
+    exit;
+}
+
 // 3. Validação do Arquivo
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
     echo json_encode(['error' => 'Erro no recebimento do arquivo']);
@@ -65,7 +102,21 @@ if (!in_array($mimeType, $allowedMimeTypes)) {
     exit;
 }
 
-// 5. Construção do Caminho
+// 5. Geração de Nome Aleatório e Validação de Extensão Físíca (Defense in Depth)
+$originalName = basename($file['name']);
+$fileExt = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'pdf', 'zip', 'txt', 'mp4', 'webm'];
+
+if (!in_array($fileExt, $allowedExtensions)) {
+    echo json_encode(['error' => 'Extensão de arquivo proibida por segurança: .' . $fileExt]);
+    exit;
+}
+
+// Gera um hash único baseado no conteúdo e tempo
+$randomName = md5(uniqid($originalName, true)) . '.' . $fileExt;
+
+// 6. Construção do Caminho
 $targetDir = BASE_UPLOAD_DIR . '/' . $userId . '/' . $type;
 if (!empty($targetId)) {
     $targetDir .= '/' . $targetId;
@@ -79,12 +130,6 @@ if (!file_exists($targetDir)) {
     }
 }
 
-// 6. Geração de Nome Aleatório (MD5 + Uniqid)
-$originalName = basename($file['name']);
-$fileExt = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-
-// Gera um hash único baseado no conteúdo e tempo
-$randomName = md5(uniqid($originalName, true)) . '.' . $fileExt;
 $targetPath = $targetDir . $randomName;
 
 // 7. Finalização

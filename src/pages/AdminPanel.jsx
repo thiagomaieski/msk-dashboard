@@ -373,7 +373,7 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('overview');
   const [isTogglingMaint, setIsTogglingMaint] = useState(false);
 
-  const isMaster = isAdminEmail(currentUser?.email);
+  const isMaster = isAdminEmail(currentUser);
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
