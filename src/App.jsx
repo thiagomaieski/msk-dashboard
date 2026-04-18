@@ -1,4 +1,4 @@
-import { useEffect, Component } from 'react';
+import { useEffect, useState, Component } from 'react';
 import { useDash } from './store/useStore';
 
 import LoadingScreen from './components/LoadingScreen';
@@ -7,18 +7,21 @@ import SetupScreen from './components/SetupScreen';
 import Topbar from './components/Topbar';
 import NavBar from './components/NavBar';
 import Toast, { GlobalLoader } from './components/Toast';
-import ConfirmModal from './components/ConfirmModal';
-import Modal from './components/Modal';
-import BulkBar from './components/BulkBar';
-import ProjectView from './pages/ProjectView';
+import { Suspense, lazy } from 'react';
 
-import DashboardPage from './pages/DashboardPage';
-import LeadsPage from './pages/LeadsPage';
-import ProjetosPage from './pages/ProjetosPage';
-import RecorrenciaPage from './pages/RecorrenciaPage';
-import { FinancasNegocioPage, FinancasPessoaisPage } from './pages/FinancasPage';
-import LixeiraPage from './pages/LixeiraPage';
-import ConfiguracoesPage from './pages/ConfiguracoesPage';
+const Modal = lazy(() => import('./components/Modal'));
+const ConfirmModal = lazy(() => import('./components/ConfirmModal'));
+import BulkBar from './components/BulkBar';
+const ProjectView = lazy(() => import('./pages/ProjectView'));
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const LeadsPage = lazy(() => import('./pages/LeadsPage'));
+const ProjetosPage = lazy(() => import('./pages/ProjetosPage'));
+const RecorrenciaPage = lazy(() => import('./pages/RecorrenciaPage'));
+const FinancasNegocioPage = lazy(() => import('./pages/FinancasPage').then(module => ({ default: module.FinancasNegocioPage })));
+const FinancasPessoaisPage = lazy(() => import('./pages/FinancasPage').then(module => ({ default: module.FinancasPessoaisPage })));
+const LixeiraPage = lazy(() => import('./pages/LixeiraPage'));
+const ConfiguracoesPage = lazy(() => import('./pages/ConfiguracoesPage'));
 
 // Error boundary to catch render crashes
 class ErrorBoundary extends Component {
@@ -54,6 +57,7 @@ class ErrorBoundary extends Component {
 }
 
 function AppInner() {
+  const [fullyReady, setFullyReady] = useState(false);
   const initAuth = useDash(s => s.initAuth);
   const authReady = useDash(s => s.authReady);
   const appReady = useDash(s => s.appReady);
@@ -62,15 +66,26 @@ function AppInner() {
   const activePage = useDash(s => s.activePage);
   const maintenanceMode = useDash(s => s.maintenanceMode);
   const userRole = useDash(s => s.userRole);
+  const modalOpen = useDash(s => s.modalOpen);
+  const confirm = useDash(s => s.confirm);
+  const activeProjectView = useDash(s => s.activeProjectView);
 
   useEffect(() => {
     initAuth();
   }, []);
 
+  useEffect(() => {
+    if (appReady) {
+      setTimeout(() => setFullyReady(true), 250);
+    } else {
+      setFullyReady(false);
+    }
+  }, [appReady]);
+
   if (!authReady) return <LoadingScreen />;
   if (!currentUser) return <AuthScreen />;
   if (requiresSetup) return <SetupScreen />;
-  if (!appReady) return <LoadingScreen />;
+  if (!fullyReady) return <LoadingScreen completing={appReady} />;
 
   // Tela de manutenção para usuários comuns
   if (maintenanceMode && userRole !== 'admin') return (
@@ -94,20 +109,23 @@ function AppInner() {
     <div id="app">
       <Topbar />
       <NavBar />
-      <main className="main">
-        {activePage === 'dashboard' && <DashboardPage />}
-        {activePage === 'leads' && <LeadsPage />}
-        {activePage === 'projetos' && <ProjetosPage />}
-        {activePage === 'recorrencia' && <RecorrenciaPage />}
-        {activePage === 'financas-negocio' && <FinancasNegocioPage />}
-        {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
-        {activePage === 'lixeira' && <LixeiraPage />}
-        {activePage === 'configuracoes' && <ConfiguracoesPage />}
-      </main>
+      <Suspense fallback={<GlobalLoader forced />}>
+        <main className="main">
+          {activePage === 'dashboard' && <DashboardPage />}
+          {activePage === 'leads' && <LeadsPage />}
+          {activePage === 'projetos' && <ProjetosPage />}
+          {activePage === 'recorrencia' && <RecorrenciaPage />}
+          {activePage === 'financas-negocio' && <FinancasNegocioPage />}
+          {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
+          {activePage === 'lixeira' && <LixeiraPage />}
+          {activePage === 'configuracoes' && <ConfiguracoesPage />}
+        </main>
+        
+        {!!activeProjectView && <ProjectView />}
+        {modalOpen && <Modal />}
+        {!!confirm && <ConfirmModal />}
+      </Suspense>
       <GlobalLoader />
-      <ProjectView />
-      <Modal />
-      <ConfirmModal />
       <BulkBar />
       <Toast />
     </div>

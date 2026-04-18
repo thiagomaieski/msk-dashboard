@@ -356,15 +356,15 @@ export const useDash = create((set, get) => ({
         // Update publicProfile (always, to keep lastActive fresh)
         try {
           const pubRef = doc(db, 'publicProfiles', user.uid);
-          const profileData = (await getDoc(profileRef)).data() || {};
-          await setDoc(pubRef, {
+          const profileData = profileSnap.data() || {};
+          setDoc(pubRef, {
             name: profileData.name || user.displayName || '',
             email: user.email,
             photoURL: profileData.photoURL || user.photoURL || '',
             role,
             ultimoAcesso: serverTimestamp(),
             criadoEm: profileData.criadoEm || serverTimestamp()
-          }, { merge: true });
+          }, { merge: true }).catch(() => {});
         } catch(e) { console.warn('publicProfile sync error', e); }
 
         // Load maintenance mode from systemConfig
@@ -738,10 +738,19 @@ export const useDash = create((set, get) => ({
   loadAll: async () => {
     const { currentUser } = get();
     const newData = { ...EMPTY_DATA };
-    for (const colName of ALL_COLS) {
+    const fetchPromises = ALL_COLS.map(async (colName) => {
       const snap = await getDocs(uCol(colName));
-      newData[colName] = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => !x.deletadoEm);
-    }
+      return {
+        colName,
+        docs: snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => !x.deletadoEm)
+      };
+    });
+    
+    const results = await Promise.all(fetchPromises);
+    results.forEach(({ colName, docs }) => {
+      newData[colName] = docs;
+    });
+
     set({ realData: newData });
 
     // Config from users/{uid}/settings/main
@@ -785,7 +794,7 @@ export const useDash = create((set, get) => ({
       get()._refreshData();
     }
 
-    await get().runFinancialAutomations(newData, configData);
+    get().runFinancialAutomations(newData, configData).catch(() => {});
     get().autoPurgeTrash();
     get().trackSession();
     get().loadSessions();

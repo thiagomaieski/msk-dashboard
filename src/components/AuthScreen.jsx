@@ -3,8 +3,8 @@ import { useDash } from '../store/useStore';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
-import LegalModals from './LegalModals';
-
+import { Suspense, lazy } from 'react';
+const LegalModals = lazy(() => import('./LegalModals'));
 export default function AuthScreen() {
   const [mode, setMode] = useState('login'); // login, signup, forgot
   const [email, setEmail] = useState('');
@@ -169,11 +169,15 @@ export default function AuthScreen() {
         </button>
       </div>
 
-      <LegalModals 
-        show={!!legalModal} 
-        type={legalModal} 
-        onClose={() => setLegalModal(null)} 
-      />
+      <Suspense fallback={null}>
+        {!!legalModal && (
+          <LegalModals 
+            show={!!legalModal} 
+            type={legalModal} 
+            onClose={() => setLegalModal(null)} 
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

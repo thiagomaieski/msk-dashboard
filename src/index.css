@@ -87,6 +87,10 @@ html {
 }
 
 #root {
+  width: 100%;
+}
+
+#app {
   zoom: var(--app-scale, 1.0);
 }
 

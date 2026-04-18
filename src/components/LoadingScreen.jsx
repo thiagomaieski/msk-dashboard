@@ -3,19 +3,21 @@ import { useDash } from '../store/useStore';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 
-export default function LoadingScreen() {
+export default function LoadingScreen({ completing = false }) {
   const theme = useDash(s => s.theme);
   const logo = theme === 'light' ? logoLight : logoDark;
 
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setProgress(30), 120);
-    const t2 = setTimeout(() => setProgress(55), 500);
-    const t3 = setTimeout(() => setProgress(75), 950);
-    const t4 = setTimeout(() => setProgress(88), 1600);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
-  }, []);
+    if (completing) {
+      setProgress(100);
+      return;
+    }
+    const t1 = setTimeout(() => setProgress(15), 50);
+    const t2 = setTimeout(() => setProgress(92), 400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [completing]);
 
   return (
     <div id="app-loading" style={{
@@ -52,7 +54,10 @@ export default function LoadingScreen() {
       <div className="loader-bar-track" style={{ width: 'min(320px, 80vw)' }}>
         <div
           className="loader-bar-fill"
-          style={{ width: `${progress}%` }}
+          style={{ 
+            width: `${progress}%`,
+            transition: completing ? 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' : (progress > 15 ? 'width 8s cubic-bezier(0.05, 0.9, 0.1, 1)' : 'width 0.3s ease')
+          }}
         >
           <div className="loader-glow"></div>
         </div>
