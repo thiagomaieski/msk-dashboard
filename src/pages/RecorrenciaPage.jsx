@@ -53,9 +53,12 @@ export default function RecorrenciaPage() {
       <div className="page-header">
         <div className="page-title">Clientes de Recorrência</div>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={() => openModal('recorrencia')}>
+          <button className="btn btn-primary desktop-only" onClick={() => openModal('recorrencia')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
             Novo Cliente
+          </button>
+          <button className="btn-icon mobile-only btn-icon-accent" onClick={() => openModal('recorrencia')} title="Novo Cliente de Recorrência">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
           </button>
         </div>
       </div>

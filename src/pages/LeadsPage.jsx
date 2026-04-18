@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 
@@ -16,6 +16,31 @@ const decodeCSVFile = async (file) => {
 
   return tryDecode('utf-8') || tryDecode('windows-1252') || new TextDecoder().decode(buffer);
 };
+
+/* ─── Mobile Filter Sheet ─────────────────────────────────────────── */
+function MobileFilterSheet({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className="mobile-filter-overlay" onClick={onClose}>
+      <div className="mobile-filter-sheet" onClick={e => e.stopPropagation()}>
+        <div className="mobile-filter-sheet-header">
+          <span>Filtros</span>
+          <button className="mobile-drawer-close" onClick={onClose}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div className="mobile-filter-sheet-body">
+          {children}
+        </div>
+        <div className="mobile-filter-sheet-footer">
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={onClose}>Aplicar Filtros</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LeadsPage() {
   const data = useDash(s => s.data);
@@ -35,11 +60,13 @@ export default function LeadsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [columnSort, setColumnSort] = useState({ key: null, direction: 'asc' });
-  const csvRef = useRef(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  const hasActiveFilters = !!(status || nicho || ddd || sort !== 'criadoDesc');
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
   
-  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
+  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, paginated, totalItems, totalPages, safePage } = useMemo(() => {
     const leads = data.leads;
     const totals = {
       totalLeadsAbordados: leads.filter(l => l.status === 'Abordado').length,
@@ -144,8 +171,10 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <input type="file" id="lead-csv" accept=".csv" style={{ display: 'none' }} ref={csvRef} onChange={handleCSV} />
-      <div className="page-header">
+      <input type="file" id="lead-csv" accept=".csv" style={{ display: 'none' }} onChange={handleCSV} />
+
+      {/* ─── DESKTOP HEADER (Restored to original) ────────────────── */}
+      <div className="page-header desktop-only">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, flex: 1 }}>
           {[
             { label: 'Total de Leads', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
@@ -201,7 +230,8 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      <div className="filters">
+      {/* ─── DESKTOP FILTERS (Restored to original) ────────────────── */}
+      <div className="filters desktop-only">
         <div className="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input className="filter-input" placeholder="Buscar lead..." value={search} onChange={updateFilter(setSearch)} />
@@ -247,6 +277,109 @@ export default function LeadsPage() {
           />
         </div>
       </div>
+
+      {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
+      <div className="page-header mobile-only">
+        <div className="page-title">Leads</div>
+        <div className="page-actions">
+          <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <button className="btn-icon btn-icon-accent" onClick={() => openModal('lead')} title="Novo Lead">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE STATS CHIPS (Optimized) ─────────────────────────── */}
+      <div className="leads-stats-row mobile-only">
+        {[
+          { label: 'Total', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
+          { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
+          { label: 'Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
+          { label: 'Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="leads-stat-chip"
+            onClick={() => { setStatus(item.status); setPage(1); }}
+            style={{ '--chip-color': item.color, '--chip-bg': item.bg, borderColor: status === item.status ? item.color : undefined }}
+          >
+            <span className="leads-stat-dot" style={{ background: item.color, boxShadow: `0 0 0 4px ${item.bg}` }} />
+            <span className="leads-stat-val">{item.value.toLocaleString('pt-BR')}</span>
+            <span className="leads-stat-label">{item.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* MOBILE FILTERS (Optimized) ─────────────────────────────── */}
+      <div className="filters mobile-only">
+        <div className="search-wrap" style={{ flex: 1 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input className="filter-input" placeholder="Buscar lead..." value={search} onChange={updateFilter(setSearch)} />
+        </div>
+        <button
+          className={`btn-filter-toggle ${hasActiveFilters ? 'has-filters' : ''}`}
+          onClick={() => setFilterOpen(true)}
+          title="Filtros"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="11" y1="18" x2="13" y2="18"/>
+          </svg>
+          {hasActiveFilters && <span className="filter-active-dot" />}
+        </button>
+      </div>
+
+      <MobileFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">DDD</label>
+          <div className="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <input className="filter-input" placeholder="Ex: 47" value={ddd} onChange={updateFilter(setDdd)} />
+          </div>
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Status</label>
+          <select className="filter-select" style={{ width: '100%' }} value={status} onChange={updateFilter(setStatus)}>
+            <option value="">Todos os status</option>
+            {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Nicho</label>
+          <select className="filter-select" style={{ width: '100%' }} value={nicho} onChange={updateFilter(setNicho)}>
+            <option value="">Todos os nichos</option>
+            {configData.nichos.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Ordenar por</label>
+          <select className="filter-select" style={{ width: '100%' }} value={sort} onChange={updateFilter(setSort)}>
+            <option value="criadoDesc">Mais recentes</option>
+            <option value="criadoAsc">Mais antigos</option>
+            <option value="nomeAz">Nome A-Z</option>
+            <option value="nomeZa">Nome Z-A</option>
+            <option value="modificadoDesc">Últ. modificação</option>
+          </select>
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Leads por página</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {PAGE_SIZE_OPTIONS.map((item) => (
+              <button
+                key={item}
+                className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1 }}
+                onClick={() => { setPageSize(item); setPage(1); }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      </MobileFilterSheet>
 
       <div className="table-wrap">
         <table>
@@ -326,7 +459,7 @@ export default function LeadsPage() {
       </div>
 
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '0 4px', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--sans)' }}>
             {((safePage - 1) * resolvedPageSize) + 1}–{Math.min(safePage * resolvedPageSize, totalItems)} de {totalItems.toLocaleString('pt-BR')} leads
           </span>

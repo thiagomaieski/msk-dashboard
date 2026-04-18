@@ -21,7 +21,8 @@ export default function LoadingScreen() {
     <div id="app-loading" style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexDirection: 'column', background: 'var(--bg)'
+      flexDirection: 'column', background: 'var(--bg)',
+      padding: '0 24px',
     }}>
       <div 
         className="loader-logo-wrap"
@@ -33,13 +34,22 @@ export default function LoadingScreen() {
           maskRepeat: 'no-repeat',
           WebkitMaskRepeat: 'no-repeat',
           maskPosition: 'center',
-          WebkitMaskPosition: 'center'
+          WebkitMaskPosition: 'center',
+          maxWidth: '80vw',
         }}
       >
-        <img src={logo} alt="Dashboard Maieski" style={{ height: 52, filter: 'brightness(0.4)' }} />
+        <img
+          src={logo}
+          alt="Dashboard Maieski"
+          style={{
+            height: 'clamp(36px, 7vw, 52px)',
+            maxWidth: '100%',
+            filter: 'brightness(0.4)',
+          }}
+        />
         <div className="loader-shimmer" />
       </div>
-      <div className="loader-bar-track">
+      <div className="loader-bar-track" style={{ width: 'min(320px, 80vw)' }}>
         <div
           className="loader-bar-fill"
           style={{ width: `${progress}%` }}

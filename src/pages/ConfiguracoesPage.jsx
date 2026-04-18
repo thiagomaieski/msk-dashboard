@@ -170,10 +170,27 @@ export default function ConfiguracoesPage() {
 
   return (
     <div>
-      <div className="page-header"><div className="page-title">Configurações Gerais</div></div>
+      <div className="page-header"><div className="page-title">Configurações</div></div>
+
+      {/* Mobile horizontal tab scroller */}
+      <div className="settings-tabs-mobile">
+        {[...TABS, ...(isAdmin ? [adminTab] : [])].map(t => (
+          <button
+            key={t.id}
+            className={`settings-tab-mobile-btn ${activeTab === t.id ? 'active' : ''} ${t.id === adminTab.id ? 'admin' : ''}`}
+            onClick={() => setConfigTab(t.id)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {t.icon}
+            </svg>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: '75vh' }}>
         
-        {/* Sidebar Tabs */}
+        {/* Sidebar Tabs — desktop only */}
         <div className="settings-tabs">
           <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12, paddingLeft: 14 }}>Menu</div>
           {TABS.map(t => (

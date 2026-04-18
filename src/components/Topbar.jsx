@@ -41,11 +41,17 @@ export default function Topbar() {
   return (
     <div className="topbar">
       <div className="topbar-left">
-        <div className="topbar-logo">
+        <div 
+          className="topbar-logo" 
+          onClick={() => goTo('dashboard')}
+          style={{ cursor: 'pointer' }}
+          title="Ir para Dashboard"
+        >
           <img src={logo} alt="Dashboard" className="logo-img" style={{ height: 35 }} />
         </div>
       </div>
       <div className="topbar-right">
+        {/* Account Button — full on desktop, icon-only on mobile */}
         <button
           className="topbar-account"
           onClick={() => goTo('configuracoes')}
@@ -54,12 +60,14 @@ export default function Topbar() {
           {profile.photoURL ? (
             <img className="user-avatar" src={profile.photoURL} alt="" />
           ) : <AvatarFallback />}
-          <span className="topbar-account-text">
+          <span className="topbar-account-text topbar-account-text--desktop">
             <span className="topbar-account-label">Minha Conta</span>
             <span className="topbar-account-name">{profile.name || 'Usuário'}</span>
           </span>
         </button>
-        <div className="theme-switch" title="Alternar tema">
+
+        {/* Theme switch — hidden on mobile (available in settings) */}
+        <div className="theme-switch topbar-theme-switch" title="Alternar tema">
           <input
             type="checkbox"
             className="checkbox"
@@ -79,6 +87,25 @@ export default function Topbar() {
           </label>
         </div>
 
+        {/* Theme toggle — icon only, mobile only */}
+        <button
+          className="btn-icon topbar-theme-icon"
+          onClick={toggleTheme}
+          title="Alternar tema"
+        >
+          {isLight ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M3 11.5C3 16.75 7.25 21 12.5 21c3.72 0 6.95-2.15 8.5-5.27-8.5 0-12.73-4.23-12.73-12.73C5.15 4.55 3 7.78 3 11.5Z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+
+        {/* Notifications */}
         <div style={{ position: 'relative' }}>
           <button
             ref={notifBtnRef}
@@ -94,8 +121,9 @@ export default function Topbar() {
           {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} toggleRef={notifBtnRef} />}
         </div>
 
+        {/* Feedback — hidden on mobile to save space */}
         <button
-          className="btn-icon"
+          className="btn-icon topbar-feedback-btn"
           onClick={() => openModal('feedback')}
           title="Feedback & Suporte"
           style={{ position: 'relative' }}
@@ -107,8 +135,9 @@ export default function Topbar() {
           </svg>
         </button>
 
+        {/* Settings — hidden on mobile (accessible via bottom nav) */}
         <button
-          className={`btn-icon ${activePage === 'configuracoes' ? 'active' : ''}`}
+          className={`btn-icon topbar-settings-btn ${activePage === 'configuracoes' ? 'active' : ''}`}
           id="btn-settings"
           onClick={() => goTo('configuracoes')}
           title="Configurações"
@@ -119,12 +148,20 @@ export default function Topbar() {
           </svg>
         </button>
         
+        {/* Signout */}
         <div style={{ position: 'relative' }} ref={logoutBtnRef}>
           <button 
             className={`btn-signout ${showLogoutConfirm ? 'active' : ''}`} 
             onClick={() => setShowLogoutConfirm(!showLogoutConfirm)}
+            title="Sair"
           >
-            Sair
+            {/* Text on desktop, icon on mobile */}
+            <span className="btn-signout-text">Sair</span>
+            <svg className="btn-signout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
           </button>
           
           {showLogoutConfirm && (

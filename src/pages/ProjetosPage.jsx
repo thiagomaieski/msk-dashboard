@@ -49,9 +49,18 @@ export default function ProjetosPage() {
               </button>
             </div>
           )}
-          <button className="btn btn-primary" onClick={() => openModal('projeto')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+          {/* Desktop: text button */}
+          <button className="btn btn-primary desktop-only" onClick={() => openModal('projeto')} style={{ paddingLeft: 14 }}>
+            <div style={{ position: 'relative', width: 14, height: 14, marginRight: 6 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}><path d="M12 5v14M5 12h14" /></svg>
+            </div>
             Novo Projeto
+          </button>
+          {/* Mobile: icon only */}
+          <button className="btn-icon mobile-only btn-icon-accent" onClick={() => openModal('projeto')} title="Novo Projeto" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: 16, height: 16 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}><path d="M12 5v14M5 12h14" /></svg>
+            </div>
           </button>
         </div>
       </div>
@@ -90,13 +99,12 @@ export default function ProjetosPage() {
                 height: 64, 
                 borderRadius: '50%', 
                 background: 'var(--accent-bg)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
+                position: 'relative',
                 color: 'var(--accent)',
-                marginBottom: 8
+                marginBottom: 16,
+                flexShrink: 0
               }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 32, height: 32 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 32, height: 32 }}>
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </div>
@@ -104,11 +112,13 @@ export default function ProjetosPage() {
                 <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Comece seu primeiro projeto</div>
                 <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.5 }}>Organize suas tarefas, prazos e pagamentos em um só lugar.</div>
               </div>
-              <div className="btn btn-primary" style={{ marginTop: 8, pointerEvents: 'none' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}>
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Novo Projeto
+              <div className="btn btn-primary" style={{ marginTop: 8, pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 20px' }}>
+                <div style={{ position: 'relative', width: 14, height: 14, marginRight: 8 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </div>
+                <span style={{ lineHeight: 1 }}>Novo Projeto</span>
               </div>
             </div>
           </div>

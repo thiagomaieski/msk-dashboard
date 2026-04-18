@@ -80,7 +80,7 @@ function PVDetalhes({ p, onEdit, updateField }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
         <div className="summary-card">
           <div className="summary-card-label">Valor do Projeto</div>
           <div className="summary-card-val" style={{ fontFamily: 'var(--sans)' }}>{fmtBRL(p.valor)}</div>
@@ -314,7 +314,7 @@ function PVArquivos({ p, onAdd, onDel }) {
     <div>
       <div className="file-upload-form">
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Upload Direto para Servidor (Hospedagem)</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
           <input className="form-input" placeholder="Nome (Ex: Logo Final)" value={nome} onChange={e => setNome(e.target.value)} />
           <select className="form-select" value={tipo} onChange={e => setTipo(e.target.value)}>
             {['Identidade Visual', 'Copy / Textos', 'Fotos', 'Contrato', 'Outros'].map(t => <option key={t}>{t}</option>)}
