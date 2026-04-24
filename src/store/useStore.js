@@ -596,6 +596,11 @@ export const useDash = create((set, get) => ({
       try {
         const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
         const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+        
+        if (!apiDomain && window.location.hostname !== 'localhost') {
+           console.warn('VITE_STORAGE_API_DOMAIN não configurado! A purga de arquivos pode falhar.');
+        }
+
         const token = await currentUser.getIdToken();
         await fetch(`${apiDomain}/wipe.php`, {
           method: 'POST',
@@ -619,12 +624,14 @@ export const useDash = create((set, get) => ({
       signOut();
     } catch (e) {
       set(s => ({ toasts: s.toasts.filter(t => t.id !== tid) }));
-      console.error(e);
+      console.error('Falha crítica na exclusão:', e);
       let msg = "Erro na exclusão de conta.";
+      
       if (e.code === 'auth/requires-recent-login') {
         msg = "Dados e CRMs apagados com sucesso, mas para apagar o e-mail centralizado faça login novamente (Segurança da conta expirada).";
       } else {
-        msg += " Verifique sua conexão com a internet.";
+        // Mostra o erro real para o usuário ou técnico
+        msg = `Erro na exclusão: ${e.message || "Verifique sua conexão"}`;
       }
       toast(msg, "error", 9000);
     }
@@ -1384,6 +1391,11 @@ export const useDash = create((set, get) => ({
 
     const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
     const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+    
+    if (!apiDomain) {
+      console.warn('VITE_STORAGE_API_DOMAIN não configurado! Usando caminhos relativos (Localhost).');
+    }
+
     const token = await currentUser.getIdToken();
     
     const formData = new FormData();

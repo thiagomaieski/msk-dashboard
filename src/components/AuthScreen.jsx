@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDash } from '../store/useStore';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
+import bgImage from '../assets/bg-dashboard.avif';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
 import { Suspense, lazy } from 'react';
 const LegalModals = lazy(() => import('./LegalModals'));
@@ -19,6 +20,8 @@ export default function AuthScreen() {
 
   const { signInWithGoogle, signInEmail, signUpEmail, resetPasswordEmail, getSignInMethods, theme } = useDash();
   const logo = theme === 'light' ? logoLight : logoDark;
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,8 +78,33 @@ export default function AuthScreen() {
   };
 
   return (
-    <div id="auth-screen">
-      <div className="auth-card">
+    <div id="auth-screen" style={{ 
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url(${bgImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      display: 'flex',
+      justifyContent: 'flex-start',
+      alignItems: 'stretch'
+    }}>
+      <div className="auth-card" style={{ 
+        backdropFilter: 'blur(24px)', 
+        background: theme === 'light' ? 'rgba(255,255,255,0.8)' : 'rgba(10,10,10,0.8)',
+        border: 'none',
+        borderRight: '1px solid rgba(255,255,255,0.1)',
+        height: '100vh',
+        width: 'clamp(400px, 35vw, 600px)',
+        maxWidth: '100%',
+        margin: 0,
+        borderRadius: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '40px 60px',
+        overflowY: 'auto',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none'
+      }}>
         <div className="auth-logo">
           <img src={logo} alt="Dashboard Maieski" className="logo-img" style={{ height: 32, marginBottom: 8 }} />
         </div>
@@ -114,14 +142,40 @@ export default function AuthScreen() {
           {mode !== 'forgot' && (
             <div className="form-group">
               <label className="form-label">Senha</label>
-              <input 
-                type="password" 
-                className="form-input" 
-                placeholder="••••••••" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                required 
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  className="form-input" 
+                  placeholder="••••••••" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required 
+                  style={{ paddingRight: '45px' }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text3)',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
@@ -155,7 +209,7 @@ export default function AuthScreen() {
 
         <div style={{ margin: '24px 0', position: 'relative' }}>
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: 0 }} />
-          <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg2)', padding: '0 10px', fontSize: 12, color: 'var(--text3)' }}>OU</span>
+          <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'transparent', padding: '0 10px', fontSize: 12, color: 'var(--text3)' }}>OU</span>
         </div>
 
         <button className="btn-google" onClick={handleGoogleLogin} disabled={loading}>

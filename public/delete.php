@@ -106,7 +106,24 @@ if (file_exists($safeFinalPath)) {
     }
 
     if (unlink($safeFinalPath)) {
-        echo json_encode(['success' => true, 'message' => 'Arquivo removido com segurança']);
+        // --- LIMPEZA DE PASTAS VAZIAS (Poda) ---
+        function pruneEmptyDirs($dir, $stopDir) {
+            // Se o diretório não existe ou não está dentro da pasta uploads do usuário, para.
+            if (!file_exists($dir) || !is_dir($dir) || strpos($dir, $stopDir) !== 0 || $dir === $stopDir) {
+                return;
+            }
+            $files = array_diff(scandir($dir), array('.', '..'));
+            if (empty($files)) {
+                if (rmdir($dir)) {
+                    pruneEmptyDirs(dirname($dir), $stopDir);
+                }
+            }
+        }
+        
+        // Começa a limpar a partir da pasta onde o arquivo estava
+        pruneEmptyDirs($directory, $expectedPrefix);
+        
+        echo json_encode(['success' => true, 'message' => 'Arquivo removido e pastas vazias limpas.']);
     } else {
         echo json_encode(['error' => 'Falha técnica ao remover arquivo']);
     }
