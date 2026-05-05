@@ -1484,6 +1484,10 @@ tbody tr:hover .copy-btn {
   position: relative;
 }
 
+.modal.modal-xl {
+  max-width: 1280px;
+}
+
 .modal-header {
   display: flex;
   align-items: center;

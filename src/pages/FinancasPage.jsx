@@ -163,10 +163,16 @@ export function FinancasNegocioPage() {
     <div>
       <div className="page-header">
         <div className="page-title">Finanças Negócio</div>
-        <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => exportFinancasCSV('negocio', filtered, `financas_negocio_${ano}_${mes !== '' ? MESES[parseInt(mes)] : 'ano'}.csv`)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-          Exportar CSV
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'negocio')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Importar Dados
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => exportFinancasCSV('negocio', filtered, `financas_negocio_${ano}_${mes !== '' ? MESES[parseInt(mes)] : 'ano'}.csv`)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Exportar CSV
+          </button>
+        </div>
       </div>
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
@@ -253,7 +259,7 @@ export function FinancasNegocioPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
@@ -401,7 +407,13 @@ export function FinancasPessoaisPage() {
 
   return (
     <div>
-      <div className="page-header"><div className="page-title">Finanças Pessoais</div></div>
+      <div className="page-header">
+        <div className="page-title">Finanças Pessoais</div>
+        <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'pessoal')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Importar Dados
+        </button>
+      </div>
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
         <select className="filter-select" value={ano} onChange={e => setAno(e.target.value)}>
@@ -451,7 +463,7 @@ export function FinancasPessoaisPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
+              <button className="btn btn-sm btn-primary" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>

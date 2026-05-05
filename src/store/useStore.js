@@ -903,6 +903,7 @@ export const useDash = create((set, get) => ({
       pagarRecorrencia: 'Registrar Pagamento',
       gerarOrcamento: 'Gerar Orçamento / Proposta',
       gerarRecibo: 'Gerar Recibo de Pagamento',
+      importFinancas: 'Importação Inteligente de Finanças',
     };
 
     const colName = map[type];
@@ -911,7 +912,11 @@ export const useDash = create((set, get) => ({
       modalOpen: true,
       modalType: type,
       modalTitle: titles[type] || type,
-      editingId: colName ? { ...s.editingId, [colName]: editId } : s.editingId,
+      editingId: {
+        ...s.editingId,
+        ...(colName ? { [colName]: editId } : {}),
+        importType: type === 'importFinancas' ? id : s.editingId.importType
+      },
     }));
   },
   closeModal: () => set({ modalOpen: false, modalType: null }),
@@ -1281,6 +1286,64 @@ export const useDash = create((set, get) => ({
           }
         }));
       }
+    }
+  },
+
+  bulkAddFinancas: async (colName, items) => {
+    const { toast, _refreshData } = get();
+    try {
+      const now = new Date().toISOString();
+      const st = serverTimestamp();
+      
+      const newItems = items.map((it, idx) => ({
+        ...it,
+        id: `temp_bulk_${Date.now()}_${idx}`,
+        criadoEm: now,
+        modificadoEm: now
+      }));
+
+      set(s => ({
+        realData: {
+          ...s.realData,
+          [colName]: [...newItems, ...s.realData[colName]]
+        }
+      }));
+      _refreshData();
+
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = items.slice(i, i + CHUNK_SIZE);
+        const chunkStartIndex = i;
+        
+        chunk.forEach((it, idx) => {
+          const ref = doc(uCol(colName));
+          const payload = {
+             ...it,
+             criadoEm: st,
+             modificadoEm: st
+          };
+          batch.set(ref, payload);
+          newItems[chunkStartIndex + idx].realId = ref.id;
+        });
+        
+        await batch.commit();
+      }
+
+      set(s => ({
+        realData: {
+          ...s.realData,
+          [colName]: s.realData[colName].map(x => {
+            const found = newItems.find(ni => ni.id === x.id);
+            return found ? { ...x, id: found.realId } : x;
+          })
+        }
+      }));
+      _refreshData();
+      toast(`${items.length} lançamentos importados!`);
+    } catch (e) {
+      console.error('bulkAddFinancas error:', e);
+      toast('Erro ao importar: ' + e.message, 'error');
     }
   },
 

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { NumberStepper } from './shared';
+import ImportFinancasModal from './ImportFinancasModal';
 
 
 export default function Modal() {
@@ -29,7 +30,7 @@ export default function Modal() {
       onMouseDown={handleMouseDown} 
       onMouseUp={handleMouseUp}
     >
-      <div className="modal">
+      <div className={`modal ${modalType === 'importFinancas' ? 'modal-xl' : ''}`}>
         <div className="modal-header">
           <div className="modal-title">{modalTitle}</div>
           <button className="modal-close" onClick={closeModal}>
@@ -68,6 +69,7 @@ function ModalContent({ type }) {
   if (type === 'csvProgress') return <CsvProgressModal />;
   if (type === 'changePassword') return <ChangePasswordForm />;
   if (type === 'feedback') return <FeedbackModal onClose={closeModal} />;
+  if (type === 'importFinancas') return <ImportFinancasModal type={editingId.importType} />;
   return null;
 }
 
