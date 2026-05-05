@@ -27,6 +27,17 @@ export const getCurrentMonthKey = () => {
   return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
 };
 
+export const getWaLink = (phone) => {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  if (!cleaned) return '';
+  if (phone.trim().startsWith('+')) return `https://wa.me/${cleaned}`;
+  if ((cleaned.length === 10 || cleaned.length === 11) && !cleaned.startsWith('55')) {
+    return `https://wa.me/55${cleaned}`;
+  }
+  return `https://wa.me/${cleaned}`;
+};
+
 // ── Admin ──
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
 export const isAdminEmail = (user) => user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.emailVerified === true;

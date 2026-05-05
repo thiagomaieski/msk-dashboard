@@ -1683,6 +1683,22 @@ tbody tr:hover .row-actions {
   background: var(--red-bg) !important;
 }
 
+.link-btn {
+  color: var(--blue);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.link-btn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+body:not(.light) .link-btn {
+  color: var(--text);
+  opacity: 0.9;
+}
+
 /* CONFIRM MODAL */
 #confirm-overlay {
   display: none;

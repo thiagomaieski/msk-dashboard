@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
+import { getWaLink } from '../store/useStore';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
 
@@ -477,9 +478,9 @@ export default function LeadsPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, color: 'var(--text3)' }}>{l.telefone || '-'}</span>
-                          {l.telefone && l.telefone.replace(/\D/g, '').length >= 10 && (
-                            <a href={`https://wa.me/55${l.telefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: '#25D366' }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
+                            <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14, color: '#25D366' }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
                             </a>
                           )}
                         </div>
@@ -524,7 +525,7 @@ export default function LeadsPage() {
               <th onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</th>
               <th onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</th>
               <th onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</th>
-              <th onClick={() => handleColumnSort('ultimoContato')}>Contatos {sortIndicator('ultimoContato')}</th>
+              <th onClick={() => handleColumnSort('site')}>Site / Social {sortIndicator('site')}</th>
               <th onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</th>
               <th onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</th>
               <th></th>
@@ -549,9 +550,9 @@ export default function LeadsPage() {
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <CopyCell text={l.telefone} />
-                      {l.telefone && l.telefone.replace(/\D/g, '').length >= 10 && (
-                        <a href={`https://wa.me/55${l.telefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
+                        <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                          <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
                         </a>
                       )}
                     </div>
@@ -562,24 +563,18 @@ export default function LeadsPage() {
                     </span>
                   </td>
                   <td style={{ maxWidth: 140 }}>
-                    {(() => {
-                      const dias = l.ultimoContato ? Math.floor((new Date() - new Date(l.ultimoContato + 'T12:00:00')) / (1000 * 3600 * 24)) : null;
-                      const warn = dias !== null && dias > 5 && (l.status === 'Em negociação' || l.status === 'Follow-up');
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          {l.ultimoContato ? (
-                            <div style={{ fontSize: 11, color: warn ? 'var(--red)' : 'var(--text3)', fontWeight: warn ? 600 : 400 }}>
-                              Últ: {l.ultimoContato.split('-').reverse().join('/')} {warn && `(+${dias}d)`}
-                            </div>
-                          ) : <div style={{ fontSize: 11, color: 'var(--text3)' }}>Últ: -</div>}
-                          {l.proximoContato && (
-                            <div style={{ fontSize: 11, color: 'var(--text)' }}>
-                              Próx: {l.proximoContato.split('-').reverse().join('/')}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {(l.site && (l.site.includes('.') || l.site.startsWith('http'))) ? (
+                      <a 
+                        href={l.site.trim().startsWith('http') ? l.site.trim() : `https://${l.site.trim()}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="link-btn"
+                        style={{ fontSize: 11, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {l.site.replace(/^https?:\/\//, '')}
+                      </a>
+                    ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
                   </td>
                   <td><Badge status={l.status || 'Novo'} /></td>
                   <td style={{ maxWidth: 170 }}><div className="lead-qual" title={l.observacoes || ''}>{l.observacoes || '-'}</div></td>
