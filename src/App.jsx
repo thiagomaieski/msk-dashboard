@@ -21,6 +21,7 @@ const RecorrenciaPage = lazy(() => import('./pages/RecorrenciaPage'));
 const FinancasNegocioPage = lazy(() => import('./pages/FinancasPage').then(module => ({ default: module.FinancasNegocioPage })));
 const FinancasPessoaisPage = lazy(() => import('./pages/FinancasPage').then(module => ({ default: module.FinancasPessoaisPage })));
 const LixeiraPage = lazy(() => import('./pages/LixeiraPage'));
+const ClientesPage = lazy(() => import('./pages/ClientesPage'));
 const ConfiguracoesPage = lazy(() => import('./pages/ConfiguracoesPage'));
 
 // Error boundary to catch render crashes
@@ -118,6 +119,7 @@ function AppInner() {
           {activePage === 'financas-negocio' && <FinancasNegocioPage />}
           {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
           {activePage === 'lixeira' && <LixeiraPage />}
+          {activePage === 'clientes' && <ClientesPage />}
           {activePage === 'configuracoes' && <ConfiguracoesPage />}
         </main>
         

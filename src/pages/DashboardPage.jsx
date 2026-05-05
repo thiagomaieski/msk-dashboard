@@ -43,6 +43,7 @@ const PROJETO_STATUS_COLORS = {
   'Em andamento': '#3b82f6',
   'Concluído': '#22c55e',
   'Aguardando cliente': '#f59e0b',
+  'Aguardando Aprovação': '#a855f7',
   'Pausado': '#737373',
   'Cancelado': '#ef4444',
 };
@@ -213,6 +214,11 @@ const IconDespesa = () => (
     <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
   </svg>
 );
+const IconRecorrencia = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+  </svg>
+);
 const IconLeads = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -265,7 +271,8 @@ export default function DashboardPage() {
   const projetos   = useDash(s => s.data.projetos);
   const recorrencia = useDash(s => s.data.recorrencia);
   const lembretesRaw = useDash(s => s.data.lembretes);
-  const modules     = useDash(s => s.configData.modules);
+  const configData  = useDash(s => s.configData);
+  const modules     = configData.modules;
   const currentUser = useDash(s => s.currentUser);
   const openModal = useDash(s => s.openModal);
   const openProjectView = useDash(s => s.openProjectView);
@@ -354,19 +361,32 @@ export default function DashboardPage() {
       if (isNegocioOn) r = getMonthTotal(negocio, 'Receita', m, y);
       else if (isPessoalOn) r = getMonthTotal(pessoal, 'Receita', m, y);
 
+      const leadsMes = leads.filter(l => new Date(parseInt(l.id)).getMonth() === m && new Date(parseInt(l.id)).getFullYear() === y).length;
+      const projMes = projetos.filter(p => new Date(parseInt(p.id)).getMonth() === m && new Date(parseInt(p.id)).getFullYear() === y).length;
+      const mrrMes = recorrencia.filter(rc => new Date(parseInt(rc.id)).getMonth() === m && new Date(parseInt(rc.id)).getFullYear() === y).reduce((acc, rc) => acc + (rc.valor || 0), 0);
+
       return {
         name: MESES_CURTOS[m],
         Receita: r,
         Despesas: getMonthTotal(pessoal, 'Despesa', m, y),
+        Leads: leadsMes,
+        Projetos: projMes,
+        MRR: mrrMes
       };
     });
 
     // Sparkline data (last 6 months)
     const sparkRec   = last6Months.map(m => ({ v: m.Receita }));
     const sparkDesp  = last6Months.map(m => ({ v: m.Despesas }));
-    const sparkLeads = Array.from({ length: 6 }, (_, i) => ({ v: Math.max(1, leadsNovos - i * 3) })).reverse();
-    const sparkProj  = Array.from({ length: 6 }, (_, i) => ({ v: Math.max(0, projAtivos - (i > 3 ? 1 : 0)) })).reverse();
-    const sparkRecorr = Array.from({ length: 6 }, () => ({ v: mrr }));
+    const sparkLeads = last6Months.map(m => ({ v: m.Leads }));
+    const sparkProj  = last6Months.map(m => ({ v: m.Projetos }));
+    
+    // MRR is cumulative, but let's just show cumulative up to that month
+    let cumMrr = 0;
+    const sparkRecorr = last6Months.map(m => {
+      cumMrr += m.MRR;
+      return { v: cumMrr };
+    });
 
     // Leads by status
     const leadsByStatus = STATUS_LEAD_ORDER
@@ -412,6 +432,24 @@ export default function DashboardPage() {
       return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
     });
 
+    // F3: Alertas críticos
+    const projetosAtrasados = projetos.filter(p => {
+      if (p.status === 'Concluído' || p.status === 'Cancelado' || p.status === 'Aguardando Aprovação') return false;
+      if (!p.prazo) return false;
+      return new Date(p.prazo + 'T12:00:00') < new Date();
+    });
+
+    const recorrenciasVencendo = recorrencia.filter(r => {
+      if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
+      const days = (new Date(r.proximoVencimento + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24);
+      return days <= 5 && days >= 0;
+    });
+
+    // F4: Meta Faturamento
+    const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
+    const isMetaActive = metaFaturamento > 0;
+    const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
+
     return {
       recMesAtual, recMesPrev, despMesAtual, despMesPrev,
       leadsNovos, projAtivos, mrr, conversionRate,
@@ -421,8 +459,9 @@ export default function DashboardPage() {
       leadsByStatus, personalExpByCat, projetosByStatus,
       projetosAndamento, leadsParaAbordar, lembretes,
       totalLeads: leadsTotal,
+      projetosAtrasados, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct
     };
-  }, [negocio, pessoal, leads, projetos, recorrencia, lembretesRaw, modules, mesAtual, anoAtual, mesPrev, anoPrev]);
+  }, [negocio, pessoal, leads, projetos, recorrencia, lembretesRaw, modules, configData.metaFaturamento, mesAtual, anoAtual, mesPrev, anoPrev]);
 
   const mesLabel = MESES_CURTOS[mesPrev];
   const activeModulesCount = [stats.isNegocioOn, stats.isPessoalOn, stats.isLeadsOn, stats.isProjetosOn, stats.isRecorrenciaOn].filter(Boolean).length;
@@ -509,7 +548,7 @@ export default function DashboardPage() {
         {stats.isRecorrenciaOn && (
           <KpiCard
             index={4}
-            icon={<IconReceita />}
+            icon={<IconRecorrencia />}
             label="Contratos de Recorrência"
             value={fmtBRL(stats.mrr)}
             trendLabel="Serviços ativos faturados"
@@ -519,8 +558,86 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ─── Main Bento Grid ─────────────────────────────────────────────── */}
       <div className="dash-bento-grid">
+
+        {/* F4: Meta de Faturamento */}
+        {stats.isMetaActive && (
+          <motion.div
+            className="dash-glass-card full-width"
+            custom={0}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20 }}
+          >
+            <div style={{ flexShrink: 0 }}>
+              <div className="dash-glass-card-title">Meta de Faturamento</div>
+              <div className="dash-glass-card-sub">Progresso de {mesLabel}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: 'var(--accent)' }}>{fmtBRL(stats.recMesAtual)}</span>
+                <span style={{ color: 'var(--text3)' }}>{fmtBRL(stats.metaFaturamento)}</span>
+              </div>
+              <div style={{ height: 10, background: 'var(--bg3)', borderRadius: 5, overflow: 'hidden' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.metaPct}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  style={{ height: '100%', background: stats.metaPct >= 100 ? 'var(--green)' : 'var(--accent)', borderRadius: 5 }}
+                />
+              </div>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: stats.metaPct >= 100 ? 'var(--green)' : 'var(--text)' }}>
+              {stats.metaPct.toFixed(1)}%
+            </div>
+          </motion.div>
+        )}
+
+        {/* F3: Alertas Críticos */}
+        {(stats.projetosAtrasados.length > 0 || stats.recorrenciasVencendo.length > 0) && (
+          <motion.div
+            className="dash-glass-card full-width"
+            custom={1}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.03)' }}
+          >
+            <div className="dash-glass-card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--red)' }}><IconNote /></span>
+                <div className="dash-glass-card-title" style={{ color: 'var(--red)' }}>Alertas Críticos</div>
+              </div>
+            </div>
+            <div className="dash-glass-card-body" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {stats.projetosAtrasados.map(p => (
+                <div 
+                  key={p.id} 
+                  className="card-in"
+                  onClick={() => useDash.getState().openProjectView(p.id)}
+                  style={{ background: 'var(--bg1)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', flex: 1, minWidth: 200, cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 600, marginBottom: 4 }}>Projeto Atrasado</div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{p.cliente}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Prazo era: {fmtDate(p.prazo)}</div>
+                </div>
+              ))}
+              {stats.recorrenciasVencendo.map(r => (
+                <div 
+                  key={r.id} 
+                  className="card-in"
+                  onClick={() => { useDash.getState().goTo('recorrencia'); }}
+                  style={{ background: 'var(--bg1)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', flex: 1, minWidth: 200, cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, marginBottom: 4 }}>Recorrência Vencendo</div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{r.cliente}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Vence: {fmtDate(r.proximoVencimento)}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Receita vs Despesas (large) */}
         {(stats.isNegocioOn || stats.isPessoalOn) && (
@@ -875,6 +992,23 @@ export default function DashboardPage() {
           </>
         )}
 
+      </div>
+
+      {/* F5: FAB Action */}
+      <div className="dash-fab-container" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99 }}>
+        <button 
+          className="btn btn-primary" 
+          style={{ width: 56, height: 56, borderRadius: '50%', boxShadow: '0 4px 16px rgba(59,130,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+          onClick={() => {
+            if (stats.isNegocioOn) openModal('negocioReceita');
+            else if (stats.isPessoalOn) openModal('pessoalReceita');
+            else if (stats.isLeadsOn) openModal('lead');
+            else if (stats.isProjetosOn) openModal('projeto');
+          }}
+          title="Ação Rápida"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 24, height: 24 }}><path d="M12 5v14M5 12h14" /></svg>
+        </button>
       </div>
     </div>
   );

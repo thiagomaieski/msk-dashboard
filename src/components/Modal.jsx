@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { useDash } from '../store/useStore';
+import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { NumberStepper } from './shared';
+
 
 export default function Modal() {
   const modalOpen = useDash(s => s.modalOpen);
@@ -55,6 +56,8 @@ function ModalContent({ type }) {
   if (type === 'recorrencia') return <RecorrenciaForm item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
   if (type === 'negocioReceita') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
   if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
+  if (type === 'parcela') return <ParcelaForm item={data.negocio.find(x => x.id === editingId.negocio)} />;
+  if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm recorrenciaId={editingId.recorrencia} />;
   if (type === 'pessoalReceita') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Receita" />;
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'cliente') return <ClienteForm item={data.clientes.find(x => x.id === editingId.clientes)} />;
@@ -117,29 +120,33 @@ function LeadForm({ item }) {
   
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
+    email: item?.email || '', origem: item?.origem || '',
+    valorEstimado: item?.valorEstimado || '', proximoContato: item?.proximoContato || '',
     nicho: item?.nicho || configData.nichos[0] || '',
     status: item?.status || 'Novo', site: item?.site || '', observacoes: item?.observacoes || '',
+    interacoes: item?.interacoes || [],
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   return (
     <div className="form-grid">
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Nome / Empresa</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
-        <div className="form-group"><label className="form-label">Telefone</label><input className="form-input" value={f.telefone} onChange={u('telefone')} /></div>
+        <div className="form-group"><label className="form-label">Nome / Empresa *</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
+        <div className="form-group"><label className="form-label">Telefone / WhatsApp</label><input className="form-input" value={f.telefone} onChange={u('telefone')} /></div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" type="email" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" /></div>
+        <div className="form-group"><label className="form-label">Origem do Lead</label>
+          <select className="form-select" value={f.origem} onChange={u('origem')}>
+            {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
+          </select>
+        </div>
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Nicho</label>
           <select className="form-select" value={f.nicho} onChange={u('nicho')}>
             {configData.nichos.map(n => <option key={n}>{n}</option>)}
           </select>
-          <div 
-            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
-            onClick={() => navTo('cfg-negocios')}
-          >
-            Gerenciar nichos →
-          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer' }} onClick={() => navTo('cfg-negocios')}>Gerenciar nichos →</div>
         </div>
         <div className="form-group"><label className="form-label">Status</label>
           <select className="form-select" value={f.status} onChange={u('status')}>
@@ -147,11 +154,81 @@ function LeadForm({ item }) {
           </select>
         </div>
       </div>
-      <div className="form-group"><label className="form-label">Site</label><input className="form-input" value={f.site} onChange={u('site')} /></div>
-      <div className="form-group"><label className="form-label">Qualificação</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
-      <div className="form-actions">
-        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveLead(f)}>Salvar</button>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Valor Estimado (R$)</label><input className="form-input" type="number" min="0" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" /></div>
+        <div className="form-group"><label className="form-label">Site / Instagram</label><input className="form-input" value={f.site} onChange={u('site')} /></div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Último Contato</label><input className="form-input" type="date" value={f.ultimoContato} onChange={u('ultimoContato')} /></div>
+        <div className="form-group"><label className="form-label">Próximo Contato</label><input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} /></div>
+      </div>
+      
+      <div className="form-group">
+        <label className="form-label">Histórico de Interações</label>
+        <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border)' }}>
+          {(f.interacoes || []).length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 120, overflowY: 'auto' }}>
+              {(f.interacoes || []).map((int, i) => (
+                <div key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)' }}>
+                  <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap' }}>{int.data.split('T')[0].split('-').reverse().join('/')}</span>
+                  <span style={{ color: 'var(--text)' }}>{int.texto}</span>
+                  <button className="row-btn del" style={{ marginLeft: 'auto', padding: 0 }} onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+            <input 
+              className="form-input" 
+              style={{ flex: 1, fontSize: 12, padding: '6px 8px' }} 
+              placeholder="Ex: Reunião de alinhamento..." 
+              id="lead-int-text"
+              onKeyDown={e => {
+                if(e.key === 'Enter') {
+                  e.preventDefault();
+                  document.getElementById('lead-int-btn').click();
+                }
+              }}
+            />
+            <button 
+              id="lead-int-btn"
+              className="btn btn-sm btn-secondary" 
+              onClick={() => {
+                const txt = document.getElementById('lead-int-text').value;
+                if(!txt) return;
+                const newInt = { data: new Date().toISOString(), texto: txt };
+                setF(p => ({ ...p, interacoes: [...(p.interacoes||[]), newInt], ultimoContato: new Date().toISOString().split('T')[0] }));
+                document.getElementById('lead-int-text').value = '';
+              }}
+            >Adicionar</button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="form-group"><label className="form-label">Qualificação / Observações Gerais</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
+      <div className="form-actions" style={{ justifyContent: 'space-between' }}>
+        <div>
+           {item && (
+             <button className="btn btn-secondary" style={{ color: 'var(--green)', gap: 6 }} onClick={() => {
+               if(window.confirm('Deseja converter este lead em cliente? Todos os dados serão migrados.')) {
+                 useDash.getState().convertLeadToCliente(item.id);
+                 closeModal();
+               }
+             }}>
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+               Converter em Cliente
+             </button>
+           )}
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => {
+            if (!f.nome) return alert('O Nome/Empresa é obrigatório.');
+            saveLead(f);
+          }}>Salvar</button>
+        </div>
       </div>
     </div>
   );
@@ -167,14 +244,51 @@ function ClienteForm({ item }) {
     segmento: item?.segmento || '', instagram: item?.instagram || '',
     facebook: item?.facebook || '', youtube: item?.youtube || '',
     site: item?.site || '', linkCustom: item?.linkCustom || '',
+    endereco: item?.endereco || '', observacoes: item?.observacoes || ''
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const CONH = ['Instagram', 'Meta ADS', 'Google', 'Google Maps', 'Facebook', 'Formação WEBP', 'Indicação', 'Outro'];
+  
+  const handleSave = () => {
+    if (!f.nome) return alert('O nome/empresa é obrigatório.');
+    saveCliente(f);
+  };
+
   return (
     <div className="form-grid">
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Nome / Empresa</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
-        <div className="form-group"><label className="form-label">CNPJ / CPF</label><input className="form-input" value={f.cpfCnpj} onChange={u('cpfCnpj')} /></div>
+        <div className="form-group"><label className="form-label">Nome / Empresa *</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
+        <div className="form-group">
+          <label className="form-label">CNPJ / CPF</label>
+          <input className="form-input" value={f.cpfCnpj} 
+            onChange={e => {
+              const raw = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 14);
+              let masked = raw;
+              if (raw.length <= 11) {
+                // CPF: 000.000.000-00
+                masked = raw.replace(/^(\w{3})(\w{3})(\w{3})(\w{2}).*/, '$1.$2.$3-$4')
+                            .replace(/^(\w{3})(\w{3})(\w{3})$/, '$1.$2.$3')
+                            .replace(/^(\w{3})(\w{3})$/, '$1.$2')
+                            .replace(/^(\w{3})$/, '$1');
+                if (raw.length > 9 && raw.length <= 11) masked = raw.replace(/^(\w{3})(\w{3})(\w{3})(\w{1,2})$/, '$1.$2.$3-$4');
+                else if (raw.length > 6) masked = raw.replace(/^(\w{3})(\w{3})(\w{1,3})$/, '$1.$2.$3');
+                else if (raw.length > 3) masked = raw.replace(/^(\w{3})(\w{1,3})$/, '$1.$2');
+              } else {
+                // CNPJ: 00.000.000/0000-00
+                masked = raw.replace(/^(\w{2})(\w{3})(\w{3})(\w{4})(\w{2}).*/, '$1.$2.$3/$4-$5');
+                if (raw.length > 12) masked = raw.replace(/^(\w{2})(\w{3})(\w{3})(\w{4})(\w{1,2})$/, '$1.$2.$3/$4-$5');
+                else if (raw.length > 8) masked = raw.replace(/^(\w{2})(\w{3})(\w{3})(\w{1,4})$/, '$1.$2.$3/$4');
+                else if (raw.length > 5) masked = raw.replace(/^(\w{2})(\w{3})(\w{1,3})$/, '$1.$2.$3');
+                else if (raw.length > 2) masked = raw.replace(/^(\w{2})(\w{1,3})$/, '$1.$2');
+              }
+              setF(p => ({ ...p, cpfCnpj: masked }));
+            }}
+            placeholder="000.000.000-00 ou 00.000.000/0000-00"
+          />
+          {f.cpfCnpj && ![11, 14].includes(f.cpfCnpj.replace(/[^A-Za-z0-9]/g, '').length) && (
+            <div style={{ fontSize: 10, color: 'var(--red)', marginTop: 4 }}>Documento incompleto (11 ou 14 caracteres)</div>
+          )}
+        </div>
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" value={f.email} onChange={u('email')} /></div>
@@ -188,51 +302,28 @@ function ClienteForm({ item }) {
         </div>
         <div className="form-group"><label className="form-label">Segmento</label><input className="form-input" value={f.segmento} onChange={u('segmento')} /></div>
       </div>
-      <div className="form-group">
-        <label className="form-label">Links Sociais</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="form-group"><label className="form-label">Endereço Completo</label><input className="form-input" value={f.endereco} onChange={u('endereco')} /></div>
+      <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
+      
+      <div className="form-group" style={{ marginTop: 8 }}>
+        <label className="form-label" style={{ marginBottom: 12 }}>Links e Redes Sociais</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {[
-            { 
-              key: 'instagram', 
-              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>, 
-              bg: '#E1306C', 
-              placeholder: 'instagram.com/perfil' 
-            },
-            { 
-              key: 'facebook', 
-              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>, 
-              bg: '#1877F2', 
-              placeholder: 'facebook.com/perfil' 
-            },
-            { 
-              key: 'youtube', 
-              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.42a2.78 2.78 0 0 0-1.94 2C1 8.11 1 12 1 12s0 3.89.46 5.58a2.78 2.78 0 0 0 1.94 2c1.72.42 8.6.42 8.6.42s6.88 0 8.6-.42a2.78 2.78 0 0 0 1.94-2C23 15.89 23 12 23 12s0-3.89-.46-5.58z"/><polyline points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>, 
-              bg: '#FF0000', 
-              placeholder: 'youtube.com/@canal' 
-            },
-            { 
-              key: 'site', 
-              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>, 
-              bg: 'var(--bg4)', 
-              placeholder: 'site.com.br' 
-            },
-            { 
-              key: 'linkCustom', 
-              icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, 
-              bg: 'var(--bg4)', 
-              placeholder: 'Outro link personalizado' 
-            },
+            { key: 'instagram', icon: 'IG', placeholder: '@usuario' },
+            { key: 'facebook', icon: 'FB', placeholder: '/pagina' },
+            { key: 'youtube', icon: 'YT', placeholder: '/canal' },
+            { key: 'site', icon: 'Web', placeholder: 'site.com' },
           ].map(({ key, icon, placeholder }) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>{icon}</span>
+              <span style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 600 }}>{icon}</span>
               <input className="form-input" placeholder={placeholder} value={f[key]} onChange={u(key)} style={{ flex: 1 }} />
             </div>
           ))}
         </div>
       </div>
-      <div className="form-actions">
+      <div className="form-actions" style={{ marginTop: 8 }}>
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveCliente(f)}>Salvar</button>
+        <button className="btn btn-primary" onClick={handleSave}>Salvar</button>
       </div>
     </div>
   );
@@ -241,6 +332,7 @@ function ClienteForm({ item }) {
 // ── PROJETO FORM ──
 function ProjetoForm({ item }) {
   const data = useDash(s => s.data);
+  const configData = useDash(s => s.configData);
   const saveProjeto = useDash(s => s.saveProjeto);
   const closeModal = useDash(s => s.closeModal);
   const goTo = useDash(s => s.goTo);
@@ -252,6 +344,7 @@ function ProjetoForm({ item }) {
     cliente: item?.cliente || '', valor: item?.valor || '',
     descricao: item?.descricao || '', status: item?.status || 'Em andamento',
     pagamento: item?.pagamento || 'Pendente', prazo: item?.prazo || '',
+    dataInicio: item?.dataInicio || '', tipoProjeto: item?.tipoProjeto || '',
     nf: item?.nf || 'nao', anotacoes: item?.anotacoes || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
@@ -306,30 +399,42 @@ function ProjetoForm({ item }) {
         />
       </div>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Status</label>
-          <select className="form-select" value={f.status} onChange={u('status')}>
-            {['Em andamento', 'Aguardando cliente', 'Concluído', 'Pausado'].map(s => <option key={s}>{s}</option>)}
+        <div className="form-group"><label className="form-label">Tipo de Projeto</label>
+          <select className="form-select" value={f.tipoProjeto} onChange={u('tipoProjeto')}>
+            {['', 'Site', 'Landing Page', 'E-commerce', 'Identidade Visual', 'Social Media', 'Tráfego Pago', 'SEO', 'Consultoria', 'Outro'].map(t => <option key={t} value={t}>{t || '-- Selecione --'}</option>)}
           </select>
         </div>
-        <div className="form-group"><label className="form-label">Pagamento</label>
-          <select className="form-select" value={f.pagamento} onChange={u('pagamento')}>
-            {['Pendente', 'Parcial (50%)', 'Pago'].map(s => <option key={s}>{s}</option>)}
+        <div className="form-group"><label className="form-label">Status</label>
+          <select className="form-select" value={f.status} onChange={u('status')}>
+            {['Em andamento', 'Aguardando cliente', 'Aguardando Aprovação', 'Concluído', 'Pausado', 'Cancelado'].map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
       </div>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Prazo de entrega</label><input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} /></div>
+        <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
+        <div className="form-group"><label className="form-label">Prazo de Entrega</label><input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} /></div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Status Pagamento</label>
+          <select className="form-select" value={f.pagamento} onChange={u('pagamento')}>
+            {['Pendente', 'Parcial (50%)', 'Pago'].map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
         <div className="form-group"><label className="form-label">NF emitida?</label>
           <select className="form-select" value={f.nf} onChange={u('nf')}>
-            <option value="nao">Não</option>
-            <option value="sim">Sim</option>
-            <option value="pendente">Pendente</option>
+            <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
           </select>
         </div>
       </div>
-      <div className="form-actions">
-        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveProjeto({ ...f, valor: parseFloat(f.valor) || 0 })}>Salvar</button>
+      <div className="form-actions" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <div></div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => {
+            if (!f.cliente || !f.descricao) return alert('Cliente e Nome do Projeto são obrigatórios.');
+            saveProjeto({ ...f, valor: parseFloat(f.valor) || 0 });
+          }}>Salvar</button>
+        </div>
       </div>
     </div>
   );
@@ -349,7 +454,8 @@ function RecorrenciaForm({ item }) {
     cliente: item?.cliente || '', valor: item?.valor || '',
     plano: item?.plano || '', periodicidade: item?.periodicidade || 'Mensal',
     status: item?.status || 'Ativo', vencimento: item?.vencimento || '',
-    renovacao: item?.renovacao || '',
+    renovacao: item?.renovacao || '', dataInicio: item?.dataInicio || '',
+    metodoPagamento: item?.metodoPagamento || 'PIX', observacoes: item?.observacoes || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const isAnual = f.periodicidade === 'Anual';
@@ -412,14 +518,26 @@ function RecorrenciaForm({ item }) {
         {isAnual && (
           <div className="form-group"><label className="form-label">Data de Renovação</label><input className="form-input" type="date" value={f.renovacao} onChange={u('renovacao')} /></div>
         )}
+        <div className="form-group"><label className="form-label">Método de Cobrança</label>
+          <select className="form-select" value={f.metodoPagamento} onChange={u('metodoPagamento')}>
+            {['PIX', 'Boleto', 'Cartão', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
       </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
+      </div>
+      <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 50 }} value={f.observacoes} onChange={u('observacoes')} /></div>
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveRecorrencia({
-          ...f, valor: parseFloat(f.valor) || 0,
-          vencimento: !isAnual ? (parseInt(f.vencimento) || 1) : null,
-          renovacao: isAnual ? f.renovacao : null,
-        })}>Salvar</button>
+        <button className="btn btn-primary" onClick={() => {
+          if (!f.cliente || !f.plano) return alert('Cliente e Plano/Descrição são obrigatórios.');
+          saveRecorrencia({
+            ...f, valor: parseFloat(f.valor) || 0,
+            vencimento: !isAnual ? (parseInt(f.vencimento) || 1) : null,
+            renovacao: isAnual ? f.renovacao : null
+          });
+        }}>Salvar</button>
       </div>
     </div>
   );
@@ -439,12 +557,24 @@ function FinancaForm({ item, defaultTipo }) {
   const isReceita = tipo === 'Receita';
   const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasNegocioDespesa || []);
   const today = new Date().toISOString().split('T')[0];
+  const data = useDash(s => s.data);
   const [f, setF] = useState({
     data: item?.data || today, valor: item?.valor || '',
     descricao: item?.descricao || '', categoria: item?.categoria || cats[0] || '',
-    entidade: item?.entidade || '', nf: item?.nf || 'nao', observacoes: item?.observacoes || '',
+    entidade: item?.entidade || '', nf: item?.nf || 'nao',
+    nfNumero: item?.nfNumero || '', formaPagamento: item?.formaPagamento || 'PIX',
+    projetoId: item?.projetoId || '', observacoes: item?.observacoes || '',
+    parcelado: false, totalParcelas: 2
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  const handleSave = () => {
+    if (!f.descricao) return alert('A descrição é obrigatória.');
+    if (f.parcelado && isReceita) {
+      useDash.getState().saveNegocioParcelado({ ...f, valor: parseFloat(f.valor) || 0 });
+    } else {
+      saveNegocio({ ...f, tipo, valor: parseFloat(f.valor) || 0 });
+    }
+  };
   return (
     <div className="form-grid">
       <div className="form-grid form-grid-2">
@@ -466,21 +596,56 @@ function FinancaForm({ item, defaultTipo }) {
             Gerenciar categorias →
           </div>
         </div>
-        <div className="form-group"><label className="form-label">Entidade (Cliente/Forn.)</label><input className="form-input" value={f.entidade} onChange={u('entidade')} /></div>
+        <div className="form-group">
+          <label className="form-label">Entidade (Cliente/Forn.)</label>
+          <input className="form-input" value={f.entidade} onChange={u('entidade')} list="entidades-list" placeholder="Nome do cliente ou fornecedor" />
+          <datalist id="entidades-list">
+            {(data?.clientes || []).map(c => <option key={c.id} value={c.nome} />)}
+          </datalist>
+        </div>
       </div>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">NF emitida?</label>
-          <select className="form-select" value={f.nf} onChange={u('nf')}>
-            <option value="nao">Não</option>
-            <option value="sim">Sim</option>
-            <option value="pendente">Pendente</option>
+        <div className="form-group"><label className="form-label">Forma de Pagamento</label>
+          <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
+            {['PIX', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
           </select>
         </div>
-        <div className="form-group"><label className="form-label">Observações</label><input className="form-input" value={f.observacoes} onChange={u('observacoes')} /></div>
+        <div className="form-group"><label className="form-label">NF emitida?</label>
+          <select className="form-select" value={f.nf} onChange={u('nf')}>
+            <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
+          </select>
+        </div>
       </div>
+      {f.nf === 'sim' && <div className="form-group"><label className="form-label">Número da NF</label><input className="form-input" value={f.nfNumero} onChange={u('nfNumero')} placeholder="Ex: 000123" /></div>}
+      {isReceita && <div className="form-group"><label className="form-label">Vincular a Projeto</label>
+        <select className="form-select" value={f.projetoId} onChange={u('projetoId')}>
+          <option value="">-- Nenhum --</option>
+          {(data?.projetos || []).map(p => <option key={p.id} value={p.id}>{p.descricao || p.cliente}</option>)}
+        </select>
+      </div>}
+      <div className="form-group"><label className="form-label">Observações</label><input className="form-input" value={f.observacoes} onChange={u('observacoes')} /></div>
+      
+      {isReceita && !item && (
+        <div style={{ background: 'var(--bg3)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', marginTop: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+            <input type="checkbox" checked={f.parcelado} onChange={e => setF(p => ({ ...p, parcelado: e.target.checked }))} />
+            Lançar como Receita Parcelada?
+          </label>
+          {f.parcelado && (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)' }}>Número de Parcelas:</div>
+              <NumberStepper value={f.totalParcelas} onChange={v => setF(p => ({ ...p, totalParcelas: v }))} min={2} max={48} className="form-input" style={{ width: 100 }} />
+              <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                Cada parcela: {fmtBRL((parseFloat(f.valor) || 0) / (f.totalParcelas || 1))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => saveNegocio({ ...f, tipo, valor: parseFloat(f.valor) || 0 })}>Salvar</button>
+        <button className="btn btn-primary" onClick={handleSave}>Salvar</button>
       </div>
     </div>
   );
@@ -880,6 +1045,117 @@ function ChangePasswordForm() {
               <div className="spinner-small" /> Processando...
             </div>
           ) : 'Atualizar Senha'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── PARCELA FORM (Receita Parcelada) ──
+function ParcelaForm() {
+  const configData = useDash(s => s.configData);
+  const saveNegocioParcelado = useDash(s => s.saveNegocioParcelado);
+  const closeModal = useDash(s => s.closeModal);
+  const data = useDash(s => s.data);
+  const today = new Date().toISOString().split('T')[0];
+  const [f, setF] = useState({
+    descricao: '', valor: '', totalParcelas: 2,
+    dataInicio: today, categoria: (configData.categoriasReceita || [])[0] || '',
+    entidade: '', nf: 'pendente', formaPagamento: 'PIX', projetoId: '', observacoes: '',
+  });
+  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  const valorParcela = f.valor && f.totalParcelas ? (parseFloat(f.valor) / parseInt(f.totalParcelas)).toFixed(2) : '0,00';
+  return (
+    <div className="form-grid">
+      <div className="form-group"><label className="form-label">Descrição *</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Site institucional" /></div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Valor Total (R$) *</label><input className="form-input" type="number" min="0" step="0.01" value={f.valor} onChange={u('valor')} placeholder="0,00" /></div>
+        <div className="form-group"><label className="form-label">Nº de Parcelas *</label><input className="form-input" type="number" min="2" max="60" value={f.totalParcelas} onChange={u('totalParcelas')} /></div>
+      </div>
+      {f.valor && f.totalParcelas && <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
+        {parseInt(f.totalParcelas)}x de R$ {parseFloat(valorParcela).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — lançamentos automáticos mensais
+      </div>}
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">1ª Parcela em *</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
+        <div className="form-group"><label className="form-label">Forma de Pagamento</label>
+          <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
+            {['PIX', 'Boleto', 'Cartão de Crédito', 'Transferência'].map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Categoria</label>
+          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
+            {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="form-group"><label className="form-label">Cliente</label><input className="form-input" value={f.entidade} onChange={u('entidade')} /></div>
+      </div>
+      <div className="form-group"><label className="form-label">Vincular a Projeto</label>
+        <select className="form-select" value={f.projetoId} onChange={u('projetoId')}>
+          <option value="">-- Nenhum --</option>
+          {(data?.projetos || []).map(p => <option key={p.id} value={p.id}>{p.descricao || p.cliente}</option>)}
+        </select>
+      </div>
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button className="btn btn-primary" onClick={() => saveNegocioParcelado(f)}>Lançar {f.totalParcelas} Parcelas</button>
+      </div>
+    </div>
+  );
+}
+
+// ── PAGAR RECORRÊNCIA FORM ──
+function PagarRecorrenciaForm({ recorrenciaId }) {
+  const configData = useDash(s => s.configData);
+  const data = useDash(s => s.data);
+  const registrarPagamentoRecorrencia = useDash(s => s.registrarPagamentoRecorrencia);
+  const closeModal = useDash(s => s.closeModal);
+  const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+  const today = new Date().toISOString().split('T')[0];
+  const [f, setF] = useState({
+    descricao: rec ? (rec.plano || `Recorrência ${rec.cliente}`) : '',
+    valor: rec?.valor || '', data: today,
+    nf: 'pendente', formaPagamento: 'PIX', observacoes: '',
+    referenciaMes: today.substring(0, 7),
+    categoria: (configData.categoriasReceita || [])[0] || 'Receita Recorrente',
+  });
+  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  if (!rec) return <div style={{ padding: 20, color: 'var(--text3)' }}>Recorrência não encontrada.</div>;
+  return (
+    <div className="form-grid">
+      <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px', fontSize: 13 }}>
+        <strong>{rec.cliente}</strong> — {rec.plano} — <span style={{ color: 'var(--accent)', fontWeight: 700 }}>R$ {parseFloat(rec.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Data do Pagamento</label><input className="form-input" type="date" value={f.data} onChange={u('data')} /></div>
+        <div className="form-group"><label className="form-label">Referência (Mês)</label><input className="form-input" type="month" value={f.referenciaMes} onChange={u('referenciaMes')} /></div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Valor Recebido (R$)</label><input className="form-input" type="number" min="0" step="0.01" value={f.valor} onChange={u('valor')} /></div>
+        <div className="form-group"><label className="form-label">Forma de Pagamento</label>
+          <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
+            {['PIX', 'Boleto', 'Cartão', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">NF</label>
+          <select className="form-select" value={f.nf} onChange={u('nf')}>
+            <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
+          </select>
+        </div>
+        <div className="form-group"><label className="form-label">Categoria</label>
+          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
+            {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="form-group"><label className="form-label">Observações</label><input className="form-input" value={f.observacoes} onChange={u('observacoes')} placeholder="Opcional" /></div>
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button className="btn btn-primary" onClick={() => registrarPagamentoRecorrencia(recorrenciaId, { ...f, valor: parseFloat(f.valor) || 0 })}>
+          Registrar Pagamento → Finanças
         </button>
       </div>
     </div>

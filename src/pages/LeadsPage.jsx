@@ -51,7 +51,9 @@ export default function LeadsPage() {
   const toggleSelect = useDash(s => s.toggleSelect);
   const selectAll = useDash(s => s.selectAll);
   const importLeadsCSV = useDash(s => s.importLeadsCSV);
+  const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
 
+  const [viewMode, setViewMode] = useState('list');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [nicho, setNicho] = useState('');
@@ -66,7 +68,7 @@ export default function LeadsPage() {
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
   
-  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, paginated, totalItems, totalPages, safePage } = useMemo(() => {
+  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
     const leads = data.leads;
     const totals = {
       totalLeadsAbordados: leads.filter(l => l.status === 'Abordado').length,
@@ -219,6 +221,14 @@ export default function LeadsPage() {
           ))}
         </div>
         <div className="page-actions">
+          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', marginRight: 8 }}>
+            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Visualização em Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+          </div>
           <button className="btn btn-secondary" onClick={() => openModal('csvInfo')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Importar CSV
@@ -255,27 +265,29 @@ export default function LeadsPage() {
           <option value="nomeZa">Nome Z-A</option>
           <option value="modificadoDesc">Últ. modificação</option>
         </select>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
-          {PAGE_SIZE_OPTIONS.map((item) => (
-            <button
-              key={item}
-              className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => { setPageSize(item); setPage(1); }}
-            >
-              {item}
-            </button>
-          ))}
-          <NumberStepper
-            min={1}
-            value={pageSize}
-            onChange={updatePageSize}
-            className="filter-input filter-input-sm"
-            wrapperClass="number-stepper-sm"
-            style={{ width: 80 }}
-            title="Quantidade de leads por página"
-          />
-        </div>
+        {viewMode === 'list' && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
+            {PAGE_SIZE_OPTIONS.map((item) => (
+              <button
+                key={item}
+                className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setPageSize(item); setPage(1); }}
+              >
+                {item}
+              </button>
+            ))}
+            <NumberStepper
+              min={1}
+              value={pageSize}
+              onChange={updatePageSize}
+              className="filter-input filter-input-sm"
+              wrapperClass="number-stepper-sm"
+              style={{ width: 80 }}
+              title="Quantidade de leads por página"
+            />
+          </div>
+        )}
       </div>
 
       {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
@@ -364,23 +376,130 @@ export default function LeadsPage() {
             <option value="modificadoDesc">Últ. modificação</option>
           </select>
         </div>
-        <div className="mobile-filter-group">
-          <label className="mobile-filter-label">Leads por página</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {PAGE_SIZE_OPTIONS.map((item) => (
-              <button
-                key={item}
-                className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1 }}
-                onClick={() => { setPageSize(item); setPage(1); }}
-              >
-                {item}
-              </button>
-            ))}
+        {viewMode === 'list' && (
+          <div className="mobile-filter-group">
+            <label className="mobile-filter-label">Leads por página</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {PAGE_SIZE_OPTIONS.map((item) => (
+                <button
+                  key={item}
+                  className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1 }}
+                  onClick={() => { setPageSize(item); setPage(1); }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </MobileFilterSheet>
 
+      {viewMode === 'kanban' ? (
+        <div 
+          className="kanban-board" 
+          onMouseDown={(e) => {
+            const el = e.currentTarget;
+            if (e.target.closest('.card-in')) return;
+            el.dataset.grabbing = 'true';
+            el.dataset.startX = e.pageX - el.offsetLeft;
+            el.dataset.scrollLeft = el.scrollLeft;
+            el.style.cursor = 'grabbing';
+          }}
+          onMouseMove={(e) => {
+            const el = e.currentTarget;
+            if (el.dataset.grabbing !== 'true') return;
+            e.preventDefault();
+            const x = e.pageX - el.offsetLeft;
+            const walk = (x - parseFloat(el.dataset.startX)) * 1.5;
+            el.scrollLeft = parseFloat(el.dataset.scrollLeft) - walk;
+          }}
+          onMouseUp={(e) => {
+            const el = e.currentTarget;
+            el.dataset.grabbing = 'false';
+            el.style.cursor = 'auto';
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget;
+            el.dataset.grabbing = 'false';
+            el.style.cursor = 'auto';
+          }}
+          style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, marginTop: 16, minHeight: 400, userSelect: 'none' }}
+        >
+          {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(colStatus => {
+            const colLeads = list.filter(l => (l.status || 'Novo') === colStatus);
+            return (
+              <div 
+                key={colStatus} 
+                className="kanban-col"
+                onDragOver={e => e.preventDefault()}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  const leadId = e.dataTransfer.getData('leadId');
+                  if (!leadId) return;
+                  await useDash.getState().saveLead({ id: leadId, status: colStatus });
+                }}
+                style={{ minWidth: 280, maxWidth: 280, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600, fontSize: 14 }}>
+                  <span>{colStatus}</span>
+                  <span style={{ background: 'var(--bg3)', padding: '2px 8px', borderRadius: 12, fontSize: 12, color: 'var(--text3)' }}>{colLeads.length}</span>
+                </div>
+                <div className="kanban-cards-list" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', paddingRight: 4, minHeight: 200 }}>
+                  {!colLeads.length ? <div style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0', border: '1px dashed var(--border)', borderRadius: 8 }}>Solte aqui</div> : colLeads.map(l => (
+                    <div 
+                      key={l.id} 
+                      className="card-in" 
+                      draggable 
+                      onDragStart={e => {
+                        e.dataTransfer.setData('leadId', l.id);
+                        e.currentTarget.style.opacity = '0.5';
+                      }}
+                      onDragEnd={e => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      style={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'grab' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ fontWeight: 500, cursor: 'pointer' }} onClick={() => openModal('lead', l.id)}>{l.nome || '-'}</div>
+                      </div>
+                      {l.nicho && <div style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', alignSelf: 'flex-start', padding: '2px 6px', borderRadius: 4 }}>{l.nicho}</div>}
+                      {l.valorEstimado && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--green)' }}>R$ {parseFloat(l.valorEstimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>}
+                      {(() => {
+                        if (!l.ultimoContato) return null;
+                        const d = new Date(l.ultimoContato + 'T12:00:00');
+                        const dias = Math.floor((new Date() - d) / (1000 * 3600 * 24));
+                        if (dias > 5 && (l.status === 'Em negociação' || l.status === 'Follow-up')) {
+                          return <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 600, background: 'var(--red-bg)', padding: '2px 6px', borderRadius: 4, alignSelf: 'flex-start' }}>Sem contato há {dias} dias</div>;
+                        }
+                        return null;
+                      })()}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{l.telefone || '-'}</span>
+                          {l.telefone && l.telefone.replace(/\D/g, '').length >= 10 && (
+                            <a href={`https://wa.me/55${l.telefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: '#25D366' }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            </a>
+                          )}
+                        </div>
+                        <div className="row-actions">
+                          {l.status === 'Fechado' && (
+                            <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                            </button>
+                          )}
+                          <button className="row-btn" onClick={() => openModal('lead', l.id)} title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div className="table-wrap">
         <table>
           <colgroup>
@@ -405,7 +524,7 @@ export default function LeadsPage() {
               <th onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</th>
               <th onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</th>
               <th onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</th>
-              <th onClick={() => handleColumnSort('site')}>Site {sortIndicator('site')}</th>
+              <th onClick={() => handleColumnSort('ultimoContato')}>Contatos {sortIndicator('ultimoContato')}</th>
               <th onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</th>
               <th onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</th>
               <th></th>
@@ -427,19 +546,48 @@ export default function LeadsPage() {
                       {l.nome || '-'}
                     </span>
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}><CopyCell text={l.telefone} /></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CopyCell text={l.telefone} />
+                      {l.telefone && l.telefone.replace(/\D/g, '').length >= 10 && (
+                        <a href={`https://wa.me/55${l.telefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </a>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ maxWidth: 120 }}>
                     <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '100%' }}>
                       {l.nicho || '-'}
                     </span>
                   </td>
-                  <td style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {l.site ? <a href={l.site} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontSize: 12, textDecoration: 'none' }}>{l.site}</a> : '-'}
+                  <td style={{ maxWidth: 140 }}>
+                    {(() => {
+                      const dias = l.ultimoContato ? Math.floor((new Date() - new Date(l.ultimoContato + 'T12:00:00')) / (1000 * 3600 * 24)) : null;
+                      const warn = dias !== null && dias > 5 && (l.status === 'Em negociação' || l.status === 'Follow-up');
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {l.ultimoContato ? (
+                            <div style={{ fontSize: 11, color: warn ? 'var(--red)' : 'var(--text3)', fontWeight: warn ? 600 : 400 }}>
+                              Últ: {l.ultimoContato.split('-').reverse().join('/')} {warn && `(+${dias}d)`}
+                            </div>
+                          ) : <div style={{ fontSize: 11, color: 'var(--text3)' }}>Últ: -</div>}
+                          {l.proximoContato && (
+                            <div style={{ fontSize: 11, color: 'var(--text)' }}>
+                              Próx: {l.proximoContato.split('-').reverse().join('/')}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td><Badge status={l.status || 'Novo'} /></td>
                   <td style={{ maxWidth: 170 }}><div className="lead-qual" title={l.observacoes || ''}>{l.observacoes || '-'}</div></td>
                   <td>
                     <div className="row-actions">
+                      <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                      </button>
                       <button className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                       </button>
@@ -457,8 +605,9 @@ export default function LeadsPage() {
           </tbody>
         </table>
       </div>
+      )}
 
-      {totalPages > 1 && (
+      {viewMode === 'list' && totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '0 4px', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--sans)' }}>
             {((safePage - 1) * resolvedPageSize) + 1}–{Math.min(safePage * resolvedPageSize, totalItems)} de {totalItems.toLocaleString('pt-BR')} leads

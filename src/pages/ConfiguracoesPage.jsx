@@ -4,6 +4,7 @@ import { setDoc } from '../firebase';
 import { Badge, EmptyState, NumberStepper } from '../components/shared';
 import nonProfilePhoto from '../assets/non-profile-photo.png';
 import LegalModals from '../components/LegalModals';
+import { generateOrcamentoPDF } from '../components/PDFGenerator';
 import AdminPanel from './AdminPanel';
 
 export default function ConfiguracoesPage() {
@@ -55,6 +56,7 @@ export default function ConfiguracoesPage() {
   const showConfirm = useDash(s => s.showConfirm);
   const userRole = useDash(s => s.userRole);
   const isAdmin = userRole === 'admin';
+  const saveEmpresaData = useDash(s => s.saveEmpresaData);
 
   const [nichoInput, setNichoInput] = useState('');
   const [catInput, setCatInput] = useState('');
@@ -79,6 +81,19 @@ export default function ConfiguracoesPage() {
   const [tempCcVenc, setTempCcVenc] = useState(configData.cartaoVenc || 1);
   const [tempNotifEnabled, setTempNotifEnabled] = useState(configData.notifEnabled !== false);
   const [tempLancarDespesasAuto, setTempLancarDespesasAuto] = useState(configData.lancarDespesasAuto || false);
+  const [tempEmpresa, setTempEmpresa] = useState({
+    nomeEmpresa: configData.nomeEmpresa || '',
+    cnpj: configData.cnpj || '',
+    responsavel: configData.responsavel || '',
+    emailEmpresa: configData.emailEmpresa || '',
+    telefoneEmpresa: configData.telefoneEmpresa || '',
+    cidade: configData.cidade || '',
+    estado: configData.estado || '',
+    site: configData.site || ''
+  });
+  const [showPropostaModal, setShowPropostaModal] = useState(false);
+  const [propostaData, setPropostaData] = useState({ cliente: '', clienteDoc: '', descricao: '', tipoProjeto: '', prazo: '', valor: '', observacoes: '' });
+  
   const [legalModal, setLegalModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -104,6 +119,19 @@ export default function ConfiguracoesPage() {
     setTempLancarDespesasAuto(configData.lancarDespesasAuto || false);
   }, [configData.lancarDespesasAuto]);
 
+  useEffect(() => {
+    setTempEmpresa({
+      nomeEmpresa: configData.nomeEmpresa || '',
+      cnpj: configData.cnpj || '',
+      responsavel: configData.responsavel || '',
+      emailEmpresa: configData.emailEmpresa || '',
+      telefoneEmpresa: configData.telefoneEmpresa || '',
+      cidade: configData.cidade || '',
+      estado: configData.estado || '',
+      site: configData.site || ''
+    });
+  }, [configData.nomeEmpresa, configData.cnpj, configData.responsavel, configData.emailEmpresa, configData.telefoneEmpresa, configData.cidade, configData.estado, configData.site]);
+
   const hasChanges = useMemo(() => {
     const nameChanged = tempName !== (profile.name || '');
     const modulesChanged = JSON.stringify(tempModules) !== JSON.stringify(configData.modules || {});
@@ -111,8 +139,9 @@ export default function ConfiguracoesPage() {
     const ccVencChanged = tempCcVenc !== (configData.cartaoVenc || 1);
     const notifEnabledChanged = tempNotifEnabled !== (configData.notifEnabled !== false);
     const autoChanged = tempLancarDespesasAuto !== (configData.lancarDespesasAuto || false);
-    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || autoChanged;
-  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempLancarDespesasAuto, profile, configData]);
+    const empresaChanged = Object.keys(tempEmpresa).some(k => tempEmpresa[k] !== (configData[k] || ''));
+    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || autoChanged || empresaChanged;
+  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempLancarDespesasAuto, tempEmpresa, profile, configData]);
 
   const handleSaveAll = async () => {
     setIsSaving(true);
@@ -130,6 +159,12 @@ export default function ConfiguracoesPage() {
         await setDoc(uDoc('settings', 'main'), { lancarDespesasAuto: tempLancarDespesasAuto }, { merge: true });
         useDash.setState(s => ({ configData: { ...s.configData, lancarDespesasAuto: tempLancarDespesasAuto } }));
       }
+      
+      const empresaChanged = Object.keys(tempEmpresa).some(k => tempEmpresa[k] !== (configData[k] || ''));
+      if (empresaChanged) {
+        await saveEmpresaData(tempEmpresa);
+      }
+
       toast('Todas as alterações foram salvas!');
     } catch (e) {
       toast('Erro ao salvar algumas alterações.', 'error');
@@ -145,6 +180,16 @@ export default function ConfiguracoesPage() {
     setTempCcVenc(configData.cartaoVenc || 1);
     setTempNotifEnabled(configData.notifEnabled !== false);
     setTempLancarDespesasAuto(configData.lancarDespesasAuto || false);
+    setTempEmpresa({
+      nomeEmpresa: configData.nomeEmpresa || '',
+      cnpj: configData.cnpj || '',
+      responsavel: configData.responsavel || '',
+      emailEmpresa: configData.emailEmpresa || '',
+      telefoneEmpresa: configData.telefoneEmpresa || '',
+      cidade: configData.cidade || '',
+      estado: configData.estado || '',
+      site: configData.site || ''
+    });
   };
 
   const TABS = [
@@ -152,6 +197,7 @@ export default function ConfiguracoesPage() {
     { id: 'cfg-prefs', label: 'Preferências', icon: <path d="M12 20V10M18 20V4M6 20v-4M4 16h4M16 4h4M10 10h4" /> },
     { id: 'cfg-negocios', label: 'Negócios', icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></> },
     { id: 'cfg-financas', label: 'Finanças', icon: <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /> },
+    { id: 'cfg-empresa', label: 'Minha Empresa', icon: <path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" /> },
     { id: 'cfg-notificacoes', label: 'Notificações', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></> },
     { id: 'cfg-dados', label: 'Sistema & Dados', icon: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /> },
     { id: 'cfg-seguranca', label: 'Segurança', icon: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></> },
@@ -288,9 +334,8 @@ export default function ConfiguracoesPage() {
                   ) : (
                     <img src={nonProfilePhoto} alt="Avatar" style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover', background: 'var(--bg3)' }} />
                   )}
-                </div>
               </div>
-
+            </div>
               <div className="settings-row">
                 <div className="settings-row-info" style={{ flex: 1 }}>
                   <div className="settings-row-title">Nome de Exibição</div>
@@ -455,6 +500,42 @@ export default function ConfiguracoesPage() {
                   {nichos.map((n, i) => (
                     <span key={i} style={tagStyle}>{n} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delNicho(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                   ))}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24 }}>
+                <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 16 }}>Configurações da Empresa</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, maxWidth: 650, marginBottom: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label">Tipo de Empresa</label>
+                    <select className="form-select" value={configData.tipoEmpresa || 'MEI'} onChange={async e => {
+                      const tipo = e.target.value;
+                      const limites = { 'MEI': 81000, 'MEI-Caminhoneiro': 251600, 'ME': 360000, 'EPP': 4800000, 'Outro': configData.limiteAnual || 81000 };
+                      const aliquotas = { 'MEI': 0, 'MEI-Caminhoneiro': 0, 'ME': 6, 'EPP': 6, 'Outro': configData.aliquotaImposto || 0 };
+                      await useDash.getState().saveBusinessConfig({ tipoEmpresa: tipo, limiteAnual: limites[tipo] || configData.limiteAnual || 81000, aliquotaImposto: aliquotas[tipo] || 0 });
+                    }}>
+                      <option value="MEI">MEI (R$ 81.000/ano)</option>
+                      <option value="MEI-Caminhoneiro">MEI Caminhoneiro (R$ 251.600/ano)</option>
+                      <option value="ME">ME (R$ 360.000/ano)</option>
+                      <option value="EPP">EPP (R$ 4.800.000/ano)</option>
+                      <option value="Outro">Personalizado</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Limite Anual (R$)</label>
+                    <input type="number" className="form-input" value={configData.limiteAnual || 81000} min="0" step="1000"
+                      onBlur={async e => await useDash.getState().saveBusinessConfig({ limiteAnual: parseFloat(e.target.value) || 81000 })}
+                      onChange={e => useDash.setState(s => ({ configData: { ...s.configData, limiteAnual: parseFloat(e.target.value) || 0 } }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Alíquota de Imposto (%)</label>
+                    <input type="number" className="form-input" value={configData.aliquotaImposto || 0} min="0" max="100" step="0.1"
+                      onBlur={async e => await useDash.getState().saveBusinessConfig({ aliquotaImposto: parseFloat(e.target.value) || 0 })}
+                      onChange={e => useDash.setState(s => ({ configData: { ...s.configData, aliquotaImposto: parseFloat(e.target.value) || 0 } }))}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Para cálc. Receita Líquida</div>
+                  </div>
                 </div>
               </div>
 
@@ -630,6 +711,104 @@ export default function ConfiguracoesPage() {
                       <span key={i} style={tagStyle}>{c} <span style={{ color: 'var(--red)', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} onClick={() => delCatReceita(i)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M18 6 6 18M6 6l12 12" /></svg></span></span>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === MINHA EMPRESA === */}
+          {activeTab === 'cfg-empresa' && (
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-title">Minha Empresa</div>
+                <div className="settings-card-desc">Configure os dados públicos e de identificação da sua empresa para emissão de PDFs (Propostas, Recibos).</div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                <div className="form-group">
+                  <label className="form-label">Nome da Empresa / Fantasia</label>
+                  <input type="text" className="form-input" value={tempEmpresa.nomeEmpresa} onChange={e => setTempEmpresa({ ...tempEmpresa, nomeEmpresa: e.target.value })} placeholder="Ex: Maieski Corp" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">CNPJ / CPF</label>
+                  <input type="text" className="form-input" value={tempEmpresa.cnpj} onChange={e => setTempEmpresa({ ...tempEmpresa, cnpj: e.target.value })} placeholder="00.000.000/0001-00" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nome do Responsável / Assinatura</label>
+                  <input type="text" className="form-input" value={tempEmpresa.responsavel} onChange={e => setTempEmpresa({ ...tempEmpresa, responsavel: e.target.value })} placeholder="João Silva" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">E-mail Profissional</label>
+                  <input type="text" className="form-input" value={tempEmpresa.emailEmpresa} onChange={e => setTempEmpresa({ ...tempEmpresa, emailEmpresa: e.target.value })} placeholder="contato@empresa.com" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Telefone / WhatsApp</label>
+                  <input type="text" className="form-input" value={tempEmpresa.telefoneEmpresa} onChange={e => setTempEmpresa({ ...tempEmpresa, telefoneEmpresa: e.target.value })} placeholder="(11) 99999-9999" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Site / Link principal</label>
+                  <input type="text" className="form-input" value={tempEmpresa.site} onChange={e => setTempEmpresa({ ...tempEmpresa, site: e.target.value })} placeholder="www.empresa.com" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Cidade</label>
+                  <input type="text" className="form-input" value={tempEmpresa.cidade} onChange={e => setTempEmpresa({ ...tempEmpresa, cidade: e.target.value })} placeholder="São Paulo" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Estado</label>
+                  <input type="text" className="form-input" value={tempEmpresa.estado} onChange={e => setTempEmpresa({ ...tempEmpresa, estado: e.target.value })} placeholder="SP" />
+                </div>
+              </div>
+
+              <div className="settings-row" style={{ alignItems: 'center', marginBottom: 24, padding: '20px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                <div className="settings-row-info">
+                  <div className="settings-row-title">Logo da Empresa (Para PDFs)</div>
+                  <div className="settings-row-desc">Logo usada nos cabeçalhos de orçamentos e recibos (Máx 200kb).</div>
+                  <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => document.getElementById('config-logo-upload').click()}>Fazer Upload</button>
+                    {configData.pdfLogo && (
+                      <button className="btn btn-sm btn-secondary" style={{ color: 'var(--red)', borderColor: 'rgba(255,0,0,0.2)' }} onClick={() => saveEmpresaData({ pdfLogo: null })}>Remover</button>
+                    )}
+                    <input 
+                      id="config-logo-upload" type="file" style={{ display: 'none' }} accept=".png,.jpg,.jpeg,.webp"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        if (file.size > 200 * 1024) return toast('Arquivo muito grande! Máximo 200kb.', 'error');
+                        
+                        const reader = new FileReader();
+                        reader.onload = async (event) => {
+                          try {
+                            const base64 = event.target.result;
+                            await saveEmpresaData({ pdfLogo: base64 });
+                            toast('Logo atualizada!');
+                          } catch (err) {
+                            toast('Erro ao salvar logo.', 'error');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  {configData.pdfLogo ? (
+                    <img src={configData.pdfLogo} alt="Logo PDF" style={{ height: 60, maxWidth: 200, border: '1px solid var(--border)', objectFit: 'contain', background: 'white', padding: 4, borderRadius: 4 }} />
+                  ) : (
+                    <div style={{ height: 60, width: 140, border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text3)', borderRadius: 4 }}>Sem Logo</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ paddingTop: 0 }}>
+                <div className="settings-row" style={{ alignItems: 'center' }}>
+                  <div className="settings-row-info">
+                    <div className="settings-row-title">Gerador de Proposta / Orçamento</div>
+                    <div className="settings-row-desc">Crie um PDF profissional para apresentar orçamentos a clientes.</div>
+                  </div>
+                  <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => setShowPropostaModal(true)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                    Nova Proposta
+                  </button>
                 </div>
               </div>
             </div>
@@ -895,6 +1074,54 @@ export default function ConfiguracoesPage() {
         type={legalModal} 
         onClose={() => setLegalModal(null)} 
       />
+      {/* PROPOSTA MODAL */}
+      {showPropostaModal && (
+        <div className="pv-overlay open" style={{ zIndex: 9999 }}>
+          <div className="pv-modal" style={{ maxWidth: 600 }}>
+            <div className="pv-head">
+              <div className="pv-head-info">
+                <div className="pv-title">Gerar Proposta Comercial</div>
+                <div className="pv-subtitle">Preencha os dados abaixo para gerar um PDF com os dados da sua empresa.</div>
+              </div>
+              <button className="pv-close-btn" onClick={() => setShowPropostaModal(false)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="pv-body">
+              <div className="form-group"><label className="form-label">Cliente / Razão Social</label><input type="text" className="form-input" value={propostaData.cliente} onChange={e => setPropostaData({ ...propostaData, cliente: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">CNPJ/CPF do Cliente (Opcional)</label><input type="text" className="form-input" value={propostaData.clienteDoc} onChange={e => setPropostaData({ ...propostaData, clienteDoc: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Título do Serviço / Projeto</label><input type="text" className="form-input" value={propostaData.descricao} onChange={e => setPropostaData({ ...propostaData, descricao: e.target.value })} /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Valor do Projeto (R$)</label>
+                  <NumberStepper 
+                    value={propostaData.valor} 
+                    onChange={val => setPropostaData({ ...propostaData, valor: val })} 
+                    min={0}
+                    step={50}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Prazo Estimado (Intervalo)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Ex: 15 a 20 dias úteis"
+                    value={propostaData.prazo} 
+                    onChange={e => setPropostaData({ ...propostaData, prazo: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="form-group"><label className="form-label">Escopo / Anotações</label><textarea className="form-textarea" rows="4" value={propostaData.observacoes} onChange={e => setPropostaData({ ...propostaData, observacoes: e.target.value })} placeholder="Descreva os serviços inclusos..."></textarea></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                <button className="btn btn-secondary" onClick={() => setShowPropostaModal(false)}>Cancelar</button>
+                <button className="btn btn-primary" onClick={() => { generateOrcamentoPDF(propostaData, configData); setShowPropostaModal(false); }}>Baixar PDF</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

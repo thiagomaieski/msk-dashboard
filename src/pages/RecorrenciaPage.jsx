@@ -48,6 +48,19 @@ export default function RecorrenciaPage() {
     };
   }, [data.recorrencia, search, status, sort]);
 
+  const today = new Date();
+  const getProxVencimento = (r) => {
+    if (r.periodicidade === 'Anual' && r.renovacao) return new Date(r.renovacao + 'T12:00:00');
+    if (r.periodicidade === 'Mensal' && r.vencimento) {
+      const d = new Date(today.getFullYear(), today.getMonth(), parseInt(r.vencimento));
+      if (d < today) d.setMonth(d.getMonth() + 1);
+      return d;
+    }
+    return null;
+  };
+  const diffDays = (d) => d ? Math.ceil((d.getTime() - today.getTime()) / 86400000) : null;
+  const fmtVenc = (d) => d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+
   return (
     <div>
       <div className="page-header">
@@ -90,10 +103,8 @@ export default function RecorrenciaPage() {
         <table>
           <thead>
             <tr>
-              <th style={{ width: 30 }}>
-                <input type="checkbox" onChange={() => selectAll('recorrencia', allIds)} checked={selectedItems.length === list.length && list.length > 0} />
-              </th>
-              <th>Cliente</th><th>Plano / Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Observações</th><th></th>
+              <th style={{ width: 30 }}><input type="checkbox" onChange={() => selectAll('recorrencia', allIds)} checked={selectedItems.length === list.length && list.length > 0} /></th>
+              <th>Cliente</th><th>Plano / Descrição</th><th>Valor</th><th>Próx. Vencimento</th><th>Método</th><th>Status</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -104,12 +115,29 @@ export default function RecorrenciaPage() {
                 <td><span style={{ fontSize: 12 }}>{r.plano || '-'}</span></td>
                 <td style={{ fontFamily: 'var(--sans)', fontSize: 13 }}>{fmtBRL(r.valor)}</td>
                 <td style={{ fontSize: 13 }}>
-                  {r.periodicidade === 'Anual' ? `Renovação: ${r.renovacao || '-'}` : `Dia ${r.vencimento || '-'}`}
+                  {(() => {
+                    if (r.status !== 'Ativo') return <span style={{ color: 'var(--text3)' }}>—</span>;
+                    const vd = getProxVencimento(r);
+                    const diff = diffDays(vd);
+                    const urgent = diff !== null && diff <= 7;
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{fmtVenc(vd)}</span>
+                        {urgent && <span style={{ fontSize: 10, background: diff <= 0 ? 'var(--red-bg)' : 'var(--amber-bg, rgba(245,158,11,.15))', color: diff <= 0 ? 'var(--red)' : '#f59e0b', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>{diff <= 0 ? 'VENCEU' : `${diff}d`}</span>}
+                      </div>
+                    );
+                  })()}
                 </td>
+                <td><span style={{ fontSize: 11, color: 'var(--text3)' }}>{r.metodoPagamento || 'PIX'}</span></td>
                 <td><Badge status={r.status || 'Ativo'} /></td>
-                <td><span style={{ fontSize: 12 }}>{r.observacoes || '-'}</span></td>
                 <td>
                   <div className="row-actions">
+                    {r.status === 'Ativo' && (
+                      <button className="btn btn-sm btn-secondary" style={{ fontSize: 11, color: 'var(--green)', borderColor: 'var(--green-bg)' }} onClick={() => openModal('pagarRecorrencia', r.id)} title="Registrar Pagamento">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        Pagar
+                      </button>
+                    )}
                     <button className="row-btn" onClick={() => openModal('recorrencia', r.id)} title="Editar">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
                     </button>

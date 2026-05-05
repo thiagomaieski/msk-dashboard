@@ -6,14 +6,13 @@ export default function NotificationCenter({ onClose, toggleRef }) {
   const markAsRead = useDash(s => s.markAsRead);
   const markAllAsRead = useDash(s => s.markAllAsRead);
   const clearAllNotifications = useDash(s => s.clearAllNotifications);
+  const goTo = useDash(s => s.goTo);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        // Se houver um toggleRef e o clique for nele, deixe o toggle tratar
         if (toggleRef?.current && toggleRef.current.contains(event.target)) return;
-        
         onClose();
       }
     }
@@ -31,12 +30,29 @@ export default function NotificationCenter({ onClose, toggleRef }) {
     if (!dateStr) return '';
     const date = dateStr?.seconds ? new Date(dateStr.seconds * 1000) : new Date(dateStr);
     const seconds = Math.floor((new Date() - date) / 1000);
-    
     let interval = Math.floor(seconds / 3600);
     if (interval >= 1) return `${interval}h atrás`;
     interval = Math.floor(seconds / 60);
     if (interval >= 1) return `${interval}m atrás`;
     return 'Agora';
+  };
+
+  const handleNotifClick = (n) => {
+    if (!n.lida) markAsRead(n.id);
+    if (n.action?.page) {
+      goTo(n.action.page);
+      onClose();
+    }
+  };
+
+  // Page label for the "go to" arrow
+  const PAGE_LABELS = {
+    dashboard: 'Dashboard',
+    leads: 'Leads',
+    projetos: 'Projetos',
+    financas: 'Finanças',
+    recorrencia: 'Recorrência',
+    clientes: 'Clientes',
   };
 
   const PriorityIcon = ({ priority }) => {
@@ -61,7 +77,7 @@ export default function NotificationCenter({ onClose, toggleRef }) {
   return (
     <div className="notif-dropdown" ref={dropdownRef}>
       <div className="notif-header">
-        <h3>Notificações</h3>
+        <h3>Notificações {sortedNotifs.filter(n => !n.lida).length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 99, padding: '1px 7px', marginLeft: 6 }}>{sortedNotifs.filter(n => !n.lida).length}</span>}</h3>
         <button className="btn-icon" onClick={onClose} style={{ padding: 4 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -79,18 +95,29 @@ export default function NotificationCenter({ onClose, toggleRef }) {
           </div>
         ) : (
           sortedNotifs.map(n => (
-            <div 
-              key={n.id} 
+            <div
+              key={n.id}
               className={`notif-item ${!n.lida ? 'unread' : ''} ${n.priority || 'Baixa'}`}
-              onClick={() => !n.lida && markAsRead(n.id)}
+              onClick={() => handleNotifClick(n)}
+              style={{ cursor: n.action?.page ? 'pointer' : 'default' }}
             >
               <div className="notif-icon-wrap">
                 <PriorityIcon priority={n.priority} />
               </div>
-              <div className="notif-content">
+              <div className="notif-content" style={{ flex: 1, minWidth: 0 }}>
                 <div className="notif-title">{n.title}</div>
                 <div className="notif-msg">{n.message}</div>
-                <div className="notif-time">{timeAgo(n.criadoEm)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 }}>
+                  <div className="notif-time">{timeAgo(n.criadoEm)}</div>
+                  {n.action?.page && (
+                    <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                      {PAGE_LABELS[n.action.page] || n.action.page}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}>
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))

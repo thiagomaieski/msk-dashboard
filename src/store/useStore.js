@@ -18,6 +18,14 @@ let IS_REPORTING_AUTOMATIC_ERROR = false;
 export const fmtBRL = (v) => 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 export const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
 export const g = (id) => document.getElementById(id)?.value?.trim() || '';
+export const fmtDateISO = (d = new Date()) => {
+  const dt = typeof d === 'string' ? new Date(d + 'T12:00:00') : new Date(d);
+  return dt.toISOString().split('T')[0];
+};
+export const getCurrentMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+};
 
 // ── Admin ──
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
@@ -184,15 +192,8 @@ const normalizeImportedStatus = (value) => {
   return 'Novo';
 };
 
-const getCurrentMonthKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 const clampDay = (value) => Math.min(31, Math.max(1, parseInt(value, 10) || 1));
 const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDay(day)).padStart(2, '0')}`;
-const fmtDateISO = (date = new Date()) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
 
 export const useDash = create((set, get) => ({
   // ── State ──
@@ -204,7 +205,7 @@ export const useDash = create((set, get) => ({
   mockData: { ...EMPTY_DATA },
   demoMode: false,
 
-  configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false },
+  configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', cartoes: [], modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false, metaFaturamento: 0, tipoEmpresa: 'MEI', limiteAnual: 81000, pdfLogo: '', nomeEmpresa: '', cnpj: '', responsavel: '', emailEmpresa: '', telefoneEmpresa: '', cidade: '', estado: '', site: '' },
   isSyncingAutomations: false,
   userRole: 'user', // 'admin' | 'user'
   maintenanceMode: false,
@@ -222,6 +223,7 @@ export const useDash = create((set, get) => ({
   sessions: [],
   sessionUnsubscribe: null,
   roleUnsubscribe: null,
+  _firedReminders: new Set(),
 
   _refreshData: () => {
     const { realData, mockData, demoMode } = get();
@@ -468,6 +470,17 @@ export const useDash = create((set, get) => ({
       toast('Módulos atualizados');
     } catch (e) {
       toast('Erro ao atualizar: ' + e.message, 'error');
+    }
+  },
+
+  saveEmpresaData: async (empresaFields) => {
+    const { toast } = get();
+    try {
+      await setDoc(uDoc('settings', 'main'), empresaFields, { merge: true });
+      set(s => ({ configData: { ...s.configData, ...empresaFields } }));
+      toast('Dados da empresa salvos!');
+    } catch (e) {
+      toast('Erro ao salvar: ' + e.message, 'error');
     }
   },
 
@@ -855,7 +868,8 @@ export const useDash = create((set, get) => ({
       negocioReceita: 'negocio', negocioDespesa: 'negocio',
       pessoalReceita: 'pessoal', pessoalDespesa: 'pessoal',
       cliente: 'clientes', lembrete: 'lembretes', despesaFixa: 'despesasFixas',
-      verNota: 'lembretes'
+      verNota: 'lembretes', parcela: 'negocio', interacao: 'leads',
+      pagarRecorrencia: 'recorrencia',
     };
     const titles = {
       lead: id ? 'Editar Lead' : 'Novo Lead',
@@ -872,7 +886,12 @@ export const useDash = create((set, get) => ({
       csvProgress: 'Importando CSV...',
       verNota: 'Observações da Tarefa',
       changePassword: 'Alterar Senha de Acesso',
-      feedback: 'Feedback & Suporte'
+      feedback: 'Feedback & Suporte',
+      parcela: 'Nova Receita Parcelada',
+      interacao: 'Registrar Interação com Lead',
+      pagarRecorrencia: 'Registrar Pagamento',
+      gerarOrcamento: 'Gerar Orçamento / Proposta',
+      gerarRecibo: 'Gerar Recibo de Pagamento',
     };
 
     const colName = map[type];
@@ -983,14 +1002,19 @@ export const useDash = create((set, get) => ({
   // ── Generic Save ──
   saveGeneric: async (colName, payload, label) => {
     const { editingId, toast, closeModal } = get();
-    const id = editingId[colName];
+    const id = payload.id || editingId[colName];
     const { demoMode } = get();
     
+    // Remove id from payload to avoid saving it as a field in Firestore if desired, 
+    // but here we might need it for the updateDoc. Let's just use it and keep it clean.
+    const { id: _, ...payloadWithoutId } = payload;
+    const finalPayload = id ? payloadWithoutId : payload;
+
     // Check if we are editing a mock item
     const isEditingMock = id && (get().data[colName].find(x => x.id === id)?.isMock);
     const shouldTargetMock = isEditingMock || (!id && demoMode);
 
-    const local = { ...payload, modificadoEm: new Date().toISOString() };
+    const local = { ...finalPayload, modificadoEm: new Date().toISOString() };
 
     if (shouldTargetMock) {
       if (id) {
@@ -1023,13 +1047,14 @@ export const useDash = create((set, get) => ({
       }));
       get()._refreshData();
       closeModal();
-      updateDoc(uDoc(colName, id), payload).catch(e => toast('Sync Error: ' + e.message, 'error'));
+      updateDoc(uDoc(colName, id), finalPayload).catch(e => toast('Sync Error: ' + e.message, 'error'));
       
       // Cleanup notifications if marking a reminder as completed
       if (colName === 'lembretes' && payload.concluido) {
         get()._cleanupNotif(id);
       }
     } else {
+      if (!payload.nome && (colName === 'leads' || colName === 'clientes')) return toast('Nome obrigatório', 'error');
       local.criadoEm = new Date().toISOString();
       payload.criadoEm = serverTimestamp();
       const tempId = 'temp_' + Date.now();
@@ -1053,7 +1078,6 @@ export const useDash = create((set, get) => ({
 
   // ── Save Actions ──
   saveLead: async (fields) => {
-    if (!fields.nome) return get().toast('Nome obrigatório', 'error');
     await get().saveGeneric('leads', { ...fields, modificadoEm: serverTimestamp() }, 'Lead');
   },
   saveCliente: async (fields) => {
@@ -1090,6 +1114,287 @@ export const useDash = create((set, get) => ({
       modificadoEm: serverTimestamp()
     };
     await get().saveGeneric('lembretes', payload, 'Lembrete');
+  },
+
+  // ── Receita Parcelada ──
+  saveNegocioParcelado: async (fields) => {
+    const { toast, closeModal, _refreshData } = get();
+    try {
+      const { descricao, valor, totalParcelas, dataInicio, data, categoria, entidade, nf, formaPagamento, observacoes, projetoId } = fields;
+      const dateToUse = dataInicio || data;
+      
+      if (!descricao || !valor || !totalParcelas || !dateToUse) {
+        return toast('Descrição, Valor, Parcelas e Data são obrigatórios', 'error');
+      }
+
+      const total = parseFloat(valor) || 0;
+      const numParcelas = parseInt(totalParcelas, 10) || 1;
+      const valorParcela = Math.round((total / numParcelas) * 100) / 100;
+      const grupoId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      const newItems = [];
+      const promises = [];
+
+      for (let i = 0; i < numParcelas; i++) {
+        const d = new Date(dateToUse + 'T12:00:00');
+        d.setMonth(d.getMonth() + i);
+        const dataStr = fmtDateISO(d);
+        
+        const payload = {
+          tipo: 'Receita',
+          descricao: `${descricao} (${i + 1}/${numParcelas})`,
+          valor: i === numParcelas - 1 ? Math.round((total - valorParcela * (numParcelas - 1)) * 100) / 100 : valorParcela,
+          data: dataStr,
+          categoria: categoria || '',
+          entidade: entidade || '',
+          nf: nf || 'nao',
+          formaPagamento: formaPagamento || 'PIX',
+          observacoes: observacoes || '',
+          projetoId: projetoId || '',
+          parcelamento: { total: numParcelas, parcela: i + 1, valorTotal: total, grupoId },
+          modificadoEm: serverTimestamp(),
+          criadoEm: serverTimestamp(),
+        };
+
+        const tempId = `temp_parc_${Date.now()}_${i}`;
+        const local = { ...payload, id: tempId, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+        newItems.push(local);
+
+        promises.push(
+          addDoc(uCol('negocio'), payload).then(r => ({ tempId, realId: r.id }))
+        );
+      }
+
+      // Update local state once with all temporary items
+      set(s => ({
+        realData: {
+          ...s.realData,
+          negocio: [...newItems, ...s.realData.negocio]
+        }
+      }));
+      
+      _refreshData();
+      closeModal();
+      toast(`Iniciando lançamento de ${numParcelas} parcelas...`);
+
+      const syncResults = await Promise.all(promises);
+      
+      // Update temp IDs with real IDs after all insertions
+      set(s => {
+        let updatedNegocio = [...s.realData.negocio];
+        syncResults.forEach(({ tempId, realId }) => {
+          updatedNegocio = updatedNegocio.map(x => x.id === tempId ? { ...x, id: realId } : x);
+        });
+        return {
+          realData: { ...s.realData, negocio: updatedNegocio }
+        };
+      });
+
+      _refreshData();
+      toast(`${numParcelas} parcelas salvas com sucesso!`);
+    } catch (e) {
+      console.error('saveNegocioParcelado error:', e);
+      toast('Erro ao processar parcelamento: ' + e.message, 'error');
+    }
+  },
+
+  // ── Excluir Grupo de Parcelas ──
+  bulkDeleteParcelamento: async (grupoId) => {
+    const { data, showConfirm, toast } = get();
+    const grupo = data.negocio.filter(m => m.parcelamento?.grupoId === grupoId);
+    if (!grupo.length) return toast('Nenhuma parcela encontrada para este grupo.', 'error');
+    const confirmed = await showConfirm(
+      `Excluir todas as ${grupo.length} parcelas?`,
+      'Esta ação é irreversível. Todas as parcelas deste parcelamento serão movidas para a lixeira.',
+      true
+    );
+    if (!confirmed) return;
+    const now = new Date().toISOString();
+    // Soft delete each one
+    set(s => ({
+      realData: {
+        ...s.realData,
+        negocio: s.realData.negocio.map(m =>
+          m.parcelamento?.grupoId === grupoId ? { ...m, deletadoEm: now } : m
+        )
+      }
+    }));
+    get()._refreshData();
+    for (const m of grupo) {
+      updateDoc(uDoc('negocio', m.id), { deletadoEm: now }).catch(e => console.error('Bulk delete error:', e));
+    }
+    toast(`${grupo.length} parcela(s) excluída(s)!`);
+  },
+
+  // ── Registrar Pagamento de Recorrência ──
+  registrarPagamentoRecorrencia: async (recorrenciaId, fields) => {
+    const { data, toast, closeModal } = get();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+    const payload = {
+      tipo: 'Receita',
+      descricao: fields.descricao || (rec.plano || `Recorrência ${rec.cliente || ''}`).trim(),
+      valor: parseFloat(fields.valor) || rec.valor || 0,
+      data: fields.data || fmtDateISO(),
+      categoria: fields.categoria || 'Receita Recorrente',
+      entidade: rec.cliente || '',
+      nf: fields.nf || 'pendente',
+      formaPagamento: fields.formaPagamento || 'PIX',
+      observacoes: fields.observacoes || '',
+      origemAutomatica: 'recorrencia',
+      recorrenciaId,
+      referenciaMes: fields.referenciaMes || getCurrentMonthKey(),
+      modificadoEm: serverTimestamp(),
+      criadoEm: serverTimestamp(),
+    };
+    const local = { ...payload, id: 'temp_' + Date.now(), criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+    set(s => ({ realData: { ...s.realData, negocio: [local, ...s.realData.negocio] } }));
+    get()._refreshData();
+    closeModal();
+    toast('Pagamento registrado em Finanças Negócio!');
+    addDoc(uCol('negocio'), payload).then(r => {
+      set(s => ({ realData: { ...s.realData, negocio: s.realData.negocio.map(x => x.id === local.id ? { ...x, id: r.id } : x) } }));
+      get()._refreshData();
+    }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+
+    if (rec.periodicidade === 'Anual' && rec.renovacao) {
+      const parts = rec.renovacao.split('-');
+      if (parts.length === 3) {
+        const nextYear = parseInt(parts[0], 10) + 1;
+        const newRenovacao = `${nextYear}-${parts[1]}-${parts[2]}`;
+        updateDoc(uDoc('recorrencia', recorrenciaId), { renovacao: newRenovacao, modificadoEm: serverTimestamp() }).catch(() => {});
+        set(s => ({
+          realData: {
+            ...s.realData,
+            recorrencia: s.realData.recorrencia.map(x => x.id === recorrenciaId ? { ...x, renovacao: newRenovacao } : x)
+          }
+        }));
+      }
+    }
+  },
+
+  // ── Duplicar Projeto ──
+  duplicarProjeto: async (projetoId) => {
+    const { data, toast } = get();
+    const original = data.projetos.find(p => p.id === projetoId);
+    if (!original) return;
+    const { id, criadoEm, modificadoEm, tarefas, arquivos, ...rest } = original;
+    const payload = {
+      ...rest,
+      descricao: `(Cópia) ${rest.descricao || ''}`,
+      status: 'Em andamento',
+      pagamento: 'Pendente',
+      tarefas: [],
+      arquivos: [],
+      modificadoEm: serverTimestamp(),
+      criadoEm: serverTimestamp(),
+    };
+    const local = { ...payload, id: 'temp_dup_' + Date.now(), criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+    set(s => ({ realData: { ...s.realData, projetos: [local, ...s.realData.projetos] } }));
+    get()._refreshData();
+    toast('Projeto duplicado!');
+    addDoc(uCol('projetos'), payload).then(r => {
+      set(s => ({ realData: { ...s.realData, projetos: s.realData.projetos.map(x => x.id === local.id ? { ...x, id: r.id } : x) } }));
+      get()._refreshData();
+    }).catch(e => toast('Sync: ' + e.message, 'error'));
+  },
+
+  // ── Converter Lead em Cliente ──
+  convertLeadToCliente: async (leadId) => {
+    const { data, toast, saveCliente, goTo, showConfirm } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    if (!await showConfirm('Converter lead em cliente?', `"${lead.nome}" será adicionado ao diretório de clientes.`, false)) return;
+    await saveCliente({
+      nome: lead.nome || '',
+      telefone: lead.telefone || '',
+      email: lead.email || '',
+      site: lead.site || '',
+      segmento: lead.nicho || '',
+      conheceu: 'Indicação',
+      instagram: '', facebook: '', youtube: '', linkCustom: '',
+      cpfCnpj: '',
+    });
+    // Atualizar status do lead para Fechado
+    const isMock = leadId.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
+      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', modificadoEm: serverTimestamp() }).catch(e => console.error(e));
+    }
+    get()._refreshData();
+    toast(`${lead.nome} convertido para cliente!`);
+  },
+
+  // ── Registrar Interação com Lead ──
+  addLeadInteracao: async (leadId, interacao) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const interacoes = [...(lead.interacoes || []), {
+      data: fmtDateISO(),
+      texto: interacao.texto || '',
+      tipo: interacao.tipo || 'Contato',
+      criadoEm: new Date().toISOString(),
+    }];
+    const isMock = leadId.toString().startsWith('m-');
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
+      updateDoc(uDoc('leads', leadId), { interacoes, modificadoEm: serverTimestamp() }).catch(e => console.error(e));
+    }
+    get()._refreshData();
+    toast('Interação registrada!');
+  },
+
+  // ── Exportar CSV Finanças ──
+  exportFinancasCSV: (colName, list, filename) => {
+    if (!list.length) return get().toast('Nenhum dado para exportar', 'error');
+    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Entidade/Cliente', 'Valor', 'NF', 'Forma Pagamento', 'Observações'];
+    const rows = list.map(m => [
+      m.data || '',
+      m.tipo || '',
+      m.descricao || '',
+      m.categoria || '',
+      m.entidade || '',
+      String(m.valor || 0).replace('.', ','),
+      m.nf || '',
+      m.formaPagamento || '',
+      m.observacoes || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || `financas_${fmtDateISO()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    get().toast('CSV exportado!');
+  },
+
+  // ── Salvar Configurações de Negócio ──
+  saveBusinessConfig: async (fields) => {
+    const { toast } = get();
+    try {
+      await setDoc(uDoc('settings', 'main'), fields, { merge: true });
+      set(s => ({ configData: { ...s.configData, ...fields } }));
+      toast('Configurações salvas!');
+    } catch(e) {
+      toast('Erro ao salvar: ' + e.message, 'error');
+    }
+  },
+
+  // ── Gerenciar Cartões (múltiplos) ──
+  saveCartoes: async (cartoes) => {
+    const { toast } = get();
+    try {
+      await setDoc(uDoc('settings', 'main'), { cartoes }, { merge: true });
+      set(s => ({ configData: { ...s.configData, cartoes } }));
+      toast('Cartões atualizados!');
+    } catch(e) {
+      toast('Erro: ' + e.message, 'error');
+    }
   },
 
   // ── Delete ──
@@ -1357,7 +1662,7 @@ export const useDash = create((set, get) => ({
           projetos: s.realData.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p)
         }
       }));
-      updateDoc(uDoc('projetos', activeProjectView), { tareas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+      updateDoc(uDoc('projetos', activeProjectView), { tarefas }).catch(e => toast('Sync Error: ' + e.message, 'error'));
     }
     get()._refreshData();
   },
@@ -1644,9 +1949,28 @@ export const useDash = create((set, get) => ({
   },
 
   // ── Notificações ──
+  requestNotifPermission: async () => {
+    if (!('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'granted') return 'granted';
+    const result = await Notification.requestPermission();
+    return result;
+  },
+
+  _sendBrowserNotif: (title, body, icon = '/favicon.ico') => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (!document.hidden) return; // only when tab not in focus
+    try { new Notification(title, { body, icon }); } catch(e) {}
+  },
+
   checkNotifications: () => {
     const { data, configData, addNotification } = get();
     if (!configData.notifEnabled) return;
+    // Seed _firedReminders from existing persisted notifications on first run
+    const fired = get()._firedReminders;
+    if (fired.size === 0 && data.notificacoes.length > 0) {
+      data.notificacoes.forEach(n => { if (n.reminderId) fired.add(n.reminderId); });
+    }
     
     const now = new Date();
     const todayStr = fmtDateISO(now);
@@ -1667,13 +1991,16 @@ export const useDash = create((set, get) => ({
       
       if (diff < leadMs && diff > -2 * 60 * 60 * 1000) {
         const rid = `rem-${r.id}`;
-        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+        if (!fired.has(rid)) {
+          fired.add(rid);
           addNotification({
             title: `Tarefa Próxima: ${r.titulo}`,
             message: `Vence em breve: ${fmtDate(r.prazo)}${r.horario ? ' às ' + r.horario : ''}`,
             priority: r.prioridade,
-            reminderId: rid
+            reminderId: rid,
+            action: { page: 'dashboard' }
           });
+          get()._sendBrowserNotif(`Tarefa: ${r.titulo}`, `Vence em breve: ${fmtDate(r.prazo)}`);
         }
       }
     });
@@ -1683,68 +2010,124 @@ export const useDash = create((set, get) => ({
       if (item.tipo === 'Receita' && item.nf === 'pendente' && item.origemAutomatica === 'recorrencia') {
         if (item.data === todayStr) {
           const rid = `nf-hoje-${item.id}`;
-          if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          if (!fired.has(rid)) {
+            fired.add(rid);
             addNotification({
               title: "Emitir NF Hoje",
               message: `Recorrência pendente: ${item.descricao}`,
               priority: 'Alta',
-              reminderId: rid
+              reminderId: rid,
+              action: { page: 'financas' }
             });
+            get()._sendBrowserNotif('Emitir NF Hoje', `Recorrência pendente: ${item.descricao}`);
           }
         } else if (item.data === tomorrowStr) {
           const rid = `nf-amanha-${item.id}`;
-          if (!data.notificacoes.some(n => n.reminderId === rid)) {
+          if (!fired.has(rid)) {
+            fired.add(rid);
             addNotification({
               title: "Emitir NF Amanhã",
               message: `Recorrência pendente: ${item.descricao}`,
               priority: 'Média',
-              reminderId: rid
+              reminderId: rid,
+              action: { page: 'financas' }
             });
           }
         }
       }
     });
 
-    // 3. Prazos de Projetos
+    // 3. Prazos de Projetos (incluindo atrasados)
     data.projetos.forEach(proj => {
-      if (proj.status === 'Concluido' || !proj.prazo) return;
+      if (proj.status === 'Concluído' || proj.status === 'Cancelado' || proj.status === 'Aguardando Aprovação' || !proj.prazo) return;
       const deadline = new Date(proj.prazo + 'T12:00:00');
       const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (diffDays === 0) {
-        const rid = `proj-prazo-hoje-${proj.id}`;
-        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+      if (diffDays < 0) {
+        const rid = `proj-atrasado-${proj.id}`;
+        if (!fired.has(rid)) {
+          fired.add(rid);
           addNotification({
-            title: "Prazo Final: Hoje",
-            message: `Conclua o projeto "${proj.nome || proj.descricao}" agora!`,
+            title: `Projeto Atrasado: ${proj.descricao || proj.cliente}`,
+            message: `Prazo venceu há ${Math.abs(diffDays)} dia(s). Atualize o status do projeto.`,
             priority: 'Alta',
-            reminderId: rid
+            reminderId: rid,
+            action: { page: 'projetos', id: proj.id }
           });
+          get()._sendBrowserNotif(`Projeto Atrasado!`, `"${proj.descricao || proj.cliente}" venceu há ${Math.abs(diffDays)} dia(s).`);
         }
-      } else if (diffDays === 1 || diffDays === 2) {
-        const rid = `proj-prazo-prox-${proj.id}-${diffDays}`;
-        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+      } else if (diffDays === 0) {
+        const rid = `proj-prazo-hoje-${proj.id}`;
+        if (!fired.has(rid)) {
+          fired.add(rid);
           addNotification({
-            title: "Prazo vindo aí",
-            message: `O projeto "${proj.nome || proj.descricao}" vence em ${diffDays} dia(s).`,
+            title: `Prazo Final Hoje: ${proj.descricao || proj.cliente}`,
+            message: `Entregue ou atualize o status do projeto ainda hoje.`,
+            priority: 'Alta',
+            reminderId: rid,
+            action: { page: 'projetos', id: proj.id }
+          });
+          get()._sendBrowserNotif('Prazo Final Hoje!', `"${proj.descricao || proj.cliente}" precisa ser entregue hoje.`);
+        }
+      } else if (diffDays <= 3) {
+        const rid = `proj-prazo-prox-${proj.id}-${diffDays}`;
+        if (!fired.has(rid)) {
+          fired.add(rid);
+          addNotification({
+            title: `Prazo em ${diffDays} dia(s): ${proj.descricao || proj.cliente}`,
+            message: `Verifique o andamento e prepare a entrega do projeto.`,
             priority: 'Média',
-            reminderId: rid
+            reminderId: rid,
+            action: { page: 'projetos', id: proj.id }
           });
         }
       }
     });
 
-    // 4. Leads Qualificados (Segunda-feira)
+    // 4. Recorrências vencendo em 7 dias
+    const in7days = new Date(now); in7days.setDate(in7days.getDate() + 7);
+    const currMonth = now.getMonth(); const currYear = now.getFullYear();
+    data.recorrencia.forEach(rec => {
+      if (rec.status !== 'Ativo') return;
+      let targetDate = null;
+      if (rec.periodicidade === 'Mensal' && rec.vencimento) {
+        targetDate = new Date(currYear, currMonth, parseInt(rec.vencimento));
+      } else if (rec.periodicidade === 'Anual' && rec.renovacao) {
+        targetDate = new Date(rec.renovacao + 'T12:00:00');
+      }
+      if (!targetDate) return;
+      const diffRec = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffRec >= 0 && diffRec <= 7) {
+        const rid = `rec-venc-${rec.id}-${fmtDateISO(targetDate)}`;
+        if (!fired.has(rid)) {
+          fired.add(rid);
+          addNotification({
+            title: diffRec === 0
+              ? `Recorrência Vence Hoje: ${rec.cliente}`
+              : `Recorrência em ${diffRec} dia(s): ${rec.cliente}`,
+            message: `${rec.plano || 'Plano'} — ${fmtBRL(rec.valor)}. Registre o pagamento ao receber.`,
+            priority: diffRec <= 1 ? 'Alta' : 'Média',
+            reminderId: rid,
+            action: { page: 'recorrencia' }
+          });
+          if (diffRec === 0) get()._sendBrowserNotif(`Recorrência Vence Hoje: ${rec.cliente}`, `${rec.plano || 'Plano'} — ${fmtBRL(rec.valor)}`);
+        }
+      }
+    });
+
+    // 5. Leads Qualificados (Segunda-feira)
     if (now.getDay() === 1) { // Segunda
-      const leadsQualificados = data.leads.filter(l => l.status === 'Novo' && l.qualificacao?.trim()).length;
+      const leadsQualificados = data.leads.filter(l => l.status === 'Novo' && l.observacoes?.trim()).length;
       if (leadsQualificados > 0) {
         const rid = `leads-weekly-${todayStr.substring(0, 10)}`;
-        if (!data.notificacoes.some(n => n.reminderId === rid)) {
+        if (!fired.has(rid)) {
+          fired.add(rid);
           addNotification({
-            title: "Leads Qualificados",
-            message: `Você tem ${leadsQualificados} leads já qualificados esperando sua abordagem.`,
+            title: `${leadsQualificados} Lead(s) Qualificado(s) Esperando`,
+            message: `Comece a semana abordando os leads com maior potencial de fechamento.`,
             priority: 'Baixa',
-            reminderId: rid
+            reminderId: rid,
+            action: { page: 'leads' }
           });
         }
       }

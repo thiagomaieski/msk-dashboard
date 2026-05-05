@@ -143,6 +143,39 @@ textarea {
   border-radius: 2px;
 }
 
+/* KANBAN SCROLLBAR */
+.kanban-cards-list::-webkit-scrollbar {
+  width: 3px;
+}
+
+.kanban-cards-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.kanban-cards-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
+.kanban-board::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-board::-webkit-scrollbar-track {
+  background: var(--bg3);
+  border-radius: 10px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 10px;
+  border: 2px solid var(--bg3);
+}
+
+.kanban-board::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
 /* AUTH */
 #auth-screen {
   display: flex;
@@ -1629,11 +1662,25 @@ tbody tr:hover .row-actions {
 .row-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--bg3);
+}
+
+.row-btn[style*="var(--blue)"]:hover {
+  color: var(--blue) !important;
+  border-color: var(--blue) !important;
+  background: var(--blue-bg) !important;
+}
+
+.row-btn[style*="var(--green)"]:hover {
+  color: var(--green) !important;
+  border-color: var(--green) !important;
+  background: var(--green-bg) !important;
 }
 
 .row-btn.del:hover {
-  color: var(--red);
-  border-color: var(--red);
+  color: var(--red) !important;
+  border-color: var(--red) !important;
+  background: var(--red-bg) !important;
 }
 
 /* CONFIRM MODAL */

@@ -7,7 +7,7 @@ export function Badge({ status }) {
     'Ativo': 'badge-ativo', 'Inativo': 'badge-inativo',
     'Pago': 'badge-pago', 'Pendente': 'badge-pendente', 'Parcial (50%)': 'badge-parcial',
     'Em andamento': 'badge-em-andamento', 'Aguardando cliente': 'badge-followup',
-    'Concluído': 'badge-fechado', 'Pausado': 'badge-inativo',
+    'Concluído': 'badge-fechado', 'Pausado': 'badge-inativo', 'Aguardando Aprovação': 'badge-aguardando',
     'Receita': 'badge-receita', 'Despesa': 'badge-despesa',
     'sim': 'badge-nf-sim', 'nao': 'badge-nf-nao',
     'Alta': 'badge-alta', 'Média': 'badge-media', 'Baixa': 'badge-baixa',

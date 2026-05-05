@@ -68,7 +68,10 @@ export default function ProjectView() {
 function PVDetalhes({ p, onEdit, updateField }) {
   const [notes, setNotes] = useState(p.anotacoes || '');
   const [saving, setSaving] = useState(false);
-  const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
+  const data = useDash(s => s.data);
+  const configData = useDash(s => s.configData);
+  const recsProjeto = data.negocio.filter(n => n.tipo === 'Receita' && n.projetoId === p.id);
+  const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
   const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' }[p.pagamento] || 'var(--text3)';
   
   const handleSaveNotes = async () => {
@@ -112,6 +115,28 @@ function PVDetalhes({ p, onEdit, updateField }) {
 
       <div className="summary-card" style={{ display: 'block' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div className="summary-card-label" style={{ marginBottom: 0 }}>Receitas Vinculadas (Módulo Financeiro)</div>
+        </div>
+        {recsProjeto.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma receita vinculada.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recsProjeto.map(r => (
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg1)', padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{r.descricao || 'Receita'} - <span style={{ color: 'var(--text3)' }}>{fmtDate(r.data)}</span></span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{fmtBRL(r.valor)}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Total Vinculado:</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{fmtBRL(recsProjeto.reduce((a,b)=>a+(b.valor||0),0))}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="summary-card" style={{ display: 'block' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div className="summary-card-label" style={{ marginBottom: 0 }}>Anotações e Estrutura</div>
           {notes !== p.anotacoes && (
             <button 
@@ -147,7 +172,7 @@ function PVDetalhes({ p, onEdit, updateField }) {
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 10 }}>
         <button className="btn btn-secondary" style={{ padding: '8px 24px' }} onClick={onEdit}>Editar Projeto</button>
       </div>
     </div>
@@ -159,6 +184,17 @@ function PVTarefas({ p, onUpdate }) {
   const [newTask, setNewTask] = useState({ col: null, titulo: '', prio: 'Baixa' });
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [dropTargetCol, setDropTargetCol] = useState(null);
+  
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  const saveEditTask = async (idx) => {
+    if (editingTitle.trim()) {
+      const newTs = tarefas.map((t, i) => i === idx ? { ...t, titulo: editingTitle.trim() } : t);
+      await save(newTs);
+    }
+    setEditingIdx(null);
+  };
 
   const save = async (newTs) => {
     setTarefas(newTs);
@@ -234,15 +270,41 @@ function PVTarefas({ p, onUpdate }) {
               <div 
                 key={i} 
                 className="kanban-card card-in"
-                draggable="true"
+                draggable={editingIdx !== i ? "true" : "false"}
                 onDragStart={(e) => handleDragStart(e, i)}
                 onDragEnd={handleDragEnd}
               >
-                <div className="kanban-card-title">{t.titulo}</div>
+                {editingIdx === i ? (
+                  <input
+                    autoFocus
+                    style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--accent)', outline: 'none', background: 'var(--bg1)', color: 'var(--text)' }}
+                    value={editingTitle}
+                    onChange={e => setEditingTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveEditTask(i); if (e.key === 'Escape') setEditingIdx(null); }}
+                    onBlur={() => saveEditTask(i)}
+                  />
+                ) : (
+                  <div className="kanban-card-title" style={{ cursor: 'text' }} onClick={() => { setEditingIdx(i); setEditingTitle(t.titulo); }} title="Clique para editar">{t.titulo}</div>
+                )}
                 <div className="kanban-card-foot">
                   <Badge status={t.prio || 'Baixa'} />
-                  <div className="kanban-card-acts">
-                    <button className="row-btn del" onClick={() => delTask(i)} title="Remover">✕</button>
+                  <div className="kanban-card-acts" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {editingIdx === i ? (
+                      <button className="row-btn" style={{ color: 'var(--green)' }} onClick={() => saveEditTask(i)} title="Salvar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><polyline points="20 6 9 17 4 12"/></svg>
+                      </button>
+                    ) : (
+                      <>
+                        <button className="row-btn mobile-only" onClick={() => {
+                           const target = key === 'afazer' ? 'andamento' : key === 'andamento' ? 'feito' : 'andamento';
+                           const newTs = tarefas.map((task, idx) => idx === i ? { ...task, col: target } : task);
+                           save(newTs);
+                        }} title="Mover">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
+                        <button className="row-btn del" onClick={() => delTask(i)} title="Remover">✕</button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -304,10 +366,10 @@ function PVArquivos({ p, onAdd, onDel }) {
   const getIcon = (url) => {
     const u = url || '';
     if (/\.(png|jpe?g|webp|svg|gif)/i.test(u)) return 'img';
-    if (/\.(mp4|avi|mov|webm)/i.test(u)) return '🎥';
-    if (/\.(zip|rar|7z)/i.test(u)) return '📦';
-    if (/\.pdf/i.test(u)) return '📕';
-    return '📄';
+    if (/\.(mp4|avi|mov|webm)/i.test(u)) return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:40,height:40,color:'var(--blue)'}}><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>;
+    if (/\.(zip|rar|7z)/i.test(u)) return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:40,height:40,color:'var(--amber)'}}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>;
+    if (/\.pdf/i.test(u)) return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:40,height:40,color:'var(--red)'}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:40,height:40,color:'var(--text3)'}}><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>;
   };
 
   return (
@@ -339,7 +401,7 @@ function PVArquivos({ p, onAdd, onDel }) {
               {ico === 'img' ? (
                 <img src={a.url} alt={a.nome} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', background: 'var(--bg3)', display: 'block' }} />
               ) : (
-                <div style={{ marginTop: 16, fontSize: 24, textAlign: 'center' }}>{ico}</div>
+                <div style={{ marginTop: 24, marginBottom: 8, display: 'flex', justifyContent: 'center' }}>{ico}</div>
               )}
               <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div className="file-card-name" style={{ marginBottom: 8 }}>

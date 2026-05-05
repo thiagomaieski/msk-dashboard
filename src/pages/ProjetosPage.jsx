@@ -32,7 +32,7 @@ export default function ProjetosPage() {
 
   const allChecked = selectedItems.length === list.length && list.length > 0;
 
-  const statusColors = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' };
+  const statusColors = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' };
   const pagColors = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' };
 
   return (
@@ -72,7 +72,7 @@ export default function ProjetosPage() {
         </div>
         <select className="filter-select" value={status} onChange={e => setStatus(e.target.value)}>
           <option value="">Todos os status</option>
-          {['Em andamento','Aguardando cliente','Concluído','Pausado'].map(s => <option key={s}>{s}</option>)}
+          {['Em andamento','Aguardando cliente','Aguardando Aprovação','Concluído','Pausado'].map(s => <option key={s}>{s}</option>)}
         </select>
         <select className="filter-select" value={pag} onChange={e => setPag(e.target.value)}>
           <option value="">Todos pagamentos</option>
@@ -141,13 +141,21 @@ export default function ProjetosPage() {
               const total = ts.length;
               const pct = total ? Math.round((feito / total) * 100) : 0;
               const isSelected = selectedItems.includes(p.id);
+              
+              const now = new Date();
+              const tsPrazo = p.prazo ? new Date(p.prazo + 'T12:00:00').getTime() : null;
+              const isAtrasado = tsPrazo && tsPrazo < now.getTime() && !['Concluído', 'Cancelado', 'Aguardando Aprovação'].includes(p.status);
+              const diasAtraso = isAtrasado ? Math.ceil((now.getTime() - tsPrazo) / (1000 * 3600 * 24)) : 0;
+
               return (
-                <div key={p.id} className={`proj-card card-in ${isSelected ? 'isSelected' : ''}`}>
+                <div key={p.id} className={`proj-card card-in ${isSelected ? 'isSelected' : ''}`} style={isAtrasado ? { border: '1px solid var(--red)' } : {}}>
                   <div style={{ position: 'absolute', top: 12, right: 12 }}>
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect('projetos', p.id)} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">{p.descricao || 'Sem projeto'}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 3, cursor: 'pointer' }} onClick={() => openProjectView(p.id)} title="Clique para ver detalhes">
+                      {p.descricao || 'Sem projeto'}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.cliente || ''}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 -10px' }}>
@@ -164,7 +172,9 @@ export default function ProjetosPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 18, fontWeight: 500, fontFamily: 'var(--sans)', color: 'var(--text)' }}>{fmtBRL(p.valor)}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text3)' }}>Prazo: {fmtDate(p.prazo)}</span>
+                    <span style={{ fontSize: 12, color: isAtrasado ? 'var(--red)' : 'var(--text3)', fontWeight: isAtrasado ? 600 : 400 }}>
+                      {isAtrasado ? `Atrasado ${diasAtraso} dia(s)` : `Prazo: ${fmtDate(p.prazo)}`}
+                    </span>
                   </div>
                   {total > 0 && (
                     <div>
@@ -178,6 +188,17 @@ export default function ProjetosPage() {
                   )}
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-sm btn-secondary" style={{ flex: 1 }} onClick={() => openProjectView(p.id)}>Ver detalhes</button>
+                    <button className="btn btn-sm btn-secondary" onClick={async () => {
+                      if (window.confirm('Duplicar este projeto?')) {
+                        const { id, ...cópia } = p;
+                        cópia.descricao = (cópia.descricao || '') + ' (Cópia)';
+                        cópia.status = 'Em andamento';
+                        cópia.criadoEm = undefined;
+                        await useDash.getState().saveProjeto(cópia);
+                      }
+                    }} title="Duplicar Projeto">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
                     <button className="btn btn-sm btn-secondary" onClick={() => openModal('projeto', p.id)} title="Editar">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
                     </button>
