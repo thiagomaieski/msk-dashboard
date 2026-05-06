@@ -766,26 +766,33 @@ export default function ConfiguracoesPage() {
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                     <button className="btn btn-sm btn-secondary" onClick={() => document.getElementById('config-logo-upload').click()}>Fazer Upload</button>
                     {configData.pdfLogo && (
-                      <button className="btn btn-sm btn-secondary" style={{ color: 'var(--red)', borderColor: 'rgba(255,0,0,0.2)' }} onClick={() => saveEmpresaData({ pdfLogo: null })}>Remover</button>
+                      <button className="btn btn-sm btn-secondary" style={{ color: 'var(--red)', borderColor: 'rgba(255,0,0,0.2)' }} onClick={async () => {
+                        if (configData.pdfLogoPath) {
+                          await useDash.getState().deleteFile(configData.pdfLogoPath).catch(() => {});
+                        }
+                        saveEmpresaData({ pdfLogo: null, pdfLogoPath: null });
+                      }}>Remover</button>
                     )}
                     <input 
                       id="config-logo-upload" type="file" style={{ display: 'none' }} accept=".png,.jpg,.jpeg,.webp"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files[0];
                         if (!file) return;
                         if (file.size > 200 * 1024) return toast('Arquivo muito grande! Máximo 200kb.', 'error');
                         
-                        const reader = new FileReader();
-                        reader.onload = async (event) => {
-                          try {
-                            const base64 = event.target.result;
-                            await saveEmpresaData({ pdfLogo: base64 });
-                            toast('Logo atualizada!');
-                          } catch (err) {
-                            toast('Erro ao salvar logo.', 'error');
+                        try {
+                          toast('Enviando logo...', 'info');
+                          const result = await useDash.getState().uploadFile(file, 'logo');
+                          
+                          if (configData.pdfLogoPath) {
+                            await useDash.getState().deleteFile(configData.pdfLogoPath).catch(() => {});
                           }
-                        };
-                        reader.readAsDataURL(file);
+                          
+                          await saveEmpresaData({ pdfLogo: result.url, pdfLogoPath: result.path });
+                          toast('Logo atualizada!');
+                        } catch (err) {
+                          toast('Erro ao fazer upload da logo.', 'error');
+                        }
                       }}
                     />
                   </div>

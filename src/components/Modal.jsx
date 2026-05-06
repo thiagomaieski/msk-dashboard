@@ -8,6 +8,7 @@ export default function Modal() {
   const modalOpen = useDash(s => s.modalOpen);
   const modalType = useDash(s => s.modalType);
   const modalTitle = useDash(s => s.modalTitle);
+  const modalSize = useDash(s => s.modalSize);
   const closeModal = useDash(s => s.closeModal);
   const overlayClickRef = useRef(false);
 
@@ -30,7 +31,7 @@ export default function Modal() {
       onMouseDown={handleMouseDown} 
       onMouseUp={handleMouseUp}
     >
-      <div className={`modal ${modalType === 'importFinancas' ? 'modal-xl' : ''}`}>
+      <div className={`modal ${modalSize ? 'modal-' + modalSize : ''}`}>
         <div className="modal-header">
           <div className="modal-title">{modalTitle}</div>
           <button className="modal-close" onClick={closeModal}>
@@ -120,6 +121,7 @@ function LeadForm({ item }) {
 
   const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
   
+  const [intText, setIntText] = useState('');
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
     email: item?.email || '', origem: item?.origem || '',
@@ -187,10 +189,17 @@ function LeadForm({ item }) {
               style={{ flex: 1, fontSize: 12, padding: '6px 8px' }} 
               placeholder="Ex: Reunião de alinhamento..." 
               id="lead-int-text"
+              value={intText}
+              onChange={e => setIntText(e.target.value)}
               onKeyDown={e => {
                 if(e.key === 'Enter') {
                   e.preventDefault();
-                  document.getElementById('lead-int-btn').click();
+                  {
+                  if(!intText) return;
+                  const newInt = { data: new Date().toISOString(), texto: intText };
+                  setF(p => ({ ...p, interacoes: [...(p.interacoes||[]), newInt], ultimoContato: new Date().toISOString().split('T')[0] }));
+                  setIntText('');
+                }
                 }
               }}
             />
@@ -198,11 +207,11 @@ function LeadForm({ item }) {
               id="lead-int-btn"
               className="btn btn-sm btn-secondary" 
               onClick={() => {
-                const txt = document.getElementById('lead-int-text').value;
+                const txt = intText;
                 if(!txt) return;
                 const newInt = { data: new Date().toISOString(), texto: txt };
                 setF(p => ({ ...p, interacoes: [...(p.interacoes||[]), newInt], ultimoContato: new Date().toISOString().split('T')[0] }));
-                document.getElementById('lead-int-text').value = '';
+                setIntText('');
               }}
             >Adicionar</button>
           </div>
@@ -227,7 +236,7 @@ function LeadForm({ item }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
           <button className="btn btn-primary" onClick={() => {
-            if (!f.nome) return alert('O Nome/Empresa é obrigatório.');
+            if (!f.nome) return useDash.getState().toast('O Nome/Empresa é obrigatório.', 'error');
             saveLead(f);
           }}>Salvar</button>
         </div>
@@ -252,7 +261,7 @@ function ClienteForm({ item }) {
   const CONH = ['Instagram', 'Meta ADS', 'Google', 'Google Maps', 'Facebook', 'Formação WEBP', 'Indicação', 'Outro'];
   
   const handleSave = () => {
-    if (!f.nome) return alert('O nome/empresa é obrigatório.');
+    if (!f.nome) return useDash.getState().toast('O nome/empresa é obrigatório.', 'error');
     saveCliente(f);
   };
 
@@ -433,7 +442,7 @@ function ProjetoForm({ item }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
           <button className="btn btn-primary" onClick={() => {
-            if (!f.cliente || !f.descricao) return alert('Cliente e Nome do Projeto são obrigatórios.');
+            if (!f.cliente || !f.descricao) return useDash.getState().toast('Cliente e Nome do Projeto são obrigatórios.', 'error');
             saveProjeto({ ...f, valor: parseFloat(f.valor) || 0 });
           }}>Salvar</button>
         </div>
@@ -533,7 +542,7 @@ function RecorrenciaForm({ item }) {
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
         <button className="btn btn-primary" onClick={() => {
-          if (!f.cliente || !f.plano) return alert('Cliente e Plano/Descrição são obrigatórios.');
+          if (!f.cliente || !f.plano) return useDash.getState().toast('Cliente e Plano/Descrição são obrigatórios.', 'error');
           saveRecorrencia({
             ...f, valor: parseFloat(f.valor) || 0,
             vencimento: !isAnual ? (parseInt(f.vencimento) || 1) : null,
@@ -570,7 +579,7 @@ function FinancaForm({ item, defaultTipo }) {
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const handleSave = () => {
-    if (!f.descricao) return alert('A descrição é obrigatória.');
+    if (!f.descricao) return useDash.getState().toast('A descrição é obrigatória.', 'error');
     if (f.parcelado && isReceita) {
       useDash.getState().saveNegocioParcelado({ ...f, valor: parseFloat(f.valor) || 0 });
     } else {

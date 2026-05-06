@@ -140,15 +140,7 @@ export default function LeadsPage() {
     try {
       const text = await decodeCSVFile(f);
       openModal('csvProgress');
-      await importLeadsCSV(text, (i, total, imported, errors) => {
-        const pct = Math.min(Math.round((i / total) * 100), 100);
-        const bar = document.getElementById('csv-progress-bar');
-        const txt = document.getElementById('csv-progress-text');
-        if (bar) bar.style.width = `${pct}%`;
-        if (txt) txt.innerHTML = `Processando: ${i} de ${total}<br><span style="color:var(--green)">✓ Inseridos: ${imported}</span> • <span style="color:var(--red)">✕ Ignorados: ${errors}</span>`;
-      });
-      const txt = document.getElementById('csv-progress-text');
-      if (txt) txt.innerHTML += '<br><br><b>Concluído! Você já pode fechar esta aba.</b>';
+      await importLeadsCSV(text, (i, total, imported, errors) => {});
     } catch {
       useDash.getState().toast('Não foi possível ler este arquivo CSV.', 'error');
     }

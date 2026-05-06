@@ -3,8 +3,13 @@ import * as XLSX from 'xlsx';
 import { useDash, fmtBRL, fmtDateISO, fmtDate } from '../store/useStore';
 
 export default function ImportFinancasModal({ type }) {
-  const { bulkAddFinancas, closeModal, toast, configData } = useDash();
+  const { bulkAddFinancas, closeModal, toast, configData, setModalSize } = useDash();
   const [step, setStep] = useState(1); // 1: Upload, 2: Type Choice, 3: Mapping/Config
+
+  useEffect(() => {
+    if (step === 3) setModalSize('xl');
+    else setModalSize('md');
+  }, [step, setModalSize]);
   
   const [workbook, setWorkbook] = useState(null);
   const [sheets, setSheets] = useState([]);

@@ -81,6 +81,7 @@ export function FinancasNegocioPage() {
   const deleteItem = useDash(s => s.deleteItem);
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
+  const exportFinancasCSV = useDash(s => s.exportFinancasCSV);
   
   const now = new Date();
   const [ano, setAno] = useState(String(CURRENT_YEAR));
@@ -355,6 +356,7 @@ export function FinancasPessoaisPage() {
   const deleteItem = useDash(s => s.deleteItem);
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
+  const exportFinancasCSV = useDash(s => s.exportFinancasCSV);
   
   const now = new Date();
   const [ano, setAno] = useState(String(CURRENT_YEAR));

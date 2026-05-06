@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Tooltip,
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend
@@ -285,6 +285,7 @@ export default function DashboardPage() {
   const period = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   const firstName = (currentUser?.displayName || '').split(' ')[0] || 'usuário';
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isFabOpen, setIsFabOpen] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -304,20 +305,19 @@ export default function DashboardPage() {
   const mesPrev = mesAtual === 0 ? 11 : mesAtual - 1;
   const anoPrev = mesAtual === 0 ? anoAtual - 1 : anoAtual;
 
-  // ─── Computed Stats ──────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const isNegocioOn = !!modules?.negocio;
-    const isPessoalOn = !!modules?.pessoal;
-    const isLeadsOn   = !!modules?.leads;
-    const isProjetosOn = !!modules?.projetos;
-    const isRecorrenciaOn = !!modules?.recorrencia;
+  // ─── Domain-Specific Memoization ─────────────────────────────────────────────
+  const isNegocioOn = !!modules?.negocio;
+  const isPessoalOn = !!modules?.pessoal;
+  const isLeadsOn   = !!modules?.leads;
+  const isProjetosOn = !!modules?.projetos;
+  const isRecorrenciaOn = !!modules?.recorrencia;
 
+  const financeStats = useMemo(() => {
     const getMonthTotal = (arr, tipo, mes, ano) =>
       arr
         .filter(m => m.tipo === tipo && parseInt(m.data?.split('-')[1]) === mes + 1 && parseInt(m.data?.split('-')[0]) === ano)
         .reduce((s, m) => s + (m.valor || 0), 0);
 
-    // Dynamic Revenue Fallback: Negocio (Primary) -> Pessoal (Secondary)
     let recMesAtual = 0;
     let recMesPrev  = 0;
     if (isNegocioOn) {
@@ -330,15 +330,7 @@ export default function DashboardPage() {
 
     const despMesAtual = getMonthTotal(pessoal, 'Despesa', mesAtual, anoAtual);
     const despMesPrev  = getMonthTotal(pessoal, 'Despesa', mesPrev, anoPrev);
-    const leadsNovos = leads.filter(l => l.status === 'Novo').length;
-    const leadsFechados = leads.filter(l => l.status === 'Fechado').length;
-    const leadsTotal = leads.length;
-    const leadsTrabalhados = leads.filter(l => l.status !== 'Novo').length;
-    const conversionRate = leadsTrabalhados > 0 ? (leadsFechados / leadsTrabalhados) * 100 : 0;
 
-    const projAtivos = projetos.filter(p => p.status === 'Em andamento').length;
-
-    // MRR Calculation (respecting yearly cycles)
     const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     const mrr = recorrencia.reduce((acc, r) => {
       if (r.status !== 'Ativo') return acc;
@@ -352,7 +344,27 @@ export default function DashboardPage() {
     const trendRec  = recMesPrev  > 0 ? ((recMesAtual  - recMesPrev)  / recMesPrev)  * 100 : 0;
     const trendDesp = despMesPrev > 0 ? ((despMesAtual - despMesPrev) / despMesPrev) * 100 : 0;
 
-    // Last 6 months financials
+    const personalExpByCatMap = {};
+    pessoal
+      .filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1 && parseInt(m.data?.split('-')[0]) === anoAtual)
+      .forEach(m => {
+        const cat = m.categoria || 'Outros';
+        personalExpByCatMap[cat] = (personalExpByCatMap[cat] || 0) + (m.valor || 0);
+      });
+    const personalExpByCat = Object.entries(personalExpByCatMap)
+      .map(([name, value], i) => ({ name, value, fill: `hsl(${(i * 137) % 360}, 70%, 65%)` }))
+      .sort((a, b) => b.value - a.value);
+
+    const recorrenciasVencendo = recorrencia.filter(r => {
+      if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
+      const days = (new Date(r.proximoVencimento + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24);
+      return days <= 5 && days >= 0;
+    });
+
+    const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
+    const isMetaActive = metaFaturamento > 0;
+    const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
+
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(anoAtual, mesAtual - (5 - i), 1);
       const m = d.getMonth();
@@ -361,107 +373,105 @@ export default function DashboardPage() {
       if (isNegocioOn) r = getMonthTotal(negocio, 'Receita', m, y);
       else if (isPessoalOn) r = getMonthTotal(pessoal, 'Receita', m, y);
 
-      const leadsMes = leads.filter(l => new Date(parseInt(l.id)).getMonth() === m && new Date(parseInt(l.id)).getFullYear() === y).length;
-      const projMes = projetos.filter(p => new Date(parseInt(p.id)).getMonth() === m && new Date(parseInt(p.id)).getFullYear() === y).length;
       const mrrMes = recorrencia.filter(rc => new Date(parseInt(rc.id)).getMonth() === m && new Date(parseInt(rc.id)).getFullYear() === y).reduce((acc, rc) => acc + (rc.valor || 0), 0);
 
-      return {
-        name: MESES_CURTOS[m],
-        Receita: r,
-        Despesas: getMonthTotal(pessoal, 'Despesa', m, y),
-        Leads: leadsMes,
-        Projetos: projMes,
-        MRR: mrrMes
-      };
+      return { name: MESES_CURTOS[m], Receita: r, Despesas: getMonthTotal(pessoal, 'Despesa', m, y), MRR: mrrMes };
     });
 
-    // Sparkline data (last 6 months)
-    const sparkRec   = last6Months.map(m => ({ v: m.Receita }));
-    const sparkDesp  = last6Months.map(m => ({ v: m.Despesas }));
-    const sparkLeads = last6Months.map(m => ({ v: m.Leads }));
-    const sparkProj  = last6Months.map(m => ({ v: m.Projetos }));
-    
-    // MRR is cumulative, but let's just show cumulative up to that month
-    let cumMrr = 0;
-    const sparkRecorr = last6Months.map(m => {
-      cumMrr += m.MRR;
-      return { v: cumMrr };
-    });
+    return { recMesAtual, recMesPrev, despMesAtual, despMesPrev, mrr, trendRec, trendDesp, personalExpByCat, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct, last6Months };
+  }, [negocio, pessoal, recorrencia, isNegocioOn, isPessoalOn, mesAtual, anoAtual, mesPrev, anoPrev, configData.metaFaturamento]);
 
-    // Leads by status
+  const crmStats = useMemo(() => {
+    const leadsNovos = leads.filter(l => l.status === 'Novo').length;
+    const leadsFechados = leads.filter(l => l.status === 'Fechado').length;
+    const leadsTotal = leads.length;
+    const leadsTrabalhados = leads.filter(l => l.status !== 'Novo').length;
+    const conversionRate = leadsTrabalhados > 0 ? (leadsFechados / leadsTrabalhados) * 100 : 0;
+
     const leadsByStatus = STATUS_LEAD_ORDER
-      .map(status => ({
-        name: status,
-        value: leads.filter(l => l.status === status).length,
-        fill: STATUS_COLORS[status],
-      }))
+      .map(status => ({ name: status, value: leads.filter(l => l.status === status).length, fill: STATUS_COLORS[status] }))
       .filter(s => s.value > 0);
 
-    // Fallback: Personal Expenses by Category
-    const personalExpByCatMap = {};
-    pessoal
-      .filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1 && parseInt(m.data?.split('-')[0]) === anoAtual)
-      .forEach(m => {
-        const cat = m.categoria || 'Outros';
-        personalExpByCatMap[cat] = (personalExpByCatMap[cat] || 0) + (m.valor || 0);
-      });
-    
-    // Sort and limit to top categories
-    const personalExpByCat = Object.entries(personalExpByCatMap)
-      .map(([name, value], i) => ({
-        name,
-        value,
-        fill: `hsl(${(i * 137) % 360}, 70%, 65%)` // Generated stable color
-      }))
-      .sort((a, b) => b.value - a.value);
+    const leadsParaAbordar  = leads.filter(l => l.status === 'Novo').slice(0, 5);
 
-    // Projetos by status
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const leadsMes = leads.filter(l => new Date(parseInt(l.id)).getMonth() === m && new Date(parseInt(l.id)).getFullYear() === y).length;
+      return { Leads: leadsMes };
+    });
+
+    return { leadsNovos, leadsTotal, conversionRate, leadsByStatus, leadsParaAbordar, last6Months };
+  }, [leads, mesAtual, anoAtual]);
+
+  const projectStats = useMemo(() => {
+    const projAtivos = projetos.filter(p => p.status === 'Em andamento').length;
+
     const proyStatusMap = {};
     projetos.forEach(p => {
       const s = p.status || 'Sem status';
       proyStatusMap[s] = (proyStatusMap[s] || 0) + 1;
     });
-    const projetosByStatus = Object.entries(proyStatusMap).map(([name, value]) => ({
-      name, value, fill: PROJETO_STATUS_COLORS[name] || '#737373',
-    }));
+    const projetosByStatus = Object.entries(proyStatusMap).map(([name, value]) => ({ name, value, fill: PROJETO_STATUS_COLORS[name] || '#737373' }));
 
     const projetosAndamento = projetos.filter(p => p.status === 'Em andamento');
-    const leadsParaAbordar  = leads.filter(l => l.status === 'Novo').slice(0, 5);
-    const lembretes = [...lembretesRaw].sort((a, b) => {
-      if (a.concluido !== b.concluido) return a.concluido ? 1 : -1;
-      return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
-    });
 
-    // F3: Alertas críticos
     const projetosAtrasados = projetos.filter(p => {
       if (p.status === 'Concluído' || p.status === 'Cancelado' || p.status === 'Aguardando Aprovação') return false;
       if (!p.prazo) return false;
       return new Date(p.prazo + 'T12:00:00') < new Date();
     });
 
-    const recorrenciasVencendo = recorrencia.filter(r => {
-      if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
-      const days = (new Date(r.proximoVencimento + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24);
-      return days <= 5 && days >= 0;
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const projMes = projetos.filter(p => new Date(parseInt(p.id)).getMonth() === m && new Date(parseInt(p.id)).getFullYear() === y).length;
+      return { Projetos: projMes };
     });
 
-    // F4: Meta Faturamento
-    const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
-    const isMetaActive = metaFaturamento > 0;
-    const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
+    return { projAtivos, projetosByStatus, projetosAndamento, projetosAtrasados, last6Months };
+  }, [projetos, mesAtual, anoAtual]);
 
-    return {
-      recMesAtual, recMesPrev, despMesAtual, despMesPrev,
-      leadsNovos, projAtivos, mrr, conversionRate,
-      trendRec, trendDesp,
-      isNegocioOn, isPessoalOn, isLeadsOn, isProjetosOn, isRecorrenciaOn,
-      last6Months, sparkRec, sparkDesp, sparkLeads, sparkProj, sparkRecorr,
-      leadsByStatus, personalExpByCat, projetosByStatus,
-      projetosAndamento, leadsParaAbordar, lembretes,
-      totalLeads: leadsTotal,
-      projetosAtrasados, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct
-    };
-  }, [negocio, pessoal, leads, projetos, recorrencia, lembretesRaw, modules, configData.metaFaturamento, mesAtual, anoAtual, mesPrev, anoPrev]);
+  const lembretes = useMemo(() => {
+    return [...lembretesRaw].sort((a, b) => {
+      if (a.concluido !== b.concluido) return a.concluido ? 1 : -1;
+      return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
+    });
+  }, [lembretesRaw]);
+
+  const last6Months = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => ({
+      name: financeStats.last6Months[i].name,
+      Receita: financeStats.last6Months[i].Receita,
+      Despesas: financeStats.last6Months[i].Despesas,
+      MRR: financeStats.last6Months[i].MRR,
+      Leads: crmStats.last6Months[i].Leads,
+      Projetos: projectStats.last6Months[i].Projetos
+    }));
+  }, [financeStats.last6Months, crmStats.last6Months, projectStats.last6Months]);
+
+  const sparkRec = useMemo(() => last6Months.map(m => ({ v: m.Receita })), [last6Months]);
+  const sparkDesp = useMemo(() => last6Months.map(m => ({ v: m.Despesas })), [last6Months]);
+  const sparkLeads = useMemo(() => last6Months.map(m => ({ v: m.Leads })), [last6Months]);
+  const sparkProj = useMemo(() => last6Months.map(m => ({ v: m.Projetos })), [last6Months]);
+  const sparkRecorr = useMemo(() => {
+    let cumMrr = 0;
+    return last6Months.map(m => { cumMrr += m.MRR; return { v: cumMrr }; });
+  }, [last6Months]);
+
+  const stats = {
+    ...financeStats,
+    ...crmStats,
+    ...projectStats,
+    lembretes,
+    last6Months,
+    sparkRec, sparkDesp, sparkLeads, sparkProj, sparkRecorr,
+    isNegocioOn, isPessoalOn, isLeadsOn, isProjetosOn, isRecorrenciaOn,
+    totalLeads: crmStats.leadsTotal
+  };
+
 
   const mesLabel = MESES_CURTOS[mesPrev];
   const activeModulesCount = [stats.isNegocioOn, stats.isPessoalOn, stats.isLeadsOn, stats.isProjetosOn, stats.isRecorrenciaOn].filter(Boolean).length;
@@ -994,21 +1004,58 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* F5: FAB Action */}
-      <div className="dash-fab-container" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99 }}>
-        <button 
+      {/* F5: FAB Speed Dial */}
+      <div className="dash-fab-container" style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 100 }}>
+        <AnimatePresence>
+          {isFabOpen && (
+            <div className="dash-fab-menu" style={{ position: 'absolute', bottom: 70, right: 0, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-end' }}>
+              {[
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>, label: 'Novo Lead', action: () => openModal('lead'), color: 'var(--accent)' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>, label: 'Novo Projeto', action: () => openModal('projeto'), color: '#3b82f6' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><path d="M12 5v14M5 12h14"/></svg>, label: 'Receita', action: () => openModal('negocioReceita'), color: '#10b981' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><line x1="5" y1="12" x2="19" y2="12"/></svg>, label: 'Despesa', action: () => openModal('negocioDespesa'), color: '#ef4444' },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0, y: 20 }}
+                  transition={{ delay: i * 0.05, type: 'spring', stiffness: 260, damping: 20 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                  onClick={() => { item.action(); setIsFabOpen(false); }}
+                >
+                  <span className="fab-label" style={{ background: 'var(--bg2)', padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                    {item.label}
+                  </span>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                    {item.icon}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
+
+        <motion.button 
           className="btn btn-primary" 
-          style={{ width: 56, height: 56, borderRadius: '50%', boxShadow: '0 4px 16px rgba(59,130,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-          onClick={() => {
-            if (stats.isNegocioOn) openModal('negocioReceita');
-            else if (stats.isPessoalOn) openModal('pessoalReceita');
-            else if (stats.isLeadsOn) openModal('lead');
-            else if (stats.isProjetosOn) openModal('projeto');
-          }}
-          title="Ação Rápida"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          style={{ 
+            width: 60, height: 60, borderRadius: '50%', 
+            boxShadow: '0 8px 24px rgba(34,197,94,0.4)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', zIndex: 101, border: 'none'
+          }} 
+          onClick={() => setIsFabOpen(!isFabOpen)}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 24, height: 24 }}><path d="M12 5v14M5 12h14" /></svg>
-        </button>
+          <motion.div
+            animate={{ rotate: isFabOpen ? 135 : 0 }}
+            transition={{ duration: 0.3, ease: 'backOut' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 28, height: 28 }}><path d="M12 5v14M5 12h14" /></svg>
+          </motion.div>
+        </motion.button>
       </div>
     </div>
   );

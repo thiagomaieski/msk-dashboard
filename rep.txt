@@ -1,0 +1,166 @@
+  // ─── Domain-Specific Memoization ─────────────────────────────────────────────
+  const isNegocioOn = !!modules?.negocio;
+  const isPessoalOn = !!modules?.pessoal;
+  const isLeadsOn   = !!modules?.leads;
+  const isProjetosOn = !!modules?.projetos;
+  const isRecorrenciaOn = !!modules?.recorrencia;
+
+  const financeStats = useMemo(() => {
+    const getMonthTotal = (arr, tipo, mes, ano) =>
+      arr
+        .filter(m => m.tipo === tipo && parseInt(m.data?.split('-')[1]) === mes + 1 && parseInt(m.data?.split('-')[0]) === ano)
+        .reduce((s, m) => s + (m.valor || 0), 0);
+
+    let recMesAtual = 0;
+    let recMesPrev  = 0;
+    if (isNegocioOn) {
+      recMesAtual = getMonthTotal(negocio, 'Receita', mesAtual, anoAtual);
+      recMesPrev  = getMonthTotal(negocio, 'Receita', mesPrev, anoPrev);
+    } else if (isPessoalOn) {
+      recMesAtual = getMonthTotal(pessoal, 'Receita', mesAtual, anoAtual);
+      recMesPrev  = getMonthTotal(pessoal, 'Receita', mesPrev, anoPrev);
+    }
+
+    const despMesAtual = getMonthTotal(pessoal, 'Despesa', mesAtual, anoAtual);
+    const despMesPrev  = getMonthTotal(pessoal, 'Despesa', mesPrev, anoPrev);
+
+    const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+    const mrr = recorrencia.reduce((acc, r) => {
+      if (r.status !== 'Ativo') return acc;
+      if (r.periodicidade === 'Anual') {
+        const renovacaoMonth = r.renovacao?.substring(0, 7);
+        if (renovacaoMonth !== monthKey) return acc;
+      }
+      return acc + (r.valor || 0);
+    }, 0);
+
+    const trendRec  = recMesPrev  > 0 ? ((recMesAtual  - recMesPrev)  / recMesPrev)  * 100 : 0;
+    const trendDesp = despMesPrev > 0 ? ((despMesAtual - despMesPrev) / despMesPrev) * 100 : 0;
+
+    const personalExpByCatMap = {};
+    pessoal
+      .filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1 && parseInt(m.data?.split('-')[0]) === anoAtual)
+      .forEach(m => {
+        const cat = m.categoria || 'Outros';
+        personalExpByCatMap[cat] = (personalExpByCatMap[cat] || 0) + (m.valor || 0);
+      });
+    const personalExpByCat = Object.entries(personalExpByCatMap)
+      .map(([name, value], i) => ({ name, value, fill: `hsl(${(i * 137) % 360}, 70%, 65%)` }))
+      .sort((a, b) => b.value - a.value);
+
+    const recorrenciasVencendo = recorrencia.filter(r => {
+      if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
+      const days = (new Date(r.proximoVencimento + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24);
+      return days <= 5 && days >= 0;
+    });
+
+    const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
+    const isMetaActive = metaFaturamento > 0;
+    const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      let r = 0;
+      if (isNegocioOn) r = getMonthTotal(negocio, 'Receita', m, y);
+      else if (isPessoalOn) r = getMonthTotal(pessoal, 'Receita', m, y);
+
+      const mrrMes = recorrencia.filter(rc => new Date(parseInt(rc.id)).getMonth() === m && new Date(parseInt(rc.id)).getFullYear() === y).reduce((acc, rc) => acc + (rc.valor || 0), 0);
+
+      return { name: MESES_CURTOS[m], Receita: r, Despesas: getMonthTotal(pessoal, 'Despesa', m, y), MRR: mrrMes };
+    });
+
+    return { recMesAtual, recMesPrev, despMesAtual, despMesPrev, mrr, trendRec, trendDesp, personalExpByCat, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct, last6Months };
+  }, [negocio, pessoal, recorrencia, isNegocioOn, isPessoalOn, mesAtual, anoAtual, mesPrev, anoPrev, configData.metaFaturamento]);
+
+  const crmStats = useMemo(() => {
+    const leadsNovos = leads.filter(l => l.status === 'Novo').length;
+    const leadsFechados = leads.filter(l => l.status === 'Fechado').length;
+    const leadsTotal = leads.length;
+    const leadsTrabalhados = leads.filter(l => l.status !== 'Novo').length;
+    const conversionRate = leadsTrabalhados > 0 ? (leadsFechados / leadsTrabalhados) * 100 : 0;
+
+    const leadsByStatus = STATUS_LEAD_ORDER
+      .map(status => ({ name: status, value: leads.filter(l => l.status === status).length, fill: STATUS_COLORS[status] }))
+      .filter(s => s.value > 0);
+
+    const leadsParaAbordar  = leads.filter(l => l.status === 'Novo').slice(0, 5);
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const leadsMes = leads.filter(l => new Date(parseInt(l.id)).getMonth() === m && new Date(parseInt(l.id)).getFullYear() === y).length;
+      return { Leads: leadsMes };
+    });
+
+    return { leadsNovos, leadsTotal, conversionRate, leadsByStatus, leadsParaAbordar, last6Months };
+  }, [leads, mesAtual, anoAtual]);
+
+  const projectStats = useMemo(() => {
+    const projAtivos = projetos.filter(p => p.status === 'Em andamento').length;
+
+    const proyStatusMap = {};
+    projetos.forEach(p => {
+      const s = p.status || 'Sem status';
+      proyStatusMap[s] = (proyStatusMap[s] || 0) + 1;
+    });
+    const projetosByStatus = Object.entries(proyStatusMap).map(([name, value]) => ({ name, value, fill: PROJETO_STATUS_COLORS[name] || '#737373' }));
+
+    const projetosAndamento = projetos.filter(p => p.status === 'Em andamento');
+
+    const projetosAtrasados = projetos.filter(p => {
+      if (p.status === 'Concluído' || p.status === 'Cancelado' || p.status === 'Aguardando Aprovação') return false;
+      if (!p.prazo) return false;
+      return new Date(p.prazo + 'T12:00:00') < new Date();
+    });
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const projMes = projetos.filter(p => new Date(parseInt(p.id)).getMonth() === m && new Date(parseInt(p.id)).getFullYear() === y).length;
+      return { Projetos: projMes };
+    });
+
+    return { projAtivos, projetosByStatus, projetosAndamento, projetosAtrasados, last6Months };
+  }, [projetos, mesAtual, anoAtual]);
+
+  const lembretes = useMemo(() => {
+    return [...lembretesRaw].sort((a, b) => {
+      if (a.concluido !== b.concluido) return a.concluido ? 1 : -1;
+      return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
+    });
+  }, [lembretesRaw]);
+
+  const last6Months = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => ({
+      name: financeStats.last6Months[i].name,
+      Receita: financeStats.last6Months[i].Receita,
+      Despesas: financeStats.last6Months[i].Despesas,
+      MRR: financeStats.last6Months[i].MRR,
+      Leads: crmStats.last6Months[i].Leads,
+      Projetos: projectStats.last6Months[i].Projetos
+    }));
+  }, [financeStats.last6Months, crmStats.last6Months, projectStats.last6Months]);
+
+  const sparkRec = useMemo(() => last6Months.map(m => ({ v: m.Receita })), [last6Months]);
+  const sparkDesp = useMemo(() => last6Months.map(m => ({ v: m.Despesas })), [last6Months]);
+  const sparkLeads = useMemo(() => last6Months.map(m => ({ v: m.Leads })), [last6Months]);
+  const sparkProj = useMemo(() => last6Months.map(m => ({ v: m.Projetos })), [last6Months]);
+  const sparkRecorr = useMemo(() => {
+    let cumMrr = 0;
+    return last6Months.map(m => { cumMrr += m.MRR; return { v: cumMrr }; });
+  }, [last6Months]);
+
+  const stats = {
+    ...financeStats,
+    ...crmStats,
+    ...projectStats,
+    lembretes,
+    last6Months,
+    sparkRec, sparkDesp, sparkLeads, sparkProj, sparkRecorr,
+    isNegocioOn, isPessoalOn, isLeadsOn, isProjetosOn, isRecorrenciaOn,
+    totalLeads: crmStats.leadsTotal
+  };

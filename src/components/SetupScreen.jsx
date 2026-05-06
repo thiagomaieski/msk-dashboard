@@ -152,7 +152,7 @@ export default function SetupScreen() {
             onClick={handleFinish}
             disabled={uploading}
           >
-            Concluir e Abrir Painel →
+            {uploading ? 'Configurando...' : 'Concluir e Abrir Painel →'}
           </button>
         </div>
       </div>

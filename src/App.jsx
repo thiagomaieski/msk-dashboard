@@ -70,6 +70,7 @@ function AppInner() {
   const modalOpen = useDash(s => s.modalOpen);
   const confirm = useDash(s => s.confirm);
   const activeProjectView = useDash(s => s.activeProjectView);
+  const checkNotifications = useDash(s => s.checkNotifications);
 
   useEffect(() => {
     initAuth();
@@ -77,11 +78,20 @@ function AppInner() {
 
   useEffect(() => {
     if (appReady) {
-      setTimeout(() => setFullyReady(true), 250);
+      setTimeout(() => {
+        setFullyReady(true);
+        checkNotifications();
+      }, 250);
+      
+      const intervalId = setInterval(() => {
+        checkNotifications();
+      }, 60000); // 1 minute
+      
+      return () => clearInterval(intervalId);
     } else {
       setFullyReady(false);
     }
-  }, [appReady]);
+  }, [appReady, checkNotifications]);
 
   if (!authReady) return <LoadingScreen />;
   if (!currentUser) return <AuthScreen />;
@@ -122,7 +132,9 @@ function AppInner() {
           {activePage === 'clientes' && <ClientesPage />}
           {activePage === 'configuracoes' && <ConfiguracoesPage />}
         </main>
-        
+      </Suspense>
+      
+      <Suspense fallback={null}>
         {!!activeProjectView && <ProjectView />}
         {modalOpen && <Modal />}
         {!!confirm && <ConfirmModal />}
