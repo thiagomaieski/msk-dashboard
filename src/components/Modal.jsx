@@ -131,6 +131,7 @@ function PageSpeedScore({ label, value, icon }) {
 function LeadForm({ item }) {
   const configData = useDash(s => s.configData);
   const saveLead = useDash(s => s.saveLead);
+  const saveLeadNotes = useDash(s => s.saveLeadNotes);
   const closeModal = useDash(s => s.closeModal);
   const goTo = useDash(s => s.goTo);
   const setConfigTab = useDash(s => s.setConfigTab);
@@ -152,6 +153,7 @@ function LeadForm({ item }) {
 
   const [isPrequaling, setIsPrequaling] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxNotes, setLightboxNotes] = useState('');
   // singleProgress: null | { status: 'processing'|'success'|'error'|'skipped', message?: string }
   const [singleProgress, setSingleProgress] = useState(null);
   const prequalData = item?.prequalData || null;
@@ -505,7 +507,7 @@ function LeadForm({ item }) {
                 )}
               </div>
               {screenshotUrlWithCacheBuster ? (
-                <div className="prequal-screenshot-wrap" onClick={() => setLightboxOpen(true)} title="Clique para ampliar">
+                <div className="prequal-screenshot-wrap" onClick={() => { setLightboxNotes(f.observacoes || ''); setLightboxOpen(true); }} title="Clique para ampliar">
                   <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="prequal-screenshot-img" />
                   <div className="prequal-screenshot-zoom-hint">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
@@ -530,16 +532,42 @@ function LeadForm({ item }) {
 
         {lightboxOpen && screenshotUrlWithCacheBuster && (
           <div className="lightbox-overlay" onClick={() => setLightboxOpen(false)}>
-            <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-              <button className="lightbox-close" onClick={() => setLightboxOpen(false)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              </button>
-              <div className="lightbox-header">
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}>{prequalData.site || item?.nome}</span>
-                <a href={screenshotUrlWithCacheBuster} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{ fontSize: 11 }}>Abrir em nova aba ↗</a>
+            <div className="lightbox-split-left">
+              <div className="lightbox-split-img-container">
+                <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="lightbox-split-img" />
               </div>
-              <div className="lightbox-img-wrap">
-                <img src={screenshotUrlWithCacheBuster} alt="Screenshot ampliado" className="lightbox-img" />
+            </div>
+            <div className="lightbox-split-right" onClick={e => e.stopPropagation()}>
+              <div className="lightbox-split-header">
+                <h3>Qualificação do Lead</h3>
+                <p className="lead-name">{item?.nome || 'Lead'}</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <a href={screenshotUrlWithCacheBuster} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Abrir imagem ↗
+                  </a>
+                  {prequalData?.site && (
+                    <a href={prequalData.site.startsWith('http') ? prequalData.site : `https://${prequalData.site}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-primary" style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Visualizar Site Ao vivo ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="lightbox-split-body">
+                <label className="lightbox-sidebar-label">Anotações / Pontos de Qualificação</label>
+                <textarea
+                  className="lightbox-sidebar-textarea"
+                  placeholder="Escreva os pontos de qualificação observados no site..."
+                  value={lightboxNotes}
+                  onChange={(e) => setLightboxNotes(e.target.value)}
+                />
+              </div>
+              <div className="lightbox-split-footer">
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setLightboxOpen(false)}>Fechar</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
+                  setF(prev => ({ ...prev, observacoes: lightboxNotes }));
+                  await saveLeadNotes(item.id, lightboxNotes);
+                  setLightboxOpen(false);
+                }}>Salvar</button>
               </div>
             </div>
           </div>

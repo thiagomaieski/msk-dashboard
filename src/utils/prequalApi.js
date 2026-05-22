@@ -68,12 +68,15 @@ export async function fetchScreenshot(siteUrl, leadId, uploadFile) {
   try {
     // ScreenshotMachine — retorna imagem direta como binário
     // Parâmetros: full-page, resolução desktop nativa, formato JPG
+    const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     const screenshotUrl =
       `https://api.screenshotmachine.com/?key=${apiKey}` +
       `&url=${encodeURIComponent(siteUrl)}` +
       `&dimension=1920xfull` +
+      `&device=desktop` +
+      `&user-agent=${encodeURIComponent(ua)}` +
       `&format=jpg` +
-      `&delay=2000` +
+      `&delay=5000` +
       `&cacheLimit=0`;
 
     // Baixa a imagem como blob

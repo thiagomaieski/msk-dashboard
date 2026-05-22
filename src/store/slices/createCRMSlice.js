@@ -29,6 +29,28 @@ export const createCRMSlice = (set, get) => ({
 
     await get().saveGeneric('leads', { ...fields, modificadoEm: serverTimestamp() }, 'Lead');
   },
+
+  saveLeadNotes: async (leadId, notes) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+    const updatedLead = { ...lead, observacoes: notes, modificadoEm: new Date().toISOString() };
+    
+    if (isMock) {
+      set(s => ({
+        mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? updatedLead : l) }
+      }));
+    } else {
+      set(s => ({
+        realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? updatedLead : l) }
+      }));
+      await updateDoc(uDoc('leads', leadId), { observacoes: notes, modificadoEm: serverTimestamp() })
+        .catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+    toast('Qualificação salva!');
+  },
   
   saveCliente: async (fields) => {
     if (!fields.nome) return get().toast('Nome obrigatório', 'error');
