@@ -295,7 +295,7 @@ export default function ConfiguracoesPage() {
                       </button>
                     )}
 
-                    {currentUser?.providerData?.some(p => p.providerId === 'google.com') && (
+                    {(currentUser?.photoURL || currentUser?.providerData?.some(p => p.providerId === 'google.com')) && (
                       <button 
                         className="btn btn-sm btn-secondary" 
                         onClick={importGooglePhoto}
@@ -317,9 +317,13 @@ export default function ConfiguracoesPage() {
                         
                         try {
                           const oldPath = profile.photoPath;
-                          const result = await useDash.getState().uploadFile(file, 'profile');
-                          await updateProfileDoc({ photoURL: result.url, photoPath: result.path });
-                          if (oldPath) deleteFile(oldPath).catch(console.error);
+                          const ext = file.name.split('.').pop() || 'png';
+                          const stableFilename = `profile_${currentUser?.uid || 'user'}.${ext}`;
+                          const renamedFile = new File([file], stableFilename, { type: file.type });
+
+                          const result = await useDash.getState().uploadFile(renamedFile, 'profile');
+                          await updateProfileDoc({ photoURL: result.url, photoPath: result.path, photoUpdated: Date.now() });
+                          if (oldPath && oldPath !== result.path) deleteFile(oldPath).catch(console.error);
                           toast('Foto atualizada!');
                         } catch (err) {
                           // Erro já tratado no store via toast
@@ -329,8 +333,12 @@ export default function ConfiguracoesPage() {
                   </div>
                 </div>
                 <div>
-                  {profile.photoURL ? (
-                    <img src={profile.photoURL} alt="Avatar" style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover' }} />
+                   {profile.photoURL ? (
+                    <img 
+                      src={profile.photoURL.includes('googleusercontent.com') ? profile.photoURL : `${profile.photoURL}${profile.photoURL.includes('?') ? '&' : '?'}_t=${profile.photoUpdated || 0}`} 
+                      alt="Avatar" 
+                      style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover' }} 
+                    />
                   ) : (
                     <img src={nonProfilePhoto} alt="Avatar" style={{ borderRadius: '50%', width: 64, height: 64, border: '2px solid var(--border)', objectFit: 'cover', background: 'var(--bg3)' }} />
                   )}
@@ -770,7 +778,7 @@ export default function ConfiguracoesPage() {
                         if (configData.pdfLogoPath) {
                           await useDash.getState().deleteFile(configData.pdfLogoPath).catch(() => {});
                         }
-                        saveEmpresaData({ pdfLogo: null, pdfLogoPath: null });
+                        saveEmpresaData({ pdfLogo: null, pdfLogoPath: null, logoUpdated: Date.now() });
                       }}>Remover</button>
                     )}
                     <input 
@@ -782,13 +790,18 @@ export default function ConfiguracoesPage() {
                         
                         try {
                           toast('Enviando logo...', 'info');
-                          const result = await useDash.getState().uploadFile(file, 'logo');
+                          const ext = file.name.split('.').pop() || 'png';
+                          const stableFilename = `logo_${currentUser?.uid || 'company'}.${ext}`;
+                          const renamedFile = new File([file], stableFilename, { type: file.type });
+
+                          const result = await useDash.getState().uploadFile(renamedFile, 'logo');
                           
-                          if (configData.pdfLogoPath) {
-                            await useDash.getState().deleteFile(configData.pdfLogoPath).catch(() => {});
+                          const oldPath = configData.pdfLogoPath;
+                          if (oldPath && oldPath !== result.path) {
+                            await useDash.getState().deleteFile(oldPath).catch(() => {});
                           }
                           
-                          await saveEmpresaData({ pdfLogo: result.url, pdfLogoPath: result.path });
+                          await saveEmpresaData({ pdfLogo: result.url, pdfLogoPath: result.path, logoUpdated: Date.now() });
                           toast('Logo atualizada!');
                         } catch (err) {
                           toast('Erro ao fazer upload da logo.', 'error');
@@ -799,7 +812,7 @@ export default function ConfiguracoesPage() {
                 </div>
                 <div>
                   {configData.pdfLogo ? (
-                    <img src={configData.pdfLogo} alt="Logo PDF" style={{ height: 60, maxWidth: 200, border: '1px solid var(--border)', objectFit: 'contain', background: 'white', padding: 4, borderRadius: 4 }} />
+                    <img src={`${configData.pdfLogo}${configData.pdfLogo.includes('?') ? '&' : '?'}_t=${configData.logoUpdated || 0}`} alt="Logo PDF" style={{ height: 60, maxWidth: 200, border: '1px solid var(--border)', objectFit: 'contain', background: 'white', padding: 4, borderRadius: 4 }} />
                   ) : (
                     <div style={{ height: 60, width: 140, border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text3)', borderRadius: 4 }}>Sem Logo</div>
                   )}

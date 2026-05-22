@@ -65,6 +65,14 @@ export const createAuthSlice = (set, get) => ({
           if (role !== 'admin') {
             role = profileData.role || 'user';
           }
+          
+          // Se a foto de perfil no Firestore estiver vazia mas o usuário do Firebase tiver uma fotoURL,
+          // atualiza o Firestore automaticamente para manter a consistência da foto da conta Google.
+          if (!profileData.photoURL && user.photoURL) {
+            profileData.photoURL = user.photoURL;
+            updateDoc(profileRef, { photoURL: user.photoURL }).catch(console.error);
+          }
+
           set({ 
             profile: { ...profileData, criadoEm: profileData.criadoEm?.toDate?.()?.toISOString() || profileData.criadoEm }, 
             requiresSetup: !profileData.setupCompleted 
@@ -173,13 +181,13 @@ export const createAuthSlice = (set, get) => ({
     const { currentUser, updateProfileDoc, toast } = get();
     try {
       await updateProfile(currentUser, { displayName, photoURL });
-      await updateProfileDoc({ name: displayName, photoURL, photoPath, setupCompleted: true });
+      await updateProfileDoc({ name: displayName, photoURL, photoPath, setupCompleted: true, photoUpdated: Date.now() });
       await setDoc(uDoc('settings', 'main'), { modules }, { merge: true });
       
       set(s => ({ 
         requiresSetup: false, 
         configData: { ...s.configData, modules },
-        profile: { ...s.profile, name: displayName, photoURL, photoPath, setupCompleted: true }
+        profile: { ...s.profile, name: displayName, photoURL, photoPath, setupCompleted: true, photoUpdated: Date.now() }
       }));
       
       get()._refreshData();
@@ -202,13 +210,17 @@ export const createAuthSlice = (set, get) => ({
     if (profile.photoPath) {
       await deleteFile(profile.photoPath);
     }
-    await updateProfileDoc({ photoURL: '', photoPath: '' });
+    await updateProfileDoc({ photoURL: '', photoPath: '', photoUpdated: Date.now() });
     toast('Foto de perfil removida');
   },
 
   importGooglePhoto: async () => {
     const { currentUser, profile, updateProfileDoc, deleteFile, toast } = get();
-    const googlePhoto = currentUser.providerData.find(p => p.providerId === 'google.com')?.photoURL;
+    
+    // Tenta obter do providerData do Google, diretamente do currentUser, ou do primeiro provider disponível
+    const googlePhoto = currentUser.providerData.find(p => p.providerId === 'google.com')?.photoURL
+      || currentUser.photoURL
+      || currentUser.providerData?.[0]?.photoURL;
     
     if (!googlePhoto) {
       return toast('Nenhuma foto do Google encontrada para esta conta.', 'error');
@@ -218,7 +230,7 @@ export const createAuthSlice = (set, get) => ({
       await deleteFile(profile.photoPath);
     }
 
-    await updateProfileDoc({ photoURL: googlePhoto, photoPath: '' });
+    await updateProfileDoc({ photoURL: googlePhoto, photoPath: '', photoUpdated: Date.now() });
     toast('Foto do Google importada!');
   },
 

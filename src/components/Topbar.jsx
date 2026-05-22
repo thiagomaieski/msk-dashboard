@@ -58,7 +58,11 @@ export default function Topbar() {
           title="Minha Conta"
         >
           {profile.photoURL ? (
-            <img className="user-avatar" src={profile.photoURL} alt="" />
+            <img 
+              className="user-avatar" 
+              src={profile.photoURL.includes('googleusercontent.com') ? profile.photoURL : `${profile.photoURL}${profile.photoURL.includes('?') ? '&' : '?'}_t=${profile.photoUpdated || 0}`} 
+              alt="" 
+            />
           ) : <AvatarFallback />}
           <span className="topbar-account-text topbar-account-text--desktop">
             <span className="topbar-account-label">Minha Conta</span>

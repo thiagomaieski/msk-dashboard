@@ -111,7 +111,7 @@ export const createUISlice = (set, get) => ({
   },
 
   autoPurgeTrash: async () => {
-    const { currentUser } = get();
+    const { currentUser, deleteFile } = get();
     const cutoff = Date.now() - 15 * 24 * 60 * 60 * 1000;
     for (const colName of TRASH_COLS) {
       const snap = await getDocs(uCol(colName));
@@ -119,7 +119,15 @@ export const createUISlice = (set, get) => ({
         const dt = d.data().deletadoEm;
         if (!dt) continue;
         const ms = typeof dt === 'string' ? new Date(dt).getTime() : (dt?.seconds || 0) * 1000;
-        if (ms > 0 && ms < cutoff) deleteDoc(uDoc(colName, d.id)).catch(() => {});
+        if (ms > 0 && ms < cutoff) {
+          if (colName === 'leads') {
+            const path = d.data().prequalData?.screenshotPath;
+            if (path) {
+              await deleteFile(path).catch(e => console.warn('[autoPurgeTrash] Falha ao deletar screenshot:', e));
+            }
+          }
+          deleteDoc(uDoc(colName, d.id)).catch(() => {});
+        }
       }
     }
   },
@@ -226,11 +234,13 @@ export const createUISlice = (set, get) => ({
 
     const colName = map[type];
     const editId = id || null;
+    // Lead modal usa size 'xl' para o layout de duas colunas da Pré-Qualificação
+    const modalSize = type === 'lead' ? 'xl' : null;
     set(s => ({
       modalOpen: true,
       modalType: type,
       modalTitle: titles[type] || type,
-      modalSize: null,
+      modalSize,
       editingId: {
         ...s.editingId,
         ...(colName ? { [colName]: editId } : {}),
@@ -395,6 +405,13 @@ export const createUISlice = (set, get) => ({
 
   hardDeleteItem: async (colName, id) => {
     if (!await get().showConfirm('Apagar permanentemente?', 'Esta ação é irreversível. O item não poderá ser recuperado.')) return false;
+    if (colName === 'leads') {
+      const lead = get().data.leads.find(l => l.id === id);
+      const path = lead?.prequalData?.screenshotPath;
+      if (path) {
+        await get().deleteFile(path).catch(e => console.warn('[hardDeleteItem] Falha ao deletar screenshot:', e));
+      }
+    }
     await deleteDoc(uDoc(colName, id));
     get().toast('Apagado permanentemente');
     return true;
@@ -402,10 +419,19 @@ export const createUISlice = (set, get) => ({
 
   emptyTrash: async () => {
     if (!await get().showConfirm('Esvaziar a lixeira?', 'Todos os itens serão apagados permanentemente. Esta ação não pode ser desfeita.')) return false;
+    const { deleteFile } = get();
     for (const colName of TRASH_COLS) {
       const snap = await getDocs(uCol(colName));
       const trashed = snap.docs.filter(d => d.data().deletadoEm);
-      for (const d of trashed) deleteDoc(uDoc(colName, d.id)).catch(() => {});
+      for (const d of trashed) {
+        if (colName === 'leads') {
+          const path = d.data().prequalData?.screenshotPath;
+          if (path) {
+            await deleteFile(path).catch(e => console.warn('[emptyTrash] Falha ao deletar screenshot:', e));
+          }
+        }
+        await deleteDoc(uDoc(colName, d.id)).catch(() => {});
+      }
     }
     get().toast('Lixeira esvaziada!');
     return true;
@@ -817,6 +843,10 @@ export const createUISlice = (set, get) => ({
       set(s => ({ configData: { ...s.configData, ...fields } }));
       toast('Configurações salvas!');
     } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
+  },
+
+  saveEmpresaData: async (fields) => {
+    await get().saveBusinessConfig(fields);
   },
 
   saveCartoes: async (cartoes) => {

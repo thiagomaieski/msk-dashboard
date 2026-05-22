@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 import { getWaLink } from '../store/useStore';
+import { leadHasValidSite, leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
 
@@ -43,6 +44,230 @@ function MobileFilterSheet({ open, onClose, children }) {
   );
 }
 
+/* ─── Pré-Qual: helpers de steps ────────────────────────────────────────────── */
+const STEP_LABELS = { pagespeed: 'PageSpeed', instagram: 'Instagram', screenshot: 'Screenshot' };
+const STEP_ORDER = ['pagespeed', 'instagram', 'screenshot'];
+
+function StepRow({ stepKey, step }) {
+  if (!step) return null;
+  const label = STEP_LABELS[stepKey] || stepKey;
+  const { status, count, mobile, desktop, followers, error } = step;
+
+  let detail = null;
+  if (status === 'done') {
+    if (stepKey === 'pagespeed') {
+      detail = (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {mobile != null && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+              {mobile}
+            </span>
+          )}
+          {desktop != null && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              {desktop}
+            </span>
+          )}
+        </span>
+      );
+    }
+    if (stepKey === 'instagram')  detail = followers != null ? (followers >= 1000 ? (followers/1000).toFixed(1)+'k' : followers) + ' seguidores' : null;
+    if (stepKey === 'screenshot') detail = 'Capturado';
+  }
+  if (status === 'skipped') detail = error || 'Ignorado';
+  if (status === 'error')   detail = error || 'Erro';
+
+  return (
+    <div className={"prequal-step-row prequal-step-row--" + status}>
+      <div className="prequal-step-icon">
+        {status === 'running' && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
+        {status === 'done'    && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M20 6 9 17l-5-5"/></svg>}
+        {status === 'error'   && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M18 6 6 18M6 6l12 12"/></svg>}
+        {status === 'skipped' && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14"/></svg>}
+      </div>
+      <span className="prequal-step-label">{label}</span>
+      {detail && <span className="prequal-step-detail">{detail}</span>}
+    </div>
+  );
+}
+
+/* ─── PreQual Progress Modal ──────────────────────────────────────────────── */
+const STATUS_ICON = {
+  pending: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--text3)', flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+  processing: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: '#818cf8', animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  ),
+  success: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14, color: 'var(--green)', flexShrink: 0 }}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+  skipped: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--amber)', flexShrink: 0 }}>
+      <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+    </svg>
+  ),
+  error: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14, color: 'var(--red)', flexShrink: 0 }}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  ),
+};
+
+function PreQualProgressModal({ modal, onClose }) {
+  if (!modal) return null;
+  const { items, done, processed, skipped: skippedCount } = modal;
+  const total = items.length;
+  const doneCount = items.filter(i => ['success', 'error', 'skipped'].includes(i.status)).length;
+  const progressPct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const errorCount = items.filter(i => i.status === 'error').length;
+
+  return (
+    <div className="prequal-progress-overlay" onClick={done ? onClose : undefined}>
+      <div className="prequal-progress-modal" onClick={e => e.stopPropagation()}>
+
+        <div className="prequal-progress-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!done ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: '#818cf8', animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : errorCount === 0 ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--green)' }}>
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--amber)' }}>
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            )}
+            <span style={{ fontSize: 13, fontWeight: 600 }}>
+              {done ? 'Pré-Qualificação Concluída' : 'Executando Pré-Qualificação...'}
+            </span>
+          </div>
+          {done && (
+            <button className="modal-close" onClick={onClose} style={{ position: 'static' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          )}
+        </div>
+
+        <div className="prequal-progress-bar-track">
+          <div
+            className="prequal-progress-bar-fill"
+            style={{
+              width: progressPct + '%',
+              background: done && errorCount > 0
+                ? 'linear-gradient(90deg, var(--green), var(--amber))'
+                : done ? 'var(--green)'
+                : 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3)', margin: '0 20px 12px' }}>
+          <span>{doneCount} de {total} processados</span>
+          <span>{progressPct}%</span>
+        </div>
+
+        <div className="prequal-progress-list">
+          {items.map(item => (
+            <div key={item.id} className={"prequal-progress-item prequal-progress-item--" + item.status}>
+              <div className="prequal-progress-item-icon">{STATUS_ICON[item.status]}</div>
+              <div className="prequal-progress-item-body">
+                <div className="prequal-progress-item-name">{item.name}</div>
+                {item.site && (
+                  <div className="prequal-progress-item-site">{item.site.replace(/^https?:\/\//, '')}</div>
+                )}
+                {/* Step log: visível durante processamento e após sucesso com steps */}
+                {Object.keys(item.steps || {}).length > 0 && (
+                  <div className="prequal-step-log">
+                    {STEP_ORDER.map(key => <StepRow key={key} stepKey={key} step={item.steps[key]} />)}
+                  </div>
+                )}
+                {item.status === 'success' && item.result && (
+                  <div className="prequal-progress-item-tags">
+                    {item.result.pagespeedMobile != null && (
+                      <span className={"prequal-tag prequal-tag--" + (item.result.pagespeedMobile >= 90 ? 'green' : item.result.pagespeedMobile >= 50 ? 'amber' : 'red')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                        {item.result.pagespeedMobile}
+                      </span>
+                    )}
+                    {item.result.pagespeedDesktop != null && (
+                      <span className={"prequal-tag prequal-tag--" + (item.result.pagespeedDesktop >= 90 ? 'green' : item.result.pagespeedDesktop >= 50 ? 'amber' : 'red')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                        {item.result.pagespeedDesktop}
+                      </span>
+                    )}
+                    {item.result.hasInstagram && (
+                      <span className="prequal-tag prequal-tag--pink" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                        Instagram
+                      </span>
+                    )}
+                    {item.result.hasScreenshot && (
+                      <span className="prequal-tag prequal-tag--blue" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Screenshot
+                      </span>
+                    )}
+                  </div>
+                )}
+                {(item.status === 'skipped' || item.status === 'error') && item.reason && (
+                  <div className="prequal-progress-item-reason">{item.reason}</div>
+                )}
+              </div>
+              <div className="prequal-progress-item-badge">
+                {item.status === 'pending' && <span style={{ fontSize: 10, color: 'var(--text3)' }}>Aguardando</span>}
+                {item.status === 'processing' && <span style={{ fontSize: 10, color: '#818cf8' }}>Processando</span>}
+                {item.status === 'success' && <span style={{ fontSize: 10, color: 'var(--green)' }}>OK</span>}
+                {item.status === 'skipped' && <span style={{ fontSize: 10, color: 'var(--amber)' }}>Ignorado</span>}
+                {item.status === 'error' && <span style={{ fontSize: 10, color: 'var(--red)' }}>Erro</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {done && (
+          <div className="prequal-progress-footer">
+            <div className="prequal-progress-summary">
+              {processed > 0 && (
+                <span className="prequal-summary-chip prequal-summary-chip--green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M20 6 9 17l-5-5"/></svg>
+                  {processed} qualificado{processed > 1 ? 's' : ''}
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="prequal-summary-chip prequal-summary-chip--red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  {errorCount} com erro
+                </span>
+              )}
+              {skippedCount > 0 && (
+                <span className="prequal-summary-chip prequal-summary-chip--amber">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  {skippedCount} ignorado{skippedCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 12, padding: '7px 20px' }} onClick={onClose}>
+              Fechar
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LeadsPage() {
   const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
@@ -53,6 +278,74 @@ export default function LeadsPage() {
   const selectAll = useDash(s => s.selectAll);
   const importLeadsCSV = useDash(s => s.importLeadsCSV);
   const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
+  const runPreQualification = useDash(s => s.runPreQualification);
+
+  // Estado do modal de progresso
+  const [prequalModal, setPrequalModal] = useState(null);
+  // null = fechado | { items: [], done: false, processed: 0, skipped: 0 }
+
+  const isPrequaling = prequalModal !== null && !prequalModal.done;
+
+  const handlePreQualification = () => {
+    if (!selectedItems.length || isPrequaling) return;
+
+    // Monta a lista inicial de leads para o modal
+    const initialItems = selectedItems.map(id => {
+      const lead = data.leads.find(l => l.id === id);
+      return {
+        id,
+        name: lead?.nome || id,
+        site: null,
+        status: 'pending', // pending | skipped | processing | success | error
+        reason: null,
+        result: null,
+        steps: {},    // { pagespeed, instagram, screenshot } → { status, ...meta }
+      };
+    });
+
+    setPrequalModal({ items: initialItems, done: false, processed: 0, skipped: 0 });
+
+    const onProgress = (event) => {
+      setPrequalModal(prev => {
+        if (!prev) return prev;
+        const updateItem = (id, patch) =>
+          prev.items.map(it => it.id === id ? { ...it, ...patch } : it);
+
+        switch (event.type) {
+          case 'skipped':
+            return { ...prev, items: updateItem(event.leadId, { status: 'skipped', reason: event.reason }) };
+          case 'processing':
+            return { ...prev, items: updateItem(event.leadId, { status: 'processing', site: event.site }) };
+          case 'success':
+            return { ...prev, items: updateItem(event.leadId, { status: 'success', site: event.site, result: event.result }) };
+          case 'error':
+            return { ...prev, items: updateItem(event.leadId, { status: 'error', reason: event.error }) };
+          case 'step':
+            return {
+              ...prev,
+              items: prev.items.map(it => it.id === event.leadId ? {
+                ...it,
+                steps: { ...it.steps, [event.step]: { status: event.status, count: event.count, mobile: event.mobile, desktop: event.desktop, followers: event.followers, error: event.error } },
+              } : it),
+            };
+          case 'done':
+            return { ...prev, done: true, processed: event.processed, skipped: event.skipped };
+          default:
+            return prev;
+        }
+      });
+    };
+
+    runPreQualification(selectedItems, onProgress);
+  };
+
+  // Quantos dos selecionados têm site ou Instagram válido
+  const selectedWithSiteOrInstagram = useMemo(() => {
+    return selectedItems.filter(id => {
+      const lead = data.leads.find(l => l.id === id);
+      return lead && leadHasValidSiteOrInstagram(lead);
+    }).length;
+  }, [selectedItems, data.leads]);
 
   const [viewMode, setViewMode] = useState('list');
   const [search, setSearch] = useState('');
@@ -148,17 +441,40 @@ export default function LeadsPage() {
   };
 
   const copyLeadInfo = async (l) => {
-    const text = [
+    const lines = [
       `Nome: ${l.nome || ''}`,
       `Telefone: ${l.telefone || ''}`,
       `Nicho: ${l.nicho || ''}`,
       `Site: ${l.site || ''}`,
       `Status: ${l.status || ''}`,
       `Qualificação: ${l.observacoes || ''}`
-    ].join(', ');
+    ];
+
+    if (l.prequalData) {
+      lines.push('\n--- PRÉ-QUALIFICAÇÃO ---');
+      const pq = l.prequalData;
+      if (pq.site) lines.push(`Site Qualificado: ${pq.site}`);
+      if (pq.instagram) lines.push(`Instagram: ${pq.instagram}`);
+      if (pq.pagespeed?.mobile) lines.push(`PageSpeed Mobile: ${pq.pagespeed.mobile}%`);
+      if (pq.pagespeed?.desktop) lines.push(`PageSpeed Desktop: ${pq.pagespeed.desktop}%`);
+      if (pq.instagramData) {
+        const inst = pq.instagramData;
+        if (inst.followers !== null && inst.followers !== undefined) {
+          lines.push(`Seguidores: ${inst.followers.toLocaleString('pt-BR')}`);
+        }
+        if (inst.bio) lines.push(`Bio: ${inst.bio}`);
+        if (inst.bioLink) lines.push(`Link na Bio: ${inst.bioLink}`);
+        if (inst.lastPost) lines.push(`Último Post: ${inst.lastPost}`);
+      }
+      if (pq.prequalizedAt) {
+        lines.push(`Qualificado em: ${new Date(pq.prequalizedAt).toLocaleString('pt-BR')}`);
+      }
+    }
+
+    const text = lines.join('\n');
     try {
       await navigator.clipboard.writeText(text);
-      useDash.getState().toast('Copiado!');
+      useDash.getState().toast('Dados copiados!');
     } catch {
       useDash.getState().toast('Falha ao copiar.', 'error');
     }
@@ -214,6 +530,31 @@ export default function LeadsPage() {
           ))}
         </div>
         <div className="page-actions">
+          {selectedItems.length > 0 && (
+            <button
+              className="btn btn-prequal"
+              onClick={handlePreQualification}
+              disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
+              title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'var(--bg3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff', border: 'none', borderRadius: 'var(--radius)',
+                padding: '7px 14px', fontSize: 13, fontWeight: 600,
+                cursor: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'not-allowed' : 'pointer',
+                opacity: selectedWithSiteOrInstagram === 0 ? 0.55 : 1,
+                transition: 'all .2s',
+                boxShadow: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'none' : '0 2px 10px rgba(99,102,241,.35)',
+              }}
+            >
+              {isPrequaling ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
+              )}
+              {isPrequaling ? 'Qualificando...' : `Fazer Pré-Qualificação${selectedWithSiteOrInstagram < selectedItems.length ? ` (${selectedWithSiteOrInstagram}/${selectedItems.length})` : ''}`}
+            </button>
+          )}
           <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', marginRight: 8 }}>
             <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Visualização em Lista">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -287,6 +628,25 @@ export default function LeadsPage() {
       <div className="page-header mobile-only">
         <div className="page-title">Leads</div>
         <div className="page-actions">
+          {selectedItems.length > 0 && (
+            <button
+              className="btn-icon"
+              onClick={handlePreQualification}
+              disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
+              title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
+              style={{
+                background: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'var(--bg3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff', border: 'none',
+                cursor: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'not-allowed' : 'pointer',
+                opacity: selectedWithSiteOrInstagram === 0 ? 0.55 : 1,
+              }}
+            >
+              {isPrequaling
+                ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
+              }
+            </button>
+          )}
           <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
@@ -640,6 +1000,8 @@ export default function LeadsPage() {
           </div>
         </div>
       )}
+
+      <PreQualProgressModal modal={prequalModal} onClose={() => setPrequalModal(null)} />
     </div>
   );
 }

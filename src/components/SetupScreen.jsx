@@ -11,10 +11,11 @@ const MODULES_LIST = [
 ];
 
 export default function SetupScreen() {
-  const { currentUser, completeSetup, toast, uploadFile } = useDash();
+  const { currentUser, completeSetup, toast, uploadFile, deleteFile } = useDash();
   const [name, setName] = useState(currentUser?.displayName || '');
   const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || '');
   const [photoPath, setPhotoPath] = useState('');
+  const [uploadTimestamp, setUploadTimestamp] = useState(Date.now());
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState('');
   const [selectedModules, setSelectedModules] = useState({
@@ -41,12 +42,20 @@ export default function SetupScreen() {
     setProgress('Enviando...');
 
     try {
+      const ext = file.name.split('.').pop();
+      const stableName = `profile_${currentUser.uid}.${ext}`;
+      const renamedFile = new File([file], stableName, { type: file.type });
+
       const oldPath = photoPath;
-      const result = await uploadFile(file, 'profile');
+      const result = await uploadFile(renamedFile, 'profile');
       
       setPhotoURL(result.url);
       setPhotoPath(result.path);
-      if (oldPath) useDash.getState().deleteFile(oldPath).catch(console.error);
+      setUploadTimestamp(Date.now());
+
+      if (oldPath && oldPath !== result.path) {
+        await deleteFile(oldPath).catch(console.error);
+      }
 
       setProgress('Upload concluído!');
       toast('Foto carregada com sucesso!');
@@ -91,7 +100,11 @@ export default function SetupScreen() {
         <div className="setup-grid">
           <div className="setup-photo-upload">
             {photoURL ? (
-              <img src={photoURL} alt="Avatar" className="setup-avatar-preview" />
+              <img 
+                src={photoURL.includes('googleusercontent.com') ? photoURL : `${photoURL}${photoURL.includes('?') ? '&' : '?'}_t=${uploadTimestamp}`} 
+                alt="Avatar" 
+                className="setup-avatar-preview" 
+              />
             ) : avatarFallback}
             
             <button 
