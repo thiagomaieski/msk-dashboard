@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export function Badge({ status }) {
+export function Badge({ status, children }) {
   const map = {
     'Novo': 'badge-novo', 'Abordado': 'badge-abordado', 'Em negociação': 'badge-negociacao',
     'Follow-up': 'badge-followup', 'Fechado': 'badge-fechado', 'Perdido': 'badge-perdido',
@@ -13,7 +13,12 @@ export function Badge({ status }) {
     'Alta': 'badge-alta', 'Média': 'badge-media', 'Baixa': 'badge-baixa',
   };
   const label = status === 'sim' ? 'Com NF' : status === 'nao' ? 'Sem NF' : status;
-  return <span className={`badge ${map[status] || 'badge-inativo'}`}>{label}</span>;
+  return (
+    <span className={`badge ${map[status] || 'badge-inativo'}`}>
+      {label}
+      {children}
+    </span>
+  );
 }
 
 export function EmptyState({ msg = 'Nenhum registro encontrado', colSpan = 10 }) {

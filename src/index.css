@@ -1342,6 +1342,44 @@ tbody tr:hover .copy-btn {
   letter-spacing: .04em;
 }
 
+/* BADGES INTERATIVOS (MUDANÇA DE STATUS RÁPIDA - COORDENADO DENTRO DO BADGE) */
+.status-badge-interactive {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.status-badge-interactive:hover .badge {
+  filter: brightness(0.9) saturate(1.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateY(-0.5px);
+}
+
+.status-badge-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  color: inherit;
+}
+
+.status-badge-interactive:hover .status-badge-arrow {
+  width: 12px;
+  opacity: 1;
+  margin-left: 5px;
+}
+
+.status-badge-arrow svg {
+  width: 11px;
+  height: 11px;
+}
+
 .badge-novo {
   background: var(--bg4);
   color: var(--text);

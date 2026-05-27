@@ -279,6 +279,7 @@ export default function LeadsPage() {
   const importLeadsCSV = useDash(s => s.importLeadsCSV);
   const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
   const runPreQualification = useDash(s => s.runPreQualification);
+  const saveLead = useDash(s => s.saveLead);
 
   // Estado do modal de progresso
   const [prequalModal, setPrequalModal] = useState(null);
@@ -362,9 +363,10 @@ export default function LeadsPage() {
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
   
-  const { totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
+  const { totalLeadsNovos, totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
     const leads = data.leads;
     const totals = {
+      totalLeadsNovos: leads.filter(l => (l.status || 'Novo') === 'Novo').length,
       totalLeadsAbordados: leads.filter(l => l.status === 'Abordado').length,
       totalLeadsPerdidos: leads.filter(l => l.status === 'Perdido').length,
       totalLeadsFechados: leads.filter(l => l.status === 'Fechado').length,
@@ -480,6 +482,15 @@ export default function LeadsPage() {
     }
   };
 
+  const handleNextStatus = async (lead, e) => {
+    e.stopPropagation();
+    const currentStatus = lead.status || 'Novo';
+    const statusFlow = ['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'];
+    const idx = statusFlow.indexOf(currentStatus);
+    const nextStatus = statusFlow[(idx + 1) % statusFlow.length];
+    await saveLead({ ...lead, status: nextStatus });
+  };
+
   return (
     <div>
       <input type="file" id="lead-csv" accept=".csv" style={{ display: 'none' }} onChange={handleCSV} />
@@ -489,6 +500,7 @@ export default function LeadsPage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, flex: 1 }}>
           {[
             { label: 'Total de Leads', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
+            { label: 'Novos', value: totalLeadsNovos, color: 'var(--text)', bg: 'var(--bg4)', status: 'Novo' },
             { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
             { label: 'Leads Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
             { label: 'Leads Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
@@ -660,6 +672,7 @@ export default function LeadsPage() {
       <div className="leads-stats-row mobile-only">
         {[
           { label: 'Total', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
+          { label: 'Novos', value: totalLeadsNovos, color: 'var(--text)', bg: 'var(--bg4)', status: 'Novo' },
           { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
           { label: 'Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
           { label: 'Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
@@ -928,8 +941,50 @@ export default function LeadsPage() {
                       </a>
                     ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
                   </td>
-                  <td><Badge status={l.status || 'Novo'} /></td>
-                  <td style={{ maxWidth: 170 }}><div className="lead-qual" title={l.observacoes || ''}>{l.observacoes || '-'}</div></td>
+                  <td>
+                    <div 
+                      className="status-badge-interactive" 
+                      onClick={(e) => handleNextStatus(l, e)}
+                      title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status`}
+                    >
+                      <Badge status={l.status || 'Novo'}>
+                        <span className="status-badge-arrow">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </span>
+                      </Badge>
+                    </div>
+                  </td>
+                  <td style={{ maxWidth: 170 }}>
+                    <div className="lead-qual" title={l.observacoes || ''} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {l.prequalData && (
+                        <span 
+                          title="Lead Pré-Qualificado"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            color: '#fff',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 4px rgba(99,102,241,0.3)',
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 9, height: 9 }}>
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                          </svg>
+                        </span>
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {l.observacoes || '-'}
+                      </span>
+                    </div>
+                  </td>
                   <td>
                     <div className="row-actions">
                       <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
