@@ -302,9 +302,11 @@ export const createUISlice = (set, get) => ({
 
   saveGeneric: async (colName, payload, label) => {
     const { editingId, toast, closeModal, demoMode } = get();
-    const id = payload.id || editingId[colName];
-    const { id: _, ...payloadWithoutId } = payload;
-    const finalPayload = id ? payloadWithoutId : payload;
+    
+    // Destrutura id do payload para evitar sobrescrever ids temporários nas listas locais
+    const { id: payloadId, ...payloadWithoutId } = payload;
+    const id = payloadId || editingId[colName];
+    const finalPayload = payloadWithoutId;
 
     const isEditingMock = id && (get().data[colName].find(x => x.id === id)?.isMock);
     const shouldTargetMock = isEditingMock || (!id && demoMode);
@@ -320,7 +322,7 @@ export const createUISlice = (set, get) => ({
         local.criadoEm = new Date().toISOString();
         local.isMock = true;
         const tempId = 'm-' + Date.now();
-        set(s => ({ mockData: { ...s.mockData, [colName]: [{ id: tempId, ...local }, ...s.mockData[colName]] } }));
+        set(s => ({ mockData: { ...s.mockData, [colName]: [{ ...local, id: tempId }, ...s.mockData[colName]] } }));
       }
       get()._refreshData();
       closeModal();
@@ -336,13 +338,13 @@ export const createUISlice = (set, get) => ({
       if (colName === 'lembretes' && payload.concluido) get()._cleanupNotif(id);
     } else {
       local.criadoEm = new Date().toISOString();
-      payload.criadoEm = serverTimestamp();
+      finalPayload.criadoEm = serverTimestamp();
       const tempId = 'temp_' + Date.now();
-      set(s => ({ realData: { ...s.realData, [colName]: [{ id: tempId, ...local }, ...s.realData[colName]] } }));
+      set(s => ({ realData: { ...s.realData, [colName]: [{ ...local, id: tempId }, ...s.realData[colName]] } }));
       get()._refreshData();
       closeModal();
       toast(`${label} adicionado`);
-      addDoc(uCol(colName), payload).then(r => {
+      addDoc(uCol(colName), finalPayload).then(r => {
         set(s => ({ realData: { ...s.realData, [colName]: s.realData[colName].map(x => x.id === tempId ? { ...x, id: r.id } : x) } }));
         get()._refreshData();
       }).catch(e => toast('Sync Error: ' + e.message, 'error'));
