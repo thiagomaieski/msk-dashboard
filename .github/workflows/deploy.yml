@@ -48,5 +48,4 @@ jobs:
         local-dir: ./dist/ 
         server-dir: ./ 
         protocol: ftps
-        port: 21       
-        timeout: 600000 # 10 minutos (Evita erros de timeout na Hostinger)
+        port: 21
