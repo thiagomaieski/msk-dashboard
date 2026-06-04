@@ -103,7 +103,10 @@ while ($info = curl_multi_info_read($multiCurl)) {
     $monitor['responseTime'] = round($totalTime * 1000); // ms
     
     // Verifica mudança de estado
-    if ($oldStatus !== 'pending' && $oldStatus !== $newStatus) {
+    $statusChanged = ($oldStatus !== $newStatus);
+    $isFirstFail = ($oldStatus === 'pending' && $newStatus === 'offline');
+    
+    if (($statusChanged && $oldStatus !== 'pending') || $isFirstFail) {
         $email = $allData[$mFile]['email'] ?? '';
         if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             if (!isset($resultsToEmail[$email])) {
@@ -111,6 +114,8 @@ while ($info = curl_multi_info_read($multiCurl)) {
             }
             
             $statusText = $isOnline ? '✅ VOLTOU A FICAR ONLINE' : '❌ FICOU OFFLINE';
+            if ($isFirstFail) $statusText = '❌ ESTÁ OFFLINE (Falhou na primeira verificação)';
+            
             $resultsToEmail[$email][] = "O site {$mLabel} ({$mUrl}) {$statusText}. (Código HTTP: {$httpCode})";
         }
     }
