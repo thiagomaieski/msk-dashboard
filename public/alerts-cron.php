@@ -4,6 +4,7 @@
  * Processa todos os arquivos em uploads/alerts/ e envia os e-mails diários de resumo.
  * Configure na Hostinger para rodar 1x ao dia (ex: 08:00 AM)
  */
+date_default_timezone_set('America/Sao_Paulo');
 
 define('BASE_UPLOAD_DIR', __DIR__ . '/uploads/alerts');
 define('LOG_FILE', __DIR__ . '/uploads/alerts_cron.log');
