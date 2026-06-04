@@ -39,13 +39,13 @@ jobs:
         VITE_SCREENSHOT_API_KEY: ${{ secrets.VITE_SCREENSHOT_API_KEY }}
         VITE_APIFY_API_KEY: ${{ secrets.VITE_APIFY_API_KEY }}
 
-    - name: 🚀 Instalar LFTP
-      run: sudo apt-get update && sudo apt-get install lftp -y
-
-    - name: 🚀 Enviar para a Hostinger via LFTP
-      env:
-        FTP_USER: ${{ secrets.FTP_USERNAME }}
-        FTP_PASS: ${{ secrets.FTP_PASSWORD }}
-        FTP_HOST: ${{ secrets.FTP_SERVER }}
-      run: |
-        lftp -c "set ftp:ssl-allow true; set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; open -u $FTP_USER,'$FTP_PASS' $FTP_HOST; mirror -R ./dist/ ./ --parallel=10 --exclude-glob .git* --exclude .ftpquota"
+    - name: 🚀 Enviar para a Hostinger via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./dist/ 
+        server-dir: ./ 
+        protocol: ftps
+        port: 21
