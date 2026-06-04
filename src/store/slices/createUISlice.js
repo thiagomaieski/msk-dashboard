@@ -1,5 +1,6 @@
 import { db, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, collection, query, orderBy, writeBatch, addDoc } from '../../firebase';
 import { uCol, uDoc, fmtDateISO, fmtDate, fmtBRL, detectCSVDelimiter, parseCSVRows, cleanCSVValue, buildCSVHeaderMap, getCSVCell, normalizeImportedStatus, TRASH_COLS, ALL_COLS, EMPTY_DATA } from '../storeUtils';
+import { syncAlertsWithHostinger } from '../../utils/syncAlerts';
 
 let IS_REPORTING_AUTOMATIC_ERROR = false;
 
@@ -108,6 +109,7 @@ export const createUISlice = (set, get) => ({
     get().autoPurgeTrash();
     get().trackSession();
     get().loadSessions();
+    syncAlertsWithHostinger(get);
   },
 
   autoPurgeTrash: async () => {
@@ -347,6 +349,7 @@ export const createUISlice = (set, get) => ({
       addDoc(uCol(colName), finalPayload).then(r => {
         set(s => ({ realData: { ...s.realData, [colName]: s.realData[colName].map(x => x.id === tempId ? { ...x, id: r.id } : x) } }));
         get()._refreshData();
+        syncAlertsWithHostinger(get);
       }).catch(e => toast('Sync Error: ' + e.message, 'error'));
     }
   },
@@ -390,6 +393,7 @@ export const createUISlice = (set, get) => ({
       set(s => ({ realData: { ...s.realData, lembretes: s.realData.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l) } }));
       updateDoc(uDoc('lembretes', id), { concluido: !atual }).catch(e => console.error('Lembrete toggle sync error:', e));
       if (!atual) get()._cleanupNotif(id);
+      syncAlertsWithHostinger(get);
     }
     get()._refreshData();
   },
