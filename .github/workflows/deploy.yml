@@ -39,13 +39,13 @@ jobs:
         VITE_SCREENSHOT_API_KEY: ${{ secrets.VITE_SCREENSHOT_API_KEY }}
         VITE_APIFY_API_KEY: ${{ secrets.VITE_APIFY_API_KEY }}
 
-    - name: 🚀 Enviar para a Hostinger via SFTP
-      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+    - name: 🚀 Enviar para a Hostinger via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        port: 65002 # A Hostinger usa por padrão a porta 65002 para SSH/SFTP
-        local_path: './dist/*'
-        remote_path: './' # O caminho no servidor remoto. Se o FTP te jogava direto na public_html, mantenha assim.
-        sftpArgs: '-o ConnectTimeout=30'
+        local-dir: ./dist/ 
+        server-dir: ./ 
+        protocol: ftps
+        port: 21
