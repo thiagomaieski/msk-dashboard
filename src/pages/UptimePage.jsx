@@ -58,9 +58,8 @@ function PulseDot({ status }) {
     <span style={{ position: 'relative', display: 'inline-flex', width: 10, height: 10, flexShrink: 0 }}>
       {status === 'online' && (
         <span style={{
-          position: 'absolute', inset: 0, borderRadius: '50%',
-          background: cfg.color, opacity: 0.4,
-          animation: 'uptimePulse 2s ease-out infinite',
+          position: 'absolute', inset: -4, borderRadius: '50%',
+          background: cfg.color, opacity: 0.15,
         }} />
       )}
       <span style={{
@@ -158,8 +157,8 @@ function AddMonitorForm({ onAdd, loading }) {
   );
 }
 
-// ─── Monitor Row ──────────────────────────────────────────────────────────────
-function MonitorRow({ monitor, onDelete }) {
+// ─── Monitor Card ─────────────────────────────────────────────────────────────
+function MonitorCard({ monitor, onDelete }) {
   const [confirming, setConfirming] = useState(false);
 
   const handleDelete = () => {
@@ -172,63 +171,65 @@ function MonitorRow({ monitor, onDelete }) {
   const lastChecked = formatLastChecked(monitor.lastChecked);
 
   return (
-    <motion.tr
-      className="row-in"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        background: 'var(--bg1)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        position: 'relative'
+      }}
     >
-      {/* Status */}
-      <td style={{ width: 120 }}>
-        <StatusBadge status={monitor.status} />
-      </td>
-
-      {/* Site */}
-      <td>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <PulseDot status={monitor.status} />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{displayName}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{displayName}</div>
             {monitor.label && (
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>{displayUrl}</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{displayUrl}</div>
             )}
           </div>
         </div>
-      </td>
+        <StatusBadge status={monitor.status} />
+      </div>
 
-      {/* Response Time */}
-      <td>
-        {monitor.responseTime != null ? (
-          <span style={{
-            fontSize: 13, fontFamily: 'var(--sans)', fontWeight: 500,
-            color: monitor.responseTime < 500 ? 'var(--green)' : monitor.responseTime < 1500 ? 'var(--amber)' : 'var(--red)',
-          }}>
-            {monitor.responseTime}
-            <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400, marginLeft: 2 }}>ms</span>
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>
-        )}
-      </td>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
+            Tempo de Resposta
+          </div>
+          {monitor.responseTime != null ? (
+            <div style={{
+              fontSize: 16, fontFamily: 'var(--sans)', fontWeight: 600,
+              color: monitor.responseTime < 500 ? 'var(--green)' : monitor.responseTime < 1500 ? 'var(--amber)' : 'var(--red)',
+            }}>
+              {monitor.responseTime}
+              <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginLeft: 2 }}>ms</span>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text3)', fontSize: 16 }}>—</div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+            Última verificação: {lastChecked || 'Aguardando cron...'}
+          </div>
+        </div>
 
-      {/* Last Checked */}
-      <td>
-        <span style={{ fontSize: 13, color: 'var(--text2)' }}>
-          {lastChecked || <span style={{ color: 'var(--text3)' }}>aguardando cron...</span>}
-        </span>
-      </td>
-
-      {/* Actions */}
-      <td>
-        <div className="row-actions">
+        <div style={{ display: 'flex', gap: 8 }}>
           <a
             href={monitor.domain}
             target="_blank"
             rel="noopener noreferrer"
-            className="row-btn"
+            className="btn-icon"
             title="Abrir site"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ background: 'var(--bg3)' }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
@@ -236,15 +237,25 @@ function MonitorRow({ monitor, onDelete }) {
             </svg>
           </a>
           <button
-            className={`row-btn ${confirming ? 'del' : ''}`}
-            title={confirming ? 'Clique novamente para confirmar' : 'Remover monitor'}
+            className={`btn-icon ${confirming ? 'active' : ''}`}
+            title={confirming ? 'Clique novamente para EXCLUIR' : 'Excluir monitor'}
             onClick={handleDelete}
-            style={confirming ? { color: 'var(--red)' } : {}}
+            style={{
+              background: confirming ? 'var(--red)' : 'var(--bg3)',
+              color: confirming ? '#fff' : 'var(--text3)',
+              width: confirming ? 'auto' : 28,
+              padding: confirming ? '0 10px' : 6,
+              gap: 6
+            }}
           >
             {confirming ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M20 6 9 17l-5-5"/>
-              </svg>
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14 }}>
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                </svg>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Confirmar</span>
+              </>
             ) : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6"/>
@@ -254,30 +265,26 @@ function MonitorRow({ monitor, onDelete }) {
             )}
           </button>
         </div>
-      </td>
-    </motion.tr>
+      </div>
+    </motion.div>
   );
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function EmptyUptime() {
   return (
-    <tr>
-      <td colSpan={5}>
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text3)' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"
-            style={{ width: 40, height: 40, margin: '0 auto 14px', display: 'block', opacity: 0.3 }}>
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text2)', marginBottom: 6 }}>
-            Nenhum site cadastrado
-          </div>
-          <div style={{ fontSize: 13 }}>
-            Adicione o primeiro domínio acima para começar a monitorar.
-          </div>
-        </div>
-      </td>
-    </tr>
+    <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text3)', gridColumn: '1 / -1' }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"
+        style={{ width: 48, height: 48, margin: '0 auto 16px', display: 'block', opacity: 0.3 }}>
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text2)', marginBottom: 8 }}>
+        Nenhum site cadastrado
+      </div>
+      <div style={{ fontSize: 14 }}>
+        Adicione o primeiro domínio acima para começar a monitorar.
+      </div>
+    </div>
   );
 }
 
@@ -366,12 +373,12 @@ export default function UptimePage() {
 
   return (
     <div>
-      {/* Keyframes inline para o pulse */}
+      {/* Keyframes inline para o badge */}
       <style>{`
-        @keyframes uptimePulse {
-          0% { transform: scale(1); opacity: .4; }
-          70% { transform: scale(2.2); opacity: 0; }
-          100% { transform: scale(1); opacity: 0; }
+        @keyframes uptimeBadgePulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
       `}</style>
 
@@ -419,7 +426,7 @@ export default function UptimePage() {
         variants={fadeUp}
         initial="hidden"
         animate="visible"
-        style={{ marginBottom: 16, padding: '20px 24px' }}
+        style={{ marginBottom: 24, padding: '20px 24px' }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
           {/* Add site */}
@@ -453,22 +460,16 @@ export default function UptimePage() {
         </div>
       </motion.div>
 
-      {/* ─── Monitors Table ───────────────────────────────────────────────── */}
+      {/* ─── Monitors Grid ────────────────────────────────────────────────── */}
       <motion.div
-        className="dash-glass-card"
         custom={2}
         variants={fadeUp}
         initial="hidden"
         animate="visible"
-        style={{ padding: 0, overflow: 'hidden' }}
       >
-        {/* Card Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 24px', borderBottom: '1px solid var(--border)',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Sites Monitorados</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Sites Monitorados</div>
             {offline > 0 && (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -476,63 +477,38 @@ export default function UptimePage() {
                 background: 'var(--red-bg)', color: 'var(--red)',
                 fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
                 border: '1px solid rgba(239,68,68,.2)',
-                animation: 'uptimePulse 2.5s ease-out infinite',
+                animation: 'uptimeBadgePulse 2s infinite',
               }}>
                 ⚠ {offline} offline
               </span>
             )}
           </div>
-          {uptimeLoading && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ width: 16, height: 16, color: 'var(--text3)', animation: 'spin 1s linear infinite' }}>
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            </svg>
+          {uptimeMonitors.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+              Verificações automáticas a cada 10 min
+            </div>
           )}
         </div>
 
-        {/* Table */}
-        <div className="table-wrap" style={{ margin: 0 }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 120 }}>Status</th>
-                <th>Site</th>
-                <th style={{ width: 120 }}>Resposta</th>
-                <th style={{ width: 140 }}>Última verificação</th>
-                <th style={{ width: 80 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              <AnimatePresence mode="popLayout">
-                {uptimeMonitors.length === 0 ? (
-                  <EmptyUptime key="empty" />
-                ) : (
-                  uptimeMonitors.map(m => (
-                    <MonitorRow
-                      key={m.id}
-                      monitor={m}
-                      onDelete={deleteUptimeMonitor}
-                    />
-                  ))
-                )}
-              </AnimatePresence>
-            </tbody>
-          </table>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '16px'
+        }}>
+          <AnimatePresence mode="popLayout">
+            {uptimeMonitors.length === 0 ? (
+              <EmptyUptime key="empty" />
+            ) : (
+              uptimeMonitors.map(m => (
+                <MonitorCard
+                  key={m.id}
+                  monitor={m}
+                  onDelete={deleteUptimeMonitor}
+                />
+              ))
+            )}
+          </AnimatePresence>
         </div>
-
-        {/* Footer */}
-        {uptimeMonitors.length > 0 && (
-          <div style={{
-            padding: '10px 24px', borderTop: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 12, color: 'var(--text3)',
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
-            </svg>
-            As verificações são feitas automaticamente pelo servidor a cada 10 minutos via Cron Job.
-          </div>
-        )}
       </motion.div>
     </div>
   );

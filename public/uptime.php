@@ -118,6 +118,23 @@ if ($method === 'POST') {
         exit;
     }
     
+    if ($action === 'delete') {
+        $id = trim($input['id'] ?? '');
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID do monitor não fornecido']);
+            exit;
+        }
+        
+        $data['monitors'] = array_filter($data['monitors'], function($m) use ($id) {
+            return $m['id'] !== $id;
+        });
+        $data['monitors'] = array_values($data['monitors']);
+        saveData($jsonFile, $data);
+        echo json_encode(['success' => true, 'message' => 'Monitor removido', 'data' => $data]);
+        exit;
+    }
+    
     // Adicionar/Atualizar monitor
     $domain = trim($input['domain'] ?? '');
     $label = trim($input['label'] ?? '');

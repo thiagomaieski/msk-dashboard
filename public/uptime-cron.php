@@ -113,10 +113,14 @@ while ($info = curl_multi_info_read($multiCurl)) {
                 $resultsToEmail[$email] = [];
             }
             
-            $statusText = $isOnline ? '✅ VOLTOU A FICAR ONLINE' : '❌ FICOU OFFLINE';
-            if ($isFirstFail) $statusText = '❌ ESTÁ OFFLINE (Falhou na primeira verificação)';
-            
-            $resultsToEmail[$email][] = "O site {$mLabel} ({$mUrl}) {$statusText}. (Código HTTP: {$httpCode})";
+            $resultsToEmail[$email][] = [
+                'label' => $mLabel,
+                'url' => $mUrl,
+                'isOnline' => $isOnline,
+                'isFirstFail' => $isFirstFail,
+                'httpCode' => $httpCode,
+                'responseTime' => round($totalTime * 1000)
+            ];
         }
     }
     
@@ -133,21 +137,89 @@ foreach ($allData as $file => $data) {
 // Envia os e-mails
 foreach ($resultsToEmail as $email => $messages) {
     $to = $email;
-    $subject = "Alerta de Monitoramento - MSK Dashboard";
+    $subject = "Alerta de Monitoramento - MSK Monitor";
     
-    $body = "Olá!\n\nHouve atualizações nos sites que você monitora:\n\n";
+    $htmlMessages = '';
     foreach ($messages as $msg) {
-        $body .= "- " . $msg . "\n";
+        $color = $msg['isOnline'] ? '#22c55e' : '#ef4444';
+        $bg = $msg['isOnline'] ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+        $statusText = $msg['isOnline'] ? 'ONLINE' : 'OFFLINE';
+        if ($msg['isFirstFail']) $statusText = 'OFFLINE (FALHOU)';
+        
+        $htmlMessages .= "
+        <div style='background: #171717; border: 1px solid #2E2E2E; border-radius: 12px; padding: 24px; margin-bottom: 16px;'>
+            <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                <tr>
+                    <td valign='middle'>
+                        <span style='background: {$bg}; color: {$color}; padding: 6px 12px; border-radius: 99px; font-size: 11px; font-weight: bold; letter-spacing: 0.05em; border: 1px solid {$color}; display: inline-block;'>
+                            ● {$statusText}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style='padding-top: 16px;'>
+                        <div style='color: #FCFCFA; font-size: 18px; font-weight: bold; margin-bottom: 4px; font-family: sans-serif;'>{$msg['label']}</div>
+                        <div style='color: #9F9F9F; font-size: 13px; font-family: sans-serif;'>{$msg['url']}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style='padding-top: 16px;'>
+                        <div style='color: #737373; font-size: 12px; font-family: sans-serif;'>
+                            <strong>HTTP:</strong> {$msg['httpCode']} &nbsp;|&nbsp; <strong>Resposta:</strong> {$msg['responseTime']}ms
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        ";
     }
-    $body .= "\n\nPainel MSK Dashboard.";
     
-    $headers = [
-        'From' => 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'seudominio.com.br'),
-        'Reply-To' => 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'seudominio.com.br'),
-        'X-Mailer' => 'PHP/' . phpversion()
-    ];
+    $body = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+    </head>
+    <body style='background-color: #121212; margin: 0; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>
+        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+            <tr>
+                <td align='center'>
+                    <table width='100%' style='max-width: 500px;' cellpadding='0' cellspacing='0' border='0'>
+                        <tr>
+                            <td align='center' style='padding-bottom: 30px;'>
+                                <div style='color: #00C573; font-size: 24px; font-weight: bold; letter-spacing: -0.02em;'>MSK Monitor</div>
+                                <div style='color: #9F9F9F; font-size: 14px; margin-top: 8px;'>Atualização de status dos seus sites</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                {$htmlMessages}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align='center' style='padding-top: 30px;'>
+                                <div style='color: #737373; font-size: 12px;'>
+                                    Este é um e-mail automático enviado pelo seu painel MSK Dashboard.<br>
+                                    Não é necessário responder.
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    ";
     
-    // Tenta enviar o e-mail
+    $domain = $_SERVER['HTTP_HOST'] ?? 'seudominio.com.br';
+    
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: MSK Monitor <no-reply@{$domain}>\r\n";
+    $headers .= "Reply-To: no-reply@{$domain}\r\n";
+    $headers .= "X-Mailer: PHP/" . phpversion();
+    
     mail($to, $subject, $body, $headers);
 }
 
