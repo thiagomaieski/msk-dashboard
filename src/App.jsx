@@ -23,6 +23,7 @@ const FinancasPessoaisPage = lazy(() => import('./pages/FinancasPage').then(modu
 const LixeiraPage = lazy(() => import('./pages/LixeiraPage'));
 const ClientesPage = lazy(() => import('./pages/ClientesPage'));
 const ConfiguracoesPage = lazy(() => import('./pages/ConfiguracoesPage'));
+const UptimePage = lazy(() => import('./pages/UptimePage'));
 
 // Error boundary to catch render crashes
 class ErrorBoundary extends Component {
@@ -131,6 +132,7 @@ function AppInner() {
           {activePage === 'lixeira' && <LixeiraPage />}
           {activePage === 'clientes' && <ClientesPage />}
           {activePage === 'configuracoes' && <ConfiguracoesPage />}
+          {activePage === 'uptime' && <UptimePage />}
         </main>
       </Suspense>
       

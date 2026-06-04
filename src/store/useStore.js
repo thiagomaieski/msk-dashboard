@@ -3,12 +3,14 @@ import { createAuthSlice } from './slices/createAuthSlice';
 import { createCRMSlice } from './slices/createCRMSlice';
 import { createFinanceSlice } from './slices/createFinanceSlice';
 import { createUISlice } from './slices/createUISlice';
+import { createUptimeSlice } from './slices/createUptimeSlice';
 
 export const useStore = create((set, get) => ({
   ...createAuthSlice(set, get),
   ...createCRMSlice(set, get),
   ...createFinanceSlice(set, get),
   ...createUISlice(set, get),
+  ...createUptimeSlice(set, get),
 }));
 
 export const useDash = useStore;
