@@ -137,7 +137,14 @@ foreach ($allData as $file => $data) {
 // Envia os e-mails
 foreach ($resultsToEmail as $email => $messages) {
     $to = $email;
-    $subject = "Alerta de Monitoramento - MSK Monitor";
+    $firstMsg = $messages[0];
+    $statusWord = $firstMsg['isOnline'] ? 'voltou a ficar online' : 'está fora do ar';
+    
+    if (count($messages) === 1) {
+        $subject = "Alerta - O site {$firstMsg['label']} {$statusWord}";
+    } else {
+        $subject = "Alerta - Atualização em " . count($messages) . " sites monitorados";
+    }
     
     $htmlMessages = '';
     foreach ($messages as $msg) {
@@ -187,8 +194,8 @@ foreach ($resultsToEmail as $email => $messages) {
                     <table width='100%' style='max-width: 500px;' cellpadding='0' cellspacing='0' border='0'>
                         <tr>
                             <td align='center' style='padding-bottom: 30px;'>
-                                <div style='color: #00C573; font-size: 24px; font-weight: bold; letter-spacing: -0.02em;'>MSK Monitor</div>
-                                <div style='color: #9F9F9F; font-size: 14px; margin-top: 8px;'>Atualização de status dos seus sites</div>
+                                <img src='https://dashboard.thiagomaieski.com/assets/dashboard-logo-BYo9Ql_Z.svg' alt='MSK Dashboard' style='height: 32px; display: block; border: 0;' />
+                                <div style='color: #9F9F9F; font-size: 14px; margin-top: 12px;'>Atualização de status dos seus sites</div>
                             </td>
                         </tr>
                         <tr>
