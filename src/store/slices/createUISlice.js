@@ -1,6 +1,7 @@
 import { db, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, collection, query, orderBy, writeBatch, addDoc } from '../../firebase';
 import { uCol, uDoc, fmtDateISO, fmtDate, fmtBRL, detectCSVDelimiter, parseCSVRows, cleanCSVValue, buildCSVHeaderMap, getCSVCell, normalizeImportedStatus, TRASH_COLS, ALL_COLS, EMPTY_DATA } from '../storeUtils';
 import { syncAlertsWithHostinger } from '../../utils/syncAlerts';
+import { MOCK_DATA } from '../mockData';
 
 let IS_REPORTING_AUTOMATIC_ERROR = false;
 
@@ -101,7 +102,7 @@ export const createUISlice = (set, get) => ({
 
     get()._refreshData();
     if (cloudDemo) {
-      set({ mockData: JSON.parse(JSON.stringify(window.MOCK_DATA || {})) });
+      set({ mockData: JSON.parse(JSON.stringify(MOCK_DATA || {})) });
       get()._refreshData();
     }
 
@@ -114,13 +115,18 @@ export const createUISlice = (set, get) => ({
 
   autoPurgeTrash: async () => {
     const { currentUser, deleteFile } = get();
+    if (!currentUser) return;
+    
     const cutoff = Date.now() - 15 * 24 * 60 * 60 * 1000;
+    const allRefs = [];
+    
     for (const colName of TRASH_COLS) {
       const snap = await getDocs(uCol(colName));
       for (const d of snap.docs) {
         const dt = d.data().deletadoEm;
         if (!dt) continue;
         const ms = typeof dt === 'string' ? new Date(dt).getTime() : (dt?.seconds || 0) * 1000;
+        
         if (ms > 0 && ms < cutoff) {
           if (colName === 'leads') {
             const path = d.data().prequalData?.screenshotPath;
@@ -128,9 +134,19 @@ export const createUISlice = (set, get) => ({
               await deleteFile(path).catch(e => console.warn('[autoPurgeTrash] Falha ao deletar screenshot:', e));
             }
           }
-          deleteDoc(uDoc(colName, d.id)).catch(() => {});
+          allRefs.push(uDoc(colName, d.id));
         }
       }
+    }
+
+    if (allRefs.length === 0) return;
+
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < allRefs.length; i += CHUNK_SIZE) {
+      const chunk = allRefs.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach(ref => batch.delete(ref));
+      await batch.commit().catch(e => console.warn('[autoPurgeTrash] Erro no batch:', e));
     }
   },
 
@@ -138,7 +154,7 @@ export const createUISlice = (set, get) => ({
     const { currentUser, configData } = get();
     if (enabled) {
       // @ts-ignore
-      set({ demoMode: true, mockData: JSON.parse(JSON.stringify(window.MOCK_DATA || {})) });
+      set({ demoMode: true, mockData: JSON.parse(JSON.stringify(MOCK_DATA || {})) });
     } else {
       set({ demoMode: false, mockData: { ...EMPTY_DATA } });
     }
@@ -146,7 +162,7 @@ export const createUISlice = (set, get) => ({
 
     if (currentUser) {
       set({ configData: { ...configData, demoMode: enabled } });
-      await updateDoc(uDoc('settings', 'main'), { demoMode: enabled }).catch(console.error);
+      await updateDoc(uDoc('settings', 'main'), { demoMode: enabled }).catch(e => get().toast('Erro de sincronização: ' + e.message, 'error'));
     }
   },
 
@@ -157,7 +173,7 @@ export const createUISlice = (set, get) => ({
 
     if (currentUser) {
       set({ configData: { ...configData, zoom: level } });
-      await updateDoc(uDoc('settings', 'main'), { zoom: level }).catch(console.error);
+      await updateDoc(uDoc('settings', 'main'), { zoom: level }).catch(e => get().toast('Erro de sincronização: ' + e.message, 'error'));
     }
     localStorage.setItem('zoom', level);
   },
@@ -177,7 +193,7 @@ export const createUISlice = (set, get) => ({
 
     if (currentUser) {
       set({ configData: { ...configData, theme: newTheme } });
-      await updateDoc(uDoc('settings', 'main'), { theme: newTheme }).catch(console.error);
+      await updateDoc(uDoc('settings', 'main'), { theme: newTheme }).catch(e => get().toast('Erro de sincronização: ' + e.message, 'error'));
     }
   },
 
@@ -299,7 +315,7 @@ export const createUISlice = (set, get) => ({
     toast(`${ids.length} itens movidos para a lixeira`);
 
     for (const id of realIds) {
-      updateDoc(uDoc(currentBulkCol, id), { deletadoEm: now }).catch(e => console.error('Bulk delete sync error:', e));
+      updateDoc(uDoc(currentBulkCol, id), { deletadoEm: now }).catch(e => get().toast('Erro ao deletar: ' + e.message, 'error'));
     }
   },
 
@@ -381,7 +397,7 @@ export const createUISlice = (set, get) => ({
       set(s => ({ mockData: { ...s.mockData, lembretes: s.mockData.lembretes.filter(x => x.id !== id) } }));
     } else {
       set(s => ({ realData: { ...s.realData, lembretes: s.realData.lembretes.filter(x => x.id !== id) } }));
-      deleteDoc(uDoc('lembretes', id)).catch(e => console.error('Lembrete delete sync error:', e));
+      deleteDoc(uDoc('lembretes', id)).catch(e => get().toast('Erro ao deletar lembrete: ' + e.message, 'error'));
       get()._cleanupNotif(id);
     }
     get()._refreshData();
@@ -394,7 +410,7 @@ export const createUISlice = (set, get) => ({
       set(s => ({ mockData: { ...s.mockData, lembretes: s.mockData.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l) } }));
     } else {
       set(s => ({ realData: { ...s.realData, lembretes: s.realData.lembretes.map(l => l.id === id ? { ...l, concluido: !atual } : l) } }));
-      updateDoc(uDoc('lembretes', id), { concluido: !atual }).catch(e => console.error('Lembrete toggle sync error:', e));
+      updateDoc(uDoc('lembretes', id), { concluido: !atual }).catch(e => get().toast('Erro ao atualizar lembrete: ' + e.message, 'error'));
       if (!atual) get()._cleanupNotif(id);
       syncAlertsWithHostinger(get);
     }
@@ -430,6 +446,8 @@ export const createUISlice = (set, get) => ({
   emptyTrash: async () => {
     if (!await get().showConfirm('Esvaziar a lixeira?', 'Todos os itens serão apagados permanentemente. Esta ação não pode ser desfeita.')) return false;
     const { deleteFile } = get();
+    const allRefs = [];
+    
     for (const colName of TRASH_COLS) {
       const snap = await getDocs(uCol(colName));
       const trashed = snap.docs.filter(d => d.data().deletadoEm);
@@ -440,20 +458,34 @@ export const createUISlice = (set, get) => ({
             await deleteFile(path).catch(e => console.warn('[emptyTrash] Falha ao deletar screenshot:', e));
           }
         }
-        await deleteDoc(uDoc(colName, d.id)).catch(() => {});
+        allRefs.push(uDoc(colName, d.id));
       }
     }
+
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < allRefs.length; i += CHUNK_SIZE) {
+      const chunk = allRefs.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach(ref => batch.delete(ref));
+      await batch.commit().catch(e => get().toast('Erro ao limpar lixeira: ' + e.message, 'error'));
+    }
+    
     get().toast('Lixeira esvaziada!');
     return true;
   },
 
   exportData: () => {
     const { data, toast } = get();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
     const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("href", url);
     dlAnchorElem.setAttribute("download", `bkp_dash_${new Date().toISOString().split('T')[0]}.json`);
     dlAnchorElem.click();
+    
+    URL.revokeObjectURL(url);
     toast("Dados exportados JSON!");
   },
 
@@ -802,7 +834,7 @@ export const createUISlice = (set, get) => ({
     const data = get().data;
     const notifs = data.notificacoes.filter(n => n.reminderId === reminderId);
     if (notifs.length === 0) return;
-    for (const n of notifs) if (!n.id.toString().startsWith('m-')) await deleteDoc(uDoc('notificacoes', n.id)).catch(e => console.error('Cleanup sync error:', e));
+    for (const n of notifs) if (!n.id.toString().startsWith('m-')) await deleteDoc(uDoc('notificacoes', n.id)).catch(e => get().toast('Erro ao limpar notificação: ' + e.message, 'error'));
     set(s => ({
       realData: { ...s.realData, notificacoes: s.realData.notificacoes.filter(n => n.reminderId !== reminderId) },
       mockData: { ...s.mockData, notificacoes: s.mockData.notificacoes.filter(n => n.reminderId !== reminderId) }

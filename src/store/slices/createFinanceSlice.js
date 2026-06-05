@@ -52,7 +52,9 @@ export const createFinanceSlice = (set, get) => ({
       const grupoId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       
       const newItems = [];
-      const promises = [];
+      const { db, writeBatch, doc } = await import('../../firebase');
+      const batch = writeBatch(db);
+      const colRef = uCol('negocio');
 
       for (let i = 0; i < numParcelas; i++) {
         const d = new Date(dateToUse + 'T12:00:00');
@@ -75,32 +77,20 @@ export const createFinanceSlice = (set, get) => ({
           criadoEm: serverTimestamp(),
         };
 
-        const tempId = `temp_parc_${Date.now()}_${i}`;
-        const local = { ...payload, id: tempId, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+        const ref = doc(colRef);
+        batch.set(ref, payload);
+        
+        const local = { ...payload, id: ref.id, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
         newItems.push(local);
-
-        promises.push(
-          import('../../firebase').then(({ addDoc }) => addDoc(uCol('negocio'), payload).then(r => ({ tempId, realId: r.id })))
-        );
       }
 
       set(s => ({ realData: { ...s.realData, negocio: [...newItems, ...s.realData.negocio] } }));
-      
       _refreshData();
       closeModal();
-      toast(`Iniciando lançamento de ${numParcelas} parcelas...`);
+      toast(`Salvando ${numParcelas} parcelas...`);
 
-      const syncResults = await Promise.all(promises);
+      await batch.commit();
       
-      set(s => {
-        let updatedNegocio = [...s.realData.negocio];
-        syncResults.forEach(({ tempId, realId }) => {
-          updatedNegocio = updatedNegocio.map(x => x.id === tempId ? { ...x, id: realId } : x);
-        });
-        return { realData: { ...s.realData, negocio: updatedNegocio } };
-      });
-
-      _refreshData();
       toast(`${numParcelas} parcelas salvas com sucesso!`);
     } catch (e) {
       console.error('saveNegocioParcelado error:', e);
@@ -124,7 +114,7 @@ export const createFinanceSlice = (set, get) => ({
     }));
     get()._refreshData();
     for (const m of grupo) {
-      updateDoc(uDoc('negocio', m.id), { deletadoEm: now }).catch(e => console.error('Bulk delete error:', e));
+      updateDoc(uDoc('negocio', m.id), { deletadoEm: now }).catch(e => get().toast('Erro ao deletar em massa: ' + e.message, 'error'));
     }
     toast(`${grupo.length} parcela(s) excluída(s)!`);
   },
@@ -286,7 +276,11 @@ export const createFinanceSlice = (set, get) => ({
     const { addDoc } = await import('../../firebase');
     
     for (const d of data.despesasFixas) {
-      const alreadyExists = data.pessoal.some(item => item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === d.id && item.referenciaMes === monthKey);
+      const alreadyExists = data.pessoal.some(item => 
+        item.tipo === 'Despesa' &&
+        ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === d.id && item.referenciaMes === monthKey) ||
+        ((item.descricao || '') === (d.descricao || '') && Number(item.valor || 0) === Number(d.valor || 0) && String(item.data || '').startsWith(monthKey)))
+      );
       if (alreadyExists) continue;
       const payload = {
         data: buildMonthlyDate(d.dia || 1, now), tipo: 'Despesa',

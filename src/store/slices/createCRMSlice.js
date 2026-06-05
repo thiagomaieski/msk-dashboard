@@ -110,7 +110,7 @@ export const createCRMSlice = (set, get) => ({
       set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
     } else {
       set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
-      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', modificadoEm: serverTimestamp() }).catch(e => console.error(e));
+      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao converter: ' + e.message, 'error'));
     }
     get()._refreshData();
     toast(`${lead.nome} convertido para cliente!`);
@@ -131,7 +131,7 @@ export const createCRMSlice = (set, get) => ({
       set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
     } else {
       set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
-      updateDoc(uDoc('leads', leadId), { interacoes, modificadoEm: serverTimestamp() }).catch(e => console.error(e));
+      updateDoc(uDoc('leads', leadId), { interacoes, modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao salvar interação: ' + e.message, 'error'));
     }
     get()._refreshData();
     toast('Interação registrada!');
@@ -217,7 +217,7 @@ export const createCRMSlice = (set, get) => ({
           screenshotPath: null,
         };
       }
-      updateDoc(uDoc('leads', id), updatePayload).catch(e => console.error('Bulk edit sync error:', e));
+      updateDoc(uDoc('leads', id), updatePayload).catch(e => get().toast('Erro ao atualizar em massa: ' + e.message, 'error'));
     }
   },
 

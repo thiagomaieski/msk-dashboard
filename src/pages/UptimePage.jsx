@@ -270,6 +270,21 @@ function MonitorCard({ monitor, onDelete }) {
   );
 }
 
+// ─── Loading State ──────────────────────────────────────────────────────────────
+function LoadingUptime() {
+  return (
+    <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text3)', gridColumn: '1 / -1' }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        style={{ width: 36, height: 36, margin: '0 auto 16px', display: 'block', color: 'var(--text3)', animation: 'spin 1s linear infinite' }}>
+        <path d="M21 12a9 9 0 1 1-2.22-5.9M21 3v4h-4"/>
+      </svg>
+      <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text2)' }}>
+        Carregando monitores...
+      </div>
+    </div>
+  );
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function EmptyUptime() {
   return (
@@ -496,7 +511,9 @@ export default function UptimePage() {
           gap: '16px'
         }}>
           <AnimatePresence mode="popLayout">
-            {uptimeMonitors.length === 0 ? (
+            {uptimeLoading && uptimeMonitors.length === 0 ? (
+              <LoadingUptime key="loading" />
+            ) : uptimeMonitors.length === 0 ? (
               <EmptyUptime key="empty" />
             ) : (
               uptimeMonitors.map(m => (
