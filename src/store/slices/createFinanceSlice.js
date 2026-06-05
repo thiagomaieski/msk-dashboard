@@ -18,6 +18,18 @@ export const createFinanceSlice = (set, get) => ({
     await get().saveGeneric('pessoal', { ...fields, modificadoEm: serverTimestamp() }, 'Lançamento');
   },
 
+  togglePessoalPago: async (id, pago) => {
+    const newPago = !pago;
+    set(s => ({
+      realData: {
+        ...s.realData,
+        pessoal: s.realData.pessoal.map(x => x.id === id ? { ...x, pago: newPago } : x)
+      }
+    }));
+    get()._refreshData();
+    updateDoc(uDoc('pessoal', id), { pago: newPago }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
+  },
+
   saveDespesaFixa: async (fields) => {
     if (!fields.descricao) return get().toast('Descrição obrigatória', 'error');
     await get().saveGeneric('despesasFixas', { ...fields, modificadoEm: serverTimestamp() }, 'Despesa');
@@ -219,43 +231,6 @@ export const createFinanceSlice = (set, get) => ({
       const monthKey = getCurrentMonthKey();
       const createdNegocio = [];
       const createdPessoal = [];
-
-      for (const recorrencia of (dataSource.recorrencia || [])) {
-        if (recorrencia.status !== 'Ativo') continue;
-
-        let targetDay = recorrencia.vencimento || 1;
-        if (recorrencia.periodicidade === 'Anual') {
-          const monthRenovacao = recorrencia.renovacao?.substring(0, 7);
-          if (monthRenovacao !== monthKey) continue;
-          targetDay = parseInt(recorrencia.renovacao?.substring(8, 10), 10) || 1;
-        }
-
-        const alreadyExists = (dataSource.negocio || []).some(item =>
-          item.tipo === 'Receita' &&
-          ((item.origemAutomatica === 'recorrencia' && item.recorrenciaId === recorrencia.id && item.referenciaMes === monthKey) ||
-          ((item.entidade || '') === (recorrencia.cliente || '') && (item.descricao || '') === (recorrencia.plano || '') && String(item.data || '').startsWith(monthKey)))
-        );
-        if (alreadyExists) continue;
-
-        const payload = {
-          data: buildMonthlyDate(targetDay),
-          tipo: 'Receita',
-          descricao: recorrencia.plano || `Recorrência ${recorrencia.cliente || ''}`.trim(),
-          categoria: (configSource.categoriasReceita || [])[0] || 'Receita Recorrente',
-          entidade: recorrencia.cliente || '',
-          nf: 'pendente', 
-          observacoes: 'Lançamento automático da recorrência mensal.',
-          valor: Number(recorrencia.valor || 0),
-          origemAutomatica: 'recorrencia',
-          recorrenciaId: recorrencia.id,
-          referenciaMes: monthKey,
-          modificadoEm: serverTimestamp(),
-          criadoEm: serverTimestamp()
-        };
-        const { addDoc } = await import('../../firebase');
-        const res = await addDoc(uCol('negocio'), payload);
-        createdNegocio.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
-      }
 
       if (configSource.lancarDespesasAuto) {
         for (const despesa of (dataSource.despesasFixas || [])) {

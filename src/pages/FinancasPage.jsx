@@ -7,19 +7,82 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSelect, colPrefix, showNf = false }) {
+// ─── Pill de status de pagamento (exclusivo para despesas pessoais não-cartão) ───
+function PayStatusPill({ id, pago }) {
+  const togglePessoalPago = useDash(s => s.togglePessoalPago);
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    setLoading(true);
+    await togglePessoalPago(id, pago);
+    setLoading(false);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      title={pago ? 'Clique para marcar como Pendente' : 'Clique para marcar como Pago'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '3px 10px',
+        borderRadius: 99,
+        border: `1px solid ${pago ? 'var(--green)' : 'rgba(255,255,255,0.12)'}`,
+        background: pago ? 'rgba(0,197,115,0.12)' : 'var(--bg3)',
+        color: pago ? 'var(--green)' : 'var(--text3)',
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: 'all .18s ease',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        letterSpacing: '0.02em',
+      }}
+    >
+      {pago ? (
+        <>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Pago
+        </>
+      ) : (
+        <>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          Pendente
+        </>
+      )}
+    </button>
+  );
+}
+
+function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSelect, colPrefix, showNf = false, showPayStatus = false }) {
   const bulkDeleteParcelamento = useDash(s => s.bulkDeleteParcelamento);
   if (!list.length) return <div className="finance-col-empty">Nenhuma {isRec ? 'receita' : 'despesa'}</div>;
   const CARD_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3 }} title="Cartão de crédito"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
   return list.map(m => {
     const displayTitle = m.entidade ? `${m.entidade} — ${m.descricao || ''}` : (m.descricao || '-');
     const parc = m.parcelamento;
+    const isCartao = !!m.cartao;
+    const showPill = showPayStatus && !isRec && !isCartao;
     return (
-      <div key={m.id} className="finance-card card-in" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <div key={m.id} className={`finance-card card-in${m.pago && showPill ? ' finance-card--paid' : ''}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <input type="checkbox" style={{ marginTop: 4 }} checked={selectedItems.includes(m.id)} onChange={() => toggleSelect(colPrefix, m.id)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="finance-card-top">
-            <div className="finance-card-desc" style={{ cursor: 'pointer' }} onClick={() => onEdit(m.id)} title="Clique para editar">
+            <div
+              className="finance-card-desc"
+              style={{ cursor: 'pointer', opacity: m.pago && showPill ? 0.5 : 1 }}
+              onClick={() => onEdit(m.id)}
+              title="Clique para editar"
+            >
               {m.cartao && !isRec ? CARD_ICON : null}{displayTitle}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -28,7 +91,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
                   {parc.parcela}/{parc.total}
                 </span>
               )}
-              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)' }}>{fmtBRL(m.valor)}</div>
+              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)', opacity: m.pago && showPill ? 0.5 : 1 }}>{fmtBRL(m.valor)}</div>
             </div>
           </div>
           <div className="finance-card-meta">
@@ -44,7 +107,8 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
             {m.categoria && <><span>&bull;</span><span>{m.categoria}</span></>}
             {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 500 }}>Cartão</span></>}
           </div>
-          <div className="finance-card-actions row-actions">
+          <div className="finance-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {showPill && <PayStatusPill id={m.id} pago={!!m.pago} />}
             {isRec && (
               <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(m, useDash.getState().configData)} title="Gerar Recibo PDF">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
@@ -73,6 +137,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
     );
   });
 }
+
 
 export function FinancasNegocioPage() {
   const data = useDash(s => s.data);
@@ -260,7 +325,7 @@ export function FinancasNegocioPage() {
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
+              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
             </div>
@@ -462,14 +527,26 @@ export function FinancasPessoaisPage() {
             onEdit={id => openModal('pessoalReceita', id)} onDelete={(id, desc) => deleteItem('pessoal', id, desc)} />
         </div>
         <div className="finance-col">
-          <div className="finance-col-head">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-primary" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
-              </button>
+          <div className="finance-col-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="finance-col-title red">↓ Despesas</span>
+                <button className="btn btn-sm btn-danger" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </div>
+              <span className="finance-col-total red">{fmtBRL(desp)}</span>
             </div>
-            <span className="finance-col-total red">{fmtBRL(desp)}</span>
+            <div style={{ display: 'flex', gap: 8, borderTop: '1px dashed var(--border)', paddingTop: 10, justifyContent: 'flex-start' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--green)', background: 'rgba(0,197,115,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(0,197,115,0.15)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>
+                {despesas.filter(d => !d.cartao && d.pago).length} pagas
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'rgba(245,158,11,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(245,158,11,0.15)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {despesas.filter(d => !d.cartao && !d.pago).length} pendentes
+              </span>
+            </div>
           </div>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
@@ -481,7 +558,7 @@ export function FinancasPessoaisPage() {
               <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
-          <FinanceColList list={despesas} isRec={false} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
+          <FinanceColList list={despesas} isRec={false} showPayStatus={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
             onEdit={id => openModal('pessoalDespesa', id)} onDelete={(id, desc) => deleteItem('pessoal', id, desc)} />
         </div>
       </div>

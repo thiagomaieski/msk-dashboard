@@ -188,5 +188,9 @@ export const normalizeImportedStatus = (value) => {
   return 'Novo';
 };
 
-export const clampDay = (value) => Math.min(31, Math.max(1, parseInt(value, 10) || 1));
-export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDay(day)).padStart(2, '0')}`;
+export const clampDayToMonth = (day, date = new Date()) => {
+  const d = Math.max(1, parseInt(day, 10) || 1);
+  const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return Math.min(d, lastDayOfMonth);
+};
+export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDayToMonth(day, date)).padStart(2, '0')}`;

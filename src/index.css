@@ -2198,13 +2198,29 @@ body:not(.light) .link-btn {
 .finance-card-actions {
   display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity .15s;
   margin-top: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.finance-card:hover .finance-card-actions {
+/* Pill de status sempre visível, botões de ação aparecem no hover */
+.finance-card-actions .row-btn {
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.finance-card:hover .finance-card-actions .row-btn {
   opacity: 1;
+}
+
+/* Variante de card "pago" — visual suave sem interferir no layout */
+.finance-card--paid {
+  background: rgba(0, 197, 115, 0.03);
+  border-left: 2px solid rgba(0, 197, 115, 0.25);
+}
+
+.finance-card--paid:hover {
+  background: rgba(0, 197, 115, 0.06);
 }
 
 .finance-col-empty {
