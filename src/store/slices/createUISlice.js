@@ -295,6 +295,7 @@ export const createUISlice = (set, get) => ({
 
     clearBulk();
     get()._refreshData();
+    syncAlertsWithHostinger(get);
     toast(`${ids.length} itens movidos para a lixeira`);
 
     for (const id of realIds) {
@@ -368,6 +369,7 @@ export const createUISlice = (set, get) => ({
     const now = new Date().toISOString();
     set(s => ({ realData: { ...s.realData, [colName]: s.realData[colName].filter(x => x.id !== id) } }));
     get()._refreshData();
+    syncAlertsWithHostinger(get);
     get().toast('Movido para a lixeira (restaurável por 15 dias)');
     updateDoc(uDoc(colName, id), { deletadoEm: now }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
     if (colName === 'lembretes') get()._cleanupNotif(id);
@@ -383,6 +385,7 @@ export const createUISlice = (set, get) => ({
       get()._cleanupNotif(id);
     }
     get()._refreshData();
+    syncAlertsWithHostinger(get);
   },
 
   toggleLembrete: async (id, atual) => {
@@ -405,6 +408,7 @@ export const createUISlice = (set, get) => ({
       const restored = { id: snap.id, ...snap.data() };
       set(s => ({ realData: { ...s.realData, [colName]: [restored, ...s.realData[colName]] } }));
       get()._refreshData();
+      syncAlertsWithHostinger(get);
     }
     get().toast('Item restaurado!');
   },
