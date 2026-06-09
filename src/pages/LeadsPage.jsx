@@ -20,7 +20,7 @@ const decodeCSVFile = async (file) => {
 };
 
 /* ─── Mobile Filter Sheet ─────────────────────────────────────────── */
-function MobileFilterSheet({ open, onClose, children }) {
+function MobileFilterSheet({ open, onClose, children, hasActiveFilters, onClear }) {
   if (!open) return null;
   return (
     <div className="mobile-filter-overlay" onClick={onClose}>
@@ -36,8 +36,11 @@ function MobileFilterSheet({ open, onClose, children }) {
         <div className="mobile-filter-sheet-body">
           {children}
         </div>
-        <div className="mobile-filter-sheet-footer">
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={onClose}>Aplicar Filtros</button>
+        <div className="mobile-filter-sheet-footer" style={{ display: 'flex', gap: 10 }}>
+          {hasActiveFilters && (
+            <button className="btn btn-secondary" style={{ flex: 1, color: 'var(--red)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'var(--red-bg)' }} onClick={() => { onClear(); onClose(); }}>Limpar</button>
+          )}
+          <button className="btn btn-primary" style={{ flex: hasActiveFilters ? 2 : 1 }} onClick={onClose}>Aplicar Filtros</button>
         </div>
       </div>
     </div>
@@ -353,13 +356,25 @@ export default function LeadsPage() {
   const [status, setStatus] = useState('');
   const [nicho, setNicho] = useState('');
   const [ddd, setDdd] = useState('');
+  const [prequalFilter, setPrequalFilter] = useState('');
   const [sort, setSort] = useState('criadoDesc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [columnSort, setColumnSort] = useState({ key: null, direction: 'asc' });
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const hasActiveFilters = !!(status || nicho || ddd || sort !== 'criadoDesc');
+  const hasActiveFilters = !!(search || status || nicho || ddd || prequalFilter || sort !== 'criadoDesc');
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatus('');
+    setNicho('');
+    setDdd('');
+    setPrequalFilter('');
+    setSort('criadoDesc');
+    setPage(1);
+    setColumnSort({ key: null, direction: 'asc' });
+  };
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
   
@@ -380,6 +395,8 @@ export default function LeadsPage() {
         const phone = (l.telefone || '').replace(/\D/g, '');
         if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
       }
+      if (prequalFilter === 'sim' && !l.prequalData) return false;
+      if (prequalFilter === 'nao' && l.prequalData) return false;
       return true;
     });
 
@@ -399,7 +416,7 @@ export default function LeadsPage() {
     const pag = filtered.slice((sPage - 1) * resolvedPageSize, sPage * resolvedPageSize);
 
     return { ...totals, list: filtered, paginated: pag, totalItems: tItems, totalPages: tPages, safePage: sPage };
-  }, [data.leads, search, status, nicho, ddd, sort, columnSort, page, resolvedPageSize]);
+  }, [data.leads, search, status, nicho, ddd, prequalFilter, sort, columnSort, page, resolvedPageSize]);
 
   const totalLeads = data.leads.length;
   const pageIds = paginated.map(x => x.id).join(',');
@@ -604,6 +621,11 @@ export default function LeadsPage() {
           <option value="">Todos os nichos</option>
           {configData.nichos.map((item) => <option key={item}>{item}</option>)}
         </select>
+        <select className="filter-select" value={prequalFilter} onChange={updateFilter(setPrequalFilter)}>
+          <option value="">Pré-Qual (Todos)</option>
+          <option value="sim">Pré-Qualificados</option>
+          <option value="nao">Sem Pré-Qual.</option>
+        </select>
         <select className="filter-select" value={sort} onChange={updateFilter(setSort)}>
           <option value="criadoDesc">Mais recentes</option>
           <option value="criadoAsc">Mais antigos</option>
@@ -611,6 +633,28 @@ export default function LeadsPage() {
           <option value="nomeZa">Nome Z-A</option>
           <option value="modificadoDesc">Últ. modificação</option>
         </select>
+        {hasActiveFilters && (
+          <button
+            className="btn btn-secondary"
+            onClick={handleClearFilters}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--red)',
+              borderColor: 'rgba(239, 68, 68, 0.2)',
+              background: 'var(--red-bg)',
+              padding: '6px 12px',
+              height: 38,
+              fontSize: 13,
+              borderRadius: 'var(--radius-sm)',
+            }}
+            title="Limpar todos os filtros ativos"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}><path d="M18 6 6 18M6 6l12 12"/></svg>
+            Limpar Filtros
+          </button>
+        )}
         {viewMode === 'list' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
@@ -710,7 +754,7 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      <MobileFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
+      <MobileFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} hasActiveFilters={hasActiveFilters} onClear={handleClearFilters}>
         <div className="mobile-filter-group">
           <label className="mobile-filter-label">DDD</label>
           <div className="search-wrap">
@@ -730,6 +774,14 @@ export default function LeadsPage() {
           <select className="filter-select" style={{ width: '100%' }} value={nicho} onChange={updateFilter(setNicho)}>
             <option value="">Todos os nichos</option>
             {configData.nichos.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Pré-Qualificação</label>
+          <select className="filter-select" style={{ width: '100%' }} value={prequalFilter} onChange={updateFilter(setPrequalFilter)}>
+            <option value="">Todos</option>
+            <option value="sim">Pré-Qualificados</option>
+            <option value="nao">Sem Pré-Qual.</option>
           </select>
         </div>
         <div className="mobile-filter-group">

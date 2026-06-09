@@ -283,28 +283,6 @@ function LeadForm({ item }) {
           </div>
         </div>
         <div className="form-group"><label className="form-label">Qualificação / Observações Gerais</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
-        <div className="form-actions" style={{ justifyContent: 'space-between' }}>
-          <div>
-            {item && (
-              <button className="btn btn-secondary" style={{ color: 'var(--green)', gap: 6 }} onClick={() => {
-                if (window.confirm('Deseja converter este lead em cliente? Todos os dados serão migrados.')) {
-                  useDash.getState().convertLeadToCliente(item.id);
-                  closeModal();
-                }
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
-                Converter em Cliente
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-            <button className="btn btn-primary" onClick={() => {
-              if (!f.nome) return useDash.getState().toast('O Nome/Empresa é obrigatório.', 'error');
-              saveLead({ ...f, id: item?.id });
-            }}>Salvar</button>
-          </div>
-        </div>
       </div>
 
       {/* DIVISOR */}
@@ -572,6 +550,29 @@ function LeadForm({ item }) {
             </div>
           </div>
         )}
+
+        <div className="form-actions" style={{ justifyContent: 'space-between', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div>
+            {item && (
+              <button className="btn btn-secondary" style={{ color: 'var(--green)', gap: 6 }} onClick={() => {
+                if (window.confirm('Deseja converter este lead em cliente? Todos os dados serão migrados.')) {
+                  useDash.getState().convertLeadToCliente(item.id);
+                  closeModal();
+                }
+              }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                Converter em Cliente
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+            <button className="btn btn-primary" onClick={() => {
+              if (!f.nome) return useDash.getState().toast('O Nome/Empresa é obrigatório.', 'error');
+              saveLead({ ...f, id: item?.id });
+            }}>Salvar</button>
+          </div>
+        </div>
       </div>
     </div>
   );
