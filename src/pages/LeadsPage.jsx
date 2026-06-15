@@ -2,22 +2,9 @@ import { useState, useMemo } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 import { getWaLink } from '../store/useStore';
-import { leadHasValidSite, leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
+import { leadHasValidSite } from '../utils/prequalUtils';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
-
-const decodeCSVFile = async (file) => {
-  const buffer = await file.arrayBuffer();
-  const tryDecode = (encoding) => {
-    try {
-      return new TextDecoder(encoding, { fatal: true }).decode(buffer);
-    } catch {
-      return null;
-    }
-  };
-
-  return tryDecode('utf-8') || tryDecode('windows-1252') || new TextDecoder().decode(buffer);
-};
 
 /* ─── Mobile Filter Sheet ─────────────────────────────────────────── */
 function MobileFilterSheet({ open, onClose, children, hasActiveFilters, onClear }) {
@@ -279,77 +266,13 @@ export default function LeadsPage() {
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
   const selectAll = useDash(s => s.selectAll);
-  const importLeadsCSV = useDash(s => s.importLeadsCSV);
   const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
   const runPreQualification = useDash(s => s.runPreQualification);
   const saveLead = useDash(s => s.saveLead);
 
-  // Estado do modal de progresso
-  const [prequalModal, setPrequalModal] = useState(null);
-  // null = fechado | { items: [], done: false, processed: 0, skipped: 0 }
-
+  const prequalModal = useDash(s => s.prequalModal);
+  const setPrequalModal = useDash(s => s.setPrequalModal);
   const isPrequaling = prequalModal !== null && !prequalModal.done;
-
-  const handlePreQualification = () => {
-    if (!selectedItems.length || isPrequaling) return;
-
-    // Monta a lista inicial de leads para o modal
-    const initialItems = selectedItems.map(id => {
-      const lead = data.leads.find(l => l.id === id);
-      return {
-        id,
-        name: lead?.nome || id,
-        site: null,
-        status: 'pending', // pending | skipped | processing | success | error
-        reason: null,
-        result: null,
-        steps: {},    // { pagespeed, instagram, screenshot } → { status, ...meta }
-      };
-    });
-
-    setPrequalModal({ items: initialItems, done: false, processed: 0, skipped: 0 });
-
-    const onProgress = (event) => {
-      setPrequalModal(prev => {
-        if (!prev) return prev;
-        const updateItem = (id, patch) =>
-          prev.items.map(it => it.id === id ? { ...it, ...patch } : it);
-
-        switch (event.type) {
-          case 'skipped':
-            return { ...prev, items: updateItem(event.leadId, { status: 'skipped', reason: event.reason }) };
-          case 'processing':
-            return { ...prev, items: updateItem(event.leadId, { status: 'processing', site: event.site }) };
-          case 'success':
-            return { ...prev, items: updateItem(event.leadId, { status: 'success', site: event.site, result: event.result }) };
-          case 'error':
-            return { ...prev, items: updateItem(event.leadId, { status: 'error', reason: event.error }) };
-          case 'step':
-            return {
-              ...prev,
-              items: prev.items.map(it => it.id === event.leadId ? {
-                ...it,
-                steps: { ...it.steps, [event.step]: { status: event.status, count: event.count, mobile: event.mobile, desktop: event.desktop, followers: event.followers, error: event.error } },
-              } : it),
-            };
-          case 'done':
-            return { ...prev, done: true, processed: event.processed, skipped: event.skipped };
-          default:
-            return prev;
-        }
-      });
-    };
-
-    runPreQualification(selectedItems, onProgress);
-  };
-
-  // Quantos dos selecionados têm site ou Instagram válido
-  const selectedWithSiteOrInstagram = useMemo(() => {
-    return selectedItems.filter(id => {
-      const lead = data.leads.find(l => l.id === id);
-      return lead && leadHasValidSiteOrInstagram(lead);
-    }).length;
-  }, [selectedItems, data.leads]);
 
   const [viewMode, setViewMode] = useState('list');
   const [search, setSearch] = useState('');
@@ -446,19 +369,6 @@ export default function LeadsPage() {
     return columnSort.direction === 'asc' ? '↑' : '↓';
   };
 
-  const handleCSV = async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    try {
-      const text = await decodeCSVFile(f);
-      openModal('csvProgress');
-      await importLeadsCSV(text, (i, total, imported, errors) => {});
-    } catch {
-      useDash.getState().toast('Não foi possível ler este arquivo CSV.', 'error');
-    }
-    e.target.value = '';
-  };
-
   const copyLeadInfo = async (l) => {
     const lines = [
       `Nome: ${l.nome || ''}`,
@@ -510,8 +420,6 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <input type="file" id="lead-csv" accept=".csv" style={{ display: 'none' }} onChange={handleCSV} />
-
       {/* ─── DESKTOP HEADER (Restored to original) ────────────────── */}
       <div className="page-header desktop-only">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, flex: 1 }}>
@@ -559,39 +467,8 @@ export default function LeadsPage() {
           ))}
         </div>
         <div className="page-actions">
-          {selectedItems.length > 0 && (
-            <button
-              className="btn btn-prequal"
-              onClick={handlePreQualification}
-              disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
-              title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'var(--bg3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: '#fff', border: 'none', borderRadius: 'var(--radius)',
-                padding: '7px 14px', fontSize: 13, fontWeight: 600,
-                cursor: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'not-allowed' : 'pointer',
-                opacity: selectedWithSiteOrInstagram === 0 ? 0.55 : 1,
-                transition: 'all .2s',
-                boxShadow: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'none' : '0 2px 10px rgba(99,102,241,.35)',
-              }}
-            >
-              {isPrequaling ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
-              )}
-              {isPrequaling ? 'Qualificando...' : `Fazer Pré-Qualificação${selectedWithSiteOrInstagram < selectedItems.length ? ` (${selectedWithSiteOrInstagram}/${selectedItems.length})` : ''}`}
-            </button>
-          )}
-          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', marginRight: 8 }}>
-            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Visualização em Lista">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </button>
-          </div>
+
+
           <button className="btn btn-secondary" onClick={() => openModal('csvInfo')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Importar CSV
@@ -655,54 +532,46 @@ export default function LeadsPage() {
             Limpar Filtros
           </button>
         )}
-        {viewMode === 'list' && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
-            {PAGE_SIZE_OPTIONS.map((item) => (
-              <button
-                key={item}
-                className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => { setPageSize(item); setPage(1); }}
-              >
-                {item}
-              </button>
-            ))}
-            <NumberStepper
-              min={1}
-              value={pageSize}
-              onChange={updatePageSize}
-              className="filter-input filter-input-sm"
-              wrapperClass="number-stepper-sm"
-              style={{ width: 80 }}
-              title="Quantidade de leads por página"
-            />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {viewMode === 'list' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
+              {PAGE_SIZE_OPTIONS.map((item) => (
+                <button
+                  key={item}
+                  className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setPageSize(item); setPage(1); }}
+                >
+                  {item}
+                </button>
+              ))}
+              <NumberStepper
+                min={1}
+                value={pageSize}
+                onChange={updatePageSize}
+                className="filter-input filter-input-sm"
+                wrapperClass="number-stepper-sm"
+                style={{ width: 80 }}
+                title="Quantidade de leads por página"
+              />
+            </div>
+          )}
+          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Visualização em Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
       <div className="page-header mobile-only">
         <div className="page-title">Leads</div>
         <div className="page-actions">
-          {selectedItems.length > 0 && (
-            <button
-              className="btn-icon"
-              onClick={handlePreQualification}
-              disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
-              title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
-              style={{
-                background: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'var(--bg3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: '#fff', border: 'none',
-                cursor: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'not-allowed' : 'pointer',
-                opacity: selectedWithSiteOrInstagram === 0 ? 0.55 : 1,
-              }}
-            >
-              {isPrequaling
-                ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
-              }
-            </button>
-          )}
+
           <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>

@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { useDash } from '../store/useStore';
+import { leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
 
 export default function BulkBar() {
   const selectedItems = useDash(s => s.selectedItems);
@@ -7,6 +9,19 @@ export default function BulkBar() {
   const bulkDelete = useDash(s => s.bulkDelete);
   const bulkEditLeads = useDash(s => s.bulkEditLeads);
   const configData = useDash(s => s.configData);
+  const data = useDash(s => s.data);
+  const prequalModal = useDash(s => s.prequalModal);
+  const handlePreQualification = useDash(s => s.handlePreQualification);
+
+  const isPrequaling = prequalModal !== null && !prequalModal.done;
+
+  const selectedWithSiteOrInstagram = useMemo(() => {
+    if (currentBulkCol !== 'leads') return 0;
+    return selectedItems.filter(id => {
+      const lead = data.leads.find(l => l.id === id);
+      return lead && leadHasValidSiteOrInstagram(lead);
+    }).length;
+  }, [selectedItems, data.leads, currentBulkCol]);
 
   if (!selectedItems.length) return null;
 
@@ -31,6 +46,27 @@ export default function BulkBar() {
         </button>
         {currentBulkCol === 'leads' && (
           <>
+            <button
+              className="btn btn-sm"
+              onClick={handlePreQualification}
+              disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
+              title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'var(--bg3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff', border: 'none', height: 30, fontSize: 12, padding: '0 12px',
+                cursor: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'not-allowed' : 'pointer',
+                opacity: selectedWithSiteOrInstagram === 0 ? 0.55 : 1,
+                boxShadow: (isPrequaling || selectedWithSiteOrInstagram === 0) ? 'none' : '0 2px 8px rgba(99,102,241,.2)',
+              }}
+            >
+              {isPrequaling ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
+              )}
+              {isPrequaling ? 'Qualificando...' : `Pré-Qualificar (${selectedWithSiteOrInstagram})`}
+            </button>
             <select
               className="form-select"
               style={{ padding: '4px 8px', height: 30, fontSize: 12, width: 'auto' }}

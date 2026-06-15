@@ -1,9 +1,65 @@
-import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
+import { db, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
 import { uDoc, uCol } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
 
 export const createCRMSlice = (set, get) => ({
+  prequalModal: null,
+  setPrequalModal: (prequalModal) => set({ prequalModal }),
+  handlePreQualification: () => {
+    const { selectedItems, data, setPrequalModal, runPreQualification } = get();
+    const isPrequaling = get().prequalModal !== null && !get().prequalModal.done;
+    if (!selectedItems.length || isPrequaling) return;
+
+    const initialItems = selectedItems.map(id => {
+      const lead = data.leads.find(l => l.id === id);
+      return {
+        id,
+        name: lead?.nome || id,
+        site: null,
+        status: 'pending', // pending | skipped | processing | success | error
+        reason: null,
+        result: null,
+        steps: {},    // { pagespeed, instagram, screenshot } → { status, ...meta }
+      };
+    });
+
+    setPrequalModal({ items: initialItems, done: false, processed: 0, skipped: 0 });
+
+    const onProgress = (event) => {
+      setPrequalModal(prev => {
+        if (!prev) return prev;
+        const updateItem = (id, patch) =>
+          prev.items.map(it => it.id === id ? { ...it, ...patch } : it);
+
+        switch (event.type) {
+          case 'skipped':
+            return { ...prev, items: updateItem(event.leadId, { status: 'skipped', reason: event.reason }) };
+          case 'processing':
+            return { ...prev, items: updateItem(event.leadId, { status: 'processing', site: event.site }) };
+          case 'success':
+            return { ...prev, items: updateItem(event.leadId, { status: 'success', site: event.site, result: event.result }) };
+          case 'error':
+            return { ...prev, items: updateItem(event.leadId, { status: 'error', reason: event.error }) };
+          case 'step':
+            return {
+              ...prev,
+              items: prev.items.map(it => it.id === event.leadId ? {
+                ...it,
+                steps: { ...it.steps, [event.step]: { status: event.status, count: event.count, mobile: event.mobile, desktop: event.desktop, followers: event.followers, error: event.error } },
+              } : it),
+            };
+          case 'done':
+            return { ...prev, done: true, processed: event.processed, skipped: event.skipped };
+          default:
+            return prev;
+        }
+      });
+    };
+
+    runPreQualification(selectedItems, onProgress);
+  },
+
   saveLead: async (fields) => {
     const { data, deleteFile } = get();
     
@@ -419,5 +475,60 @@ export const createCRMSlice = (set, get) => ({
 
     get()._refreshData();
     toast('Screenshot removido.');
+  },
+
+  bulkAddLeads: async (items) => {
+    const { toast, _refreshData, currentUser } = get();
+    try {
+      const now = new Date().toISOString();
+      const st = serverTimestamp();
+      
+      const newItems = items.map((it, idx) => ({
+        ...it,
+        uid: currentUser.uid,
+        id: `temp_bulk_${Date.now()}_${idx}`,
+        criadoEm: now,
+        modificadoEm: now
+      }));
+
+      set(s => ({ realData: { ...s.realData, leads: [...newItems, ...s.realData.leads] } }));
+      _refreshData();
+
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = items.slice(i, i + CHUNK_SIZE);
+        const chunkStartIndex = i;
+        
+        chunk.forEach((it, idx) => {
+          const ref = doc(uCol('leads'));
+          const payload = {
+            ...it,
+            uid: currentUser.uid,
+            criadoEm: st,
+            modificadoEm: st
+          };
+          batch.set(ref, payload);
+          newItems[chunkStartIndex + idx].realId = ref.id;
+        });
+        
+        await batch.commit();
+      }
+
+      set(s => ({
+        realData: {
+          ...s.realData,
+          leads: s.realData.leads.map(x => {
+            const found = newItems.find(ni => ni.id === x.id);
+            return found ? { ...x, id: found.realId } : x;
+          })
+        }
+      }));
+      _refreshData();
+      toast(`${items.length} leads importados com sucesso!`);
+    } catch (e) {
+      console.error('bulkAddLeads error:', e);
+      toast('Erro ao importar leads: ' + e.message, 'error');
+    }
   },
 });

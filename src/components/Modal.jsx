@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { NumberStepper } from './shared';
 import ImportFinancasModal from './ImportFinancasModal';
+import ImportLeadsModal from './ImportLeadsModal';
 
 
 export default function Modal() {
@@ -66,7 +67,7 @@ function ModalContent({ type }) {
   if (type === 'lembrete') return <LembreteForm item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
   if (type === 'verNota') return <VerNotaModal item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
   if (type === 'despesaFixa') return <DespesaFixaForm item={data.despesasFixas.find(x => x.id === editingId.despesasFixas)} />;
-  if (type === 'csvInfo') return <CsvInfoModal />;
+  if (type === 'csvInfo') return <ImportLeadsModal />;
   if (type === 'csvProgress') return <CsvProgressModal />;
   if (type === 'changePassword') return <ChangePasswordForm />;
   if (type === 'feedback') return <FeedbackModal onClose={closeModal} />;

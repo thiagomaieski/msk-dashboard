@@ -3,7 +3,8 @@ import {
   fbSignOut, onAuthStateChanged, signInWithPopup, deleteUser,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail,
   updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider,
-  onSnapshot, serverTimestamp, getDocs, writeBatch, fetchSignInMethodsForEmail
+  onSnapshot, serverTimestamp, getDocs, writeBatch, fetchSignInMethodsForEmail,
+  query, orderBy
 } from '../../firebase';
 import { getFriendlyErrorMessage } from '../../utils/errorUtils';
 import { isAdminEmail, uDoc, uCol, ALL_COLS, EMPTY_DATA } from '../storeUtils';
