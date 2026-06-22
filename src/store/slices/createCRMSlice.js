@@ -5,7 +5,9 @@ import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils
 
 export const createCRMSlice = (set, get) => ({
   prequalModal: null,
-  setPrequalModal: (prequalModal) => set({ prequalModal }),
+  setPrequalModal: (prequalModal) => set((state) => ({
+    prequalModal: typeof prequalModal === 'function' ? prequalModal(state.prequalModal) : prequalModal
+  })),
   handlePreQualification: () => {
     const { selectedItems, data, setPrequalModal, runPreQualification } = get();
     const isPrequaling = get().prequalModal !== null && !get().prequalModal.done;
