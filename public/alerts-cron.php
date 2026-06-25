@@ -53,7 +53,7 @@ function checkRecur($rec) {
             $diff = (int)$n->diff($target)->format('%R%a');
         }
         return $diff;
-    } else if ($rec['periodicidade'] === 'Anual' && !empty($rec['renovacao'])) {
+    } else if (($rec['periodicidade'] === 'Anual' || $rec['periodicidade'] === 'Semestral') && !empty($rec['renovacao'])) {
         return getDaysDiff($rec['renovacao']);
     }
     return null;

@@ -334,7 +334,7 @@ export default function DashboardPage() {
     const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     const mrr = recorrencia.reduce((acc, r) => {
       if (r.status !== 'Ativo') return acc;
-      if (r.periodicidade === 'Anual') {
+      if (r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') {
         const renovacaoMonth = r.renovacao?.substring(0, 7);
         if (renovacaoMonth !== monthKey) return acc;
       }

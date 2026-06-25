@@ -805,7 +805,7 @@ export const createUISlice = (set, get) => ({
       if (rec.status !== 'Ativo') return;
       let targetDate = null;
       if (rec.periodicidade === 'Mensal' && rec.vencimento) targetDate = new Date(now.getFullYear(), now.getMonth(), parseInt(rec.vencimento));
-      else if (rec.periodicidade === 'Anual' && rec.renovacao) targetDate = new Date(rec.renovacao + 'T12:00:00');
+      else if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) targetDate = new Date(rec.renovacao + 'T12:00:00');
       if (!targetDate) return;
       const diffRec = Math.ceil((targetDate.getTime() - now.getTime()) / 86400000);
       if (diffRec >= 0 && diffRec <= 7) {

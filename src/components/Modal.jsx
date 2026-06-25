@@ -802,7 +802,7 @@ function RecorrenciaForm({ item }) {
     metodoPagamento: item?.metodoPagamento || 'PIX', observacoes: item?.observacoes || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
-  const isAnual = f.periodicidade === 'Anual';
+  const isFixedDate = f.periodicidade === 'Anual' || f.periodicidade === 'Semestral';
   const noCli = !data.clientes.length && (
     <div style={{ 
       fontSize: 12, 
@@ -846,7 +846,7 @@ function RecorrenciaForm({ item }) {
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Periodicidade</label>
           <select className="form-select" value={f.periodicidade} onChange={u('periodicidade')}>
-            <option>Mensal</option><option>Anual</option>
+            <option>Mensal</option><option>Semestral</option><option>Anual</option>
           </select>
         </div>
         <div className="form-group"><label className="form-label">Status</label>
@@ -856,10 +856,10 @@ function RecorrenciaForm({ item }) {
         </div>
       </div>
       <div className="form-grid form-grid-2">
-        {!isAnual && (
+        {!isFixedDate && (
           <div className="form-group"><label className="form-label">Dia de Vencimento</label><NumberStepper value={f.vencimento} onChange={(value) => setF(p => ({ ...p, vencimento: value }))} min={1} max={31} className="form-input" /></div>
         )}
-        {isAnual && (
+        {isFixedDate && (
           <div className="form-group"><label className="form-label">Data de Renovação</label><input className="form-input" type="date" value={f.renovacao} onChange={u('renovacao')} /></div>
         )}
         <div className="form-group"><label className="form-label">Método de Cobrança</label>
@@ -878,8 +878,8 @@ function RecorrenciaForm({ item }) {
           if (!f.cliente || !f.plano) return useDash.getState().toast('Cliente e Plano/Descrição são obrigatórios.', 'error');
           saveRecorrencia({
             ...f, valor: parseFloat(f.valor) || 0,
-            vencimento: !isAnual ? (parseInt(f.vencimento) || 1) : null,
-            renovacao: isAnual ? f.renovacao : null
+            vencimento: !isFixedDate ? (parseInt(f.vencimento) || 1) : null,
+            renovacao: isFixedDate ? f.renovacao : null
           });
         }}>Salvar</button>
       </div>

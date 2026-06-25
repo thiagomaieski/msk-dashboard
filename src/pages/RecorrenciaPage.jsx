@@ -26,7 +26,7 @@ export default function RecorrenciaPage() {
 
     const tM = activeItems.reduce((s, r) => {
       const v = Number(r.valor || 0);
-      if (r.periodicidade === 'Anual') {
+      if (r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') {
         // Only count if it's the renewal month
         if (!r.renovacao) return s;
         const renMonth = new Date(r.renovacao + 'T12:00:00').getMonth();
@@ -36,7 +36,7 @@ export default function RecorrenciaPage() {
     }, 0);
     const tA = activeItems.reduce((s, r) => {
       const v = Number(r.valor || 0);
-      return s + (r.periodicidade === 'Anual' ? v : v * 12);
+      return s + (r.periodicidade === 'Anual' ? v : (r.periodicidade === 'Semestral' ? v * 2 : v * 12));
     }, 0);
 
     return { 
@@ -50,7 +50,7 @@ export default function RecorrenciaPage() {
 
   const today = new Date();
   const getProxVencimento = (r) => {
-    if (r.periodicidade === 'Anual' && r.renovacao) return new Date(r.renovacao + 'T12:00:00');
+    if ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') && r.renovacao) return new Date(r.renovacao + 'T12:00:00');
     if (r.periodicidade === 'Mensal' && r.vencimento) {
       const d = new Date(today.getFullYear(), today.getMonth(), parseInt(r.vencimento));
       if (d < today) d.setMonth(d.getMonth() + 1);

@@ -152,11 +152,24 @@ export const createFinanceSlice = (set, get) => ({
       }).catch(e => toast('Sync Error: ' + e.message, 'error'));
     });
 
-    if (rec.periodicidade === 'Anual' && rec.renovacao) {
+    if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) {
       const parts = rec.renovacao.split('-');
       if (parts.length === 3) {
-        const nextYear = parseInt(parts[0], 10) + 1;
-        const newRenovacao = `${nextYear}-${parts[1]}-${parts[2]}`;
+        let nextYear = parseInt(parts[0], 10);
+        let nextMonth = parseInt(parts[1], 10);
+        
+        if (rec.periodicidade === 'Semestral') {
+          nextMonth += 6;
+          if (nextMonth > 12) {
+            nextMonth -= 12;
+            nextYear += 1;
+          }
+        } else {
+          nextYear += 1;
+        }
+        
+        const nextMonthStr = String(nextMonth).padStart(2, '0');
+        const newRenovacao = `${nextYear}-${nextMonthStr}-${parts[2]}`;
         updateDoc(uDoc('recorrencia', recorrenciaId), { renovacao: newRenovacao, modificadoEm: serverTimestamp() }).catch(() => {});
         set(s => ({
           realData: { ...s.realData, recorrencia: s.realData.recorrencia.map(x => x.id === recorrenciaId ? { ...x, renovacao: newRenovacao } : x) }
