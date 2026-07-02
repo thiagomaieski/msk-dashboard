@@ -307,10 +307,67 @@ export function FinancasNegocioPage() {
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px 300px', gap: 20, marginBottom: 20 }}>
         <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 0 }}>
-          <div className="summary-card"><div className="summary-card-label">Receita Bruta</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
-          <div className="summary-card" title={`Após taxas (Asaas) e tributação (${configData.aliquotaImposto || 0}%)`}><div className="summary-card-label">Receita Líquida Real</div><div className="summary-card-val" style={{ color: 'var(--green)' }}>{fmtBRL(recLiq)}</div></div>
-          <div className="summary-card"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div></div>
-          <div className="summary-card"><div className="summary-card-label">Saldo Operacional</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div></div>
+          {/* Receita Bruta — seta para cima com cifrao: entrada bruta de caixa */}
+          <div className="summary-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <line x1="12" y1="1" x2="12" y2="23" />
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+            </div>
+            <div className="summary-card-label">Receita Bruta</div>
+            <div className="summary-card-val green">{fmtBRL(rec)}</div>
+          </div>
+
+          {/* Receita Líquida Real — escudo com check: valor protegido após taxas e impostos */}
+          <div className="summary-card" title={`Após taxas (Asaas) e tributação (${configData.aliquotaImposto || 0}%)`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16,185,129,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <polyline points="9 12 11 14 15 10" />
+                </svg>
+              </div>
+            </div>
+            <div className="summary-card-label">Receita Líquida Real</div>
+            <div className="summary-card-val" style={{ color: 'var(--green)' }}>{fmtBRL(recLiq)}</div>
+          </div>
+
+          {/* Total Despesas — seta para baixo com tracos: saída de recursos */}
+          <div className="summary-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(239,68,68,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="12" y2="16" />
+                  <line x1="16" y1="12" x2="12" y2="16" />
+                </svg>
+              </div>
+            </div>
+            <div className="summary-card-label">Total Despesas</div>
+            <div className="summary-card-val red">{fmtBRL(desp)}</div>
+          </div>
+
+          {/* Saldo Operacional — balanca: equilibrio entre entradas e saídas */}
+          <div className="summary-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: saldo >= 0 ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke={saldo >= 0 ? '#10b981' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <line x1="12" y1="3" x2="12" y2="21" />
+                  <path d="M5 9l7-6 7 6" />
+                  <line x1="3" y1="14" x2="9" y2="14" />
+                  <line x1="15" y1="14" x2="21" y2="14" />
+                  <path d="M3 14c0 2 1.5 3.5 3 3.5S9 16 9 14" />
+                  <path d="M15 14c0 2 1.5 3.5 3 3.5s3-1.5 3-3.5" />
+                </svg>
+              </div>
+            </div>
+            <div className="summary-card-label">Saldo Operacional</div>
+            <div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div>
+          </div>
         </div>
         <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--border)', height: '100%', minHeight: 120 }}>
            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>Balanço do Período</div>
