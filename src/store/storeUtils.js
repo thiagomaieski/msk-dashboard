@@ -194,3 +194,80 @@ export const clampDayToMonth = (day, date = new Date()) => {
   return Math.min(d, lastDayOfMonth);
 };
 export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDayToMonth(day, date)).padStart(2, '0')}`;
+
+export function getRecorrenciaVencimento(r, negocioList) {
+  const today = new Date();
+  if (r.status !== 'Ativo') return null;
+  
+  if ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') && r.renovacao) {
+    const renDate = new Date(r.renovacao + 'T12:00:00');
+    const renMonthKey = `${renDate.getFullYear()}-${String(renDate.getMonth() + 1).padStart(2, '0')}`;
+    const isPaid = (negocioList || []).some(n => n.recorrenciaId === r.id && n.referenciaMes === renMonthKey);
+    if (isPaid) {
+      const nextDate = new Date(renDate);
+      if (r.periodicidade === 'Semestral') {
+        nextDate.setMonth(nextDate.getMonth() + 6);
+      } else {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
+      return nextDate;
+    }
+    return renDate;
+  }
+  
+  if (r.periodicidade === 'Mensal' && r.vencimento) {
+    const day = parseInt(r.vencimento, 10) || 1;
+    const paidMonths = (negocioList || [])
+      .filter(n => n.recorrenciaId === r.id && n.referenciaMes)
+      .map(n => n.referenciaMes);
+
+    let checkDate;
+    if (r.dataInicio) {
+      checkDate = new Date(r.dataInicio + 'T12:00:00');
+    } else if (r.criadoEm) {
+      const ts = typeof r.criadoEm === 'string'
+        ? new Date(r.criadoEm)
+        : (r.criadoEm.seconds ? new Date(r.criadoEm.seconds * 1000) : new Date());
+      checkDate = ts;
+    } else {
+      const payments = (negocioList || []).filter(n => n.recorrenciaId === r.id && n.referenciaMes);
+      if (payments.length > 0) {
+        payments.sort((a, b) => a.referenciaMes.localeCompare(b.referenciaMes));
+        checkDate = new Date(payments[0].referenciaMes + '-01T12:00:00');
+      } else {
+        checkDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      }
+    }
+    
+    // Safety clamp: never go back further than 2 months ago unless dataInicio is explicitly set
+    const maxBackLimit = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    if (checkDate < maxBackLimit && !r.dataInicio) {
+      checkDate = maxBackLimit;
+    }
+
+    const endYear = today.getFullYear();
+    const endMonth = today.getMonth();
+    
+    let year = checkDate.getFullYear();
+    let month = checkDate.getMonth();
+    
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      const monthStr = String(month + 1).padStart(2, '0');
+      const monthKey = `${year}-${monthStr}`;
+      
+      if (!paidMonths.includes(monthKey)) {
+        return new Date(year, month, day);
+      }
+      
+      month++;
+      if (month > 11) {
+        month = 0;
+        year++;
+      }
+    }
+    
+    return new Date(year, month, day);
+  }
+  
+  return null;
+}

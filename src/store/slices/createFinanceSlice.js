@@ -30,6 +30,18 @@ export const createFinanceSlice = (set, get) => ({
     updateDoc(uDoc('pessoal', id), { pago: newPago }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
   },
 
+  toggleNegocioPago: async (id, pago) => {
+    const newPago = !pago;
+    set(s => ({
+      realData: {
+        ...s.realData,
+        negocio: s.realData.negocio.map(x => x.id === id ? { ...x, pago: newPago } : x)
+      }
+    }));
+    get()._refreshData();
+    updateDoc(uDoc('negocio', id), { pago: newPago }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
+  },
+
   saveDespesaFixa: async (fields) => {
     if (!fields.descricao) return get().toast('Descrição obrigatória', 'error');
     await get().saveGeneric('despesasFixas', { ...fields, modificadoEm: serverTimestamp() }, 'Despesa');
@@ -49,6 +61,9 @@ export const createFinanceSlice = (set, get) => ({
       const total = parseFloat(valor) || 0;
       const numParcelas = parseInt(totalParcelas, 10) || 1;
       const valorParcela = Math.round((total / numParcelas) * 100) / 100;
+      const totalTaxa = parseFloat(fields.taxaGateway) || 0;
+      const taxaParcela = Math.round((totalTaxa / numParcelas) * 100) / 100;
+      
       const grupoId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       
       const newItems = [];
@@ -61,10 +76,16 @@ export const createFinanceSlice = (set, get) => ({
         d.setMonth(d.getMonth() + i);
         const dataStr = fmtDateISO(d);
         
+        const currValor = i === numParcelas - 1 ? Math.round((total - valorParcela * (numParcelas - 1)) * 100) / 100 : valorParcela;
+        const currTaxa = i === numParcelas - 1 ? Math.round((totalTaxa - taxaParcela * (numParcelas - 1)) * 100) / 100 : taxaParcela;
+        const currLiq = currValor - currTaxa;
+
         const payload = {
-          tipo: 'Receita',
+          tipo: fields.tipo || 'Receita',
           descricao: `${descricao} (${i + 1}/${numParcelas})`,
-          valor: i === numParcelas - 1 ? Math.round((total - valorParcela * (numParcelas - 1)) * 100) / 100 : valorParcela,
+          valor: currValor,
+          taxaGateway: currTaxa,
+          valorLiquido: currLiq,
           data: dataStr,
           categoria: categoria || '',
           entidade: entidade || '',
@@ -109,7 +130,7 @@ export const createFinanceSlice = (set, get) => ({
     set(s => ({
       realData: {
         ...s.realData,
-        negocio: s.realData.negocio.map(m => m.parcelamento?.grupoId === grupoId ? { ...m, deletadoEm: now } : m)
+        negocio: s.realData.negocio.filter(m => m.parcelamento?.grupoId !== grupoId)
       }
     }));
     get()._refreshData();
@@ -123,10 +144,16 @@ export const createFinanceSlice = (set, get) => ({
     const { data, toast, closeModal } = get();
     const rec = data.recorrencia.find(r => r.id === recorrenciaId);
     if (!rec) return toast('Recorrência não encontrada', 'error');
+    const valorBruto = parseFloat(fields.valor) || 0;
+    const valorNet = parseFloat(fields.valorLiquido) || valorBruto;
+    const taxaGateway = Math.max(0, valorBruto - valorNet);
+
     const payload = {
       tipo: 'Receita',
       descricao: fields.descricao || (rec.plano || `Recorrência ${rec.cliente || ''}`).trim(),
-      valor: parseFloat(fields.valor) || rec.valor || 0,
+      valor: valorBruto,
+      valorLiquido: valorNet,
+      taxaGateway: taxaGateway.toFixed(2),
       data: fields.data || fmtDateISO(),
       categoria: fields.categoria || 'Receita Recorrente',
       entidade: rec.cliente || '',

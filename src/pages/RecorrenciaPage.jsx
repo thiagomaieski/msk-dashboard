@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useDash, sortData, fmtBRL } from '../store/useStore';
+import { useDash, sortData, fmtBRL, getRecorrenciaVencimento } from '../store/useStore';
 import { Badge, EmptyState } from '../components/shared';
 
 export default function RecorrenciaPage() {
@@ -49,15 +49,7 @@ export default function RecorrenciaPage() {
   }, [data.recorrencia, search, status, sort]);
 
   const today = new Date();
-  const getProxVencimento = (r) => {
-    if ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') && r.renovacao) return new Date(r.renovacao + 'T12:00:00');
-    if (r.periodicidade === 'Mensal' && r.vencimento) {
-      const d = new Date(today.getFullYear(), today.getMonth(), parseInt(r.vencimento));
-      if (d < today) d.setMonth(d.getMonth() + 1);
-      return d;
-    }
-    return null;
-  };
+  const getProxVencimento = (r) => getRecorrenciaVencimento(r, data.negocio);
   const diffDays = (d) => d ? Math.ceil((d.getTime() - today.getTime()) / 86400000) : null;
   const fmtVenc = (d) => d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
 

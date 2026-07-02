@@ -1,21 +1,27 @@
 import { useState, useMemo } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { generateReciboPDF } from '../components/PDFGenerator';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const PIE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899'];
 
-// ─── Pill de status de pagamento (exclusivo para despesas pessoais não-cartão) ───
-function PayStatusPill({ id, pago }) {
+// ─── Pill de status de pagamento ───
+function PayStatusPill({ id, pago, colPrefix }) {
   const togglePessoalPago = useDash(s => s.togglePessoalPago);
+  const toggleNegocioPago = useDash(s => s.toggleNegocioPago);
   const [loading, setLoading] = useState(false);
 
   const handleClick = async (e) => {
     e.stopPropagation();
     setLoading(true);
-    await togglePessoalPago(id, pago);
+    if (colPrefix === 'negocio') {
+      await toggleNegocioPago(id, pago);
+    } else {
+      await togglePessoalPago(id, pago);
+    }
     setLoading(false);
   };
 
@@ -91,7 +97,10 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
                   {parc.parcela}/{parc.total}
                 </span>
               )}
-              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)', opacity: m.pago && showPill ? 0.5 : 1 }}>{fmtBRL(m.valor)}</div>
+              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)', opacity: m.pago && showPill ? 0.5 : 1 }}>
+                {fmtBRL(m.valor)}
+                {isRec && m.taxaGateway > 0 && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>{fmtBRL(m.valorLiquido)} Liq</div>}
+              </div>
             </div>
           </div>
           <div className="finance-card-meta">
@@ -108,7 +117,10 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
             {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 500 }}>Cartão</span></>}
           </div>
           <div className="finance-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {showPill && <PayStatusPill id={m.id} pago={!!m.pago} />}
+            {showPill && <PayStatusPill id={m.id} pago={!!m.pago} colPrefix={colPrefix} />}
+            <button className="row-btn" onClick={() => useDash.getState().duplicateItem(colPrefix, m)} title="Duplicar Lançamento">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
             {isRec && (
               <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(m, useDash.getState().configData)} title="Gerar Recibo PDF">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
@@ -158,7 +170,22 @@ export function FinancasNegocioPage() {
   const [clienteFilter, setClienteFilter] = useState('');
   const [viewMode, setViewMode] = useState('cols'); // 'cols', 'extrato'
 
-  const { filtered, receitas, despesas, rec, desp, saldo, recLiq, nfCount, totalRecAnual, chartData } = useMemo(() => {
+  const setQuickFilter = (type) => {
+    const today = new Date();
+    if (type === 'esteMes') {
+      setAno(String(today.getFullYear()));
+      setMes(String(today.getMonth()));
+    } else if (type === 'mesPassado') {
+      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      setAno(String(d.getFullYear()));
+      setMes(String(d.getMonth()));
+    } else if (type === 'esteAno') {
+      setAno(String(today.getFullYear()));
+      setMes('');
+    }
+  };
+
+  const { filtered, receitas, despesas, rec, desp, saldo, recLiq, nfCount, totalRecAnual, chartData, pieData } = useMemo(() => {
     const list = data.negocio.filter(f => {
       if (!f.data) return false;
       const d = new Date(f.data + 'T12:00:00');
@@ -181,11 +208,12 @@ export function FinancasNegocioPage() {
     });
 
     const totalRec = recList.reduce((s, m) => s + (m.valor || 0), 0);
+    const totalRecGatewayLiq = recList.reduce((s, m) => s + (m.valorLiquido !== undefined && m.valorLiquido !== '' ? parseFloat(m.valorLiquido) : (m.valor || 0)), 0);
     const totalDesp = despList.reduce((s, m) => s + (m.valor || 0), 0);
     const totalRecAnual = data.negocio.filter(m => m.tipo === 'Receita' && m.data && new Date(m.data + 'T12:00:00').getFullYear() === parseInt(ano || CURRENT_YEAR)).reduce((s, m) => s + (m.valor || 0), 0);
     
     const aliquota = configData.aliquotaImposto || 0;
-    const recLiq = totalRec * (1 - (aliquota / 100));
+    const recLiq = totalRecGatewayLiq * (1 - (aliquota / 100));
 
     // Chart Data
     const cData = {};
@@ -203,6 +231,15 @@ export function FinancasNegocioPage() {
        chartArr.sort((a, b) => parseInt(a.name) - parseInt(b.name));
     }
 
+    const categoryTotals = {};
+    despList.forEach(m => {
+      const cat = m.categoria || 'Outros';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + (m.valor || 0);
+    });
+    const pieData = Object.entries(categoryTotals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
     return {
       filtered: list,
       receitas: recList,
@@ -213,7 +250,8 @@ export function FinancasNegocioPage() {
       saldo: totalRec - totalDesp,
       nfCount: list.filter(m => m.nf === 'sim').length,
       totalRecAnual,
-      chartData: chartArr
+      chartData: chartArr,
+      pieData
     };
   }, [data.negocio, ano, mes, catRec, catDesp, searchRec, searchDesp, clienteFilter, configData.aliquotaImposto]);
 
@@ -250,6 +288,9 @@ export function FinancasNegocioPage() {
           <option value="">Todo ano</option>
           {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
         </select>
+        <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('esteMes')}>Este Mês</button>
+        <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('mesPassado')}>Mês Passado</button>
+        <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('esteAno')}>Este Ano</button>
         <div className="search-wrap" style={{ width: 160, marginLeft: 8 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input className="filter-input" placeholder="Filtrar Cliente..." value={clienteFilter} onChange={e => setClienteFilter(e.target.value)} />
@@ -264,10 +305,10 @@ export function FinancasNegocioPage() {
         </div>
       </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px 300px', gap: 20, marginBottom: 20 }}>
         <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 0 }}>
           <div className="summary-card"><div className="summary-card-label">Receita Bruta</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
-          <div className="summary-card" title={`Tributação de ${configData.aliquotaImposto || 0}%`}><div className="summary-card-label">Receita Líquida</div><div className="summary-card-val" style={{ color: 'var(--green)' }}>{fmtBRL(recLiq)}</div></div>
+          <div className="summary-card" title={`Após taxas (Asaas) e tributação (${configData.aliquotaImposto || 0}%)`}><div className="summary-card-label">Receita Líquida Real</div><div className="summary-card-val" style={{ color: 'var(--green)' }}>{fmtBRL(recLiq)}</div></div>
           <div className="summary-card"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div></div>
           <div className="summary-card"><div className="summary-card-label">Saldo Operacional</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div></div>
         </div>
@@ -279,6 +320,17 @@ export function FinancasNegocioPage() {
                <Bar dataKey="rec" name="Receita" fill="#10b981" radius={[2, 2, 0, 0]} />
                <Bar dataKey="desp" name="Despesa" fill="#ef4444" radius={[2, 2, 0, 0]} />
              </BarChart>
+           </ResponsiveContainer>
+        </div>
+        <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--border)', height: '100%', minHeight: 120 }}>
+           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>Despesas por Categoria</div>
+           <ResponsiveContainer width="100%" height="80%">
+             <PieChart>
+               <Tooltip contentStyle={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} formatter={(v) => fmtBRL(v)} />
+               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
+                 {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+               </Pie>
+             </PieChart>
            </ResponsiveContainer>
         </div>
       </div>
@@ -322,14 +374,26 @@ export function FinancasNegocioPage() {
               onEdit={id => openModal('negocioReceita', id)} onDelete={(id, desc) => deleteItem('negocio', id, desc)} />
           </div>
           <div className="finance-col">
-          <div className="finance-col-head">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="finance-col-title red">↓ Despesas</span>
-              <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
-              </button>
+          <div className="finance-col-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="finance-col-title red">↓ Despesas</span>
+                <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </div>
+              <span className="finance-col-total red">{fmtBRL(desp)}</span>
             </div>
-            <span className="finance-col-total red">{fmtBRL(desp)}</span>
+            <div style={{ display: 'flex', gap: 8, borderTop: '1px dashed var(--border)', paddingTop: 10, justifyContent: 'flex-start' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--green)', background: 'rgba(0,197,115,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(0,197,115,0.15)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>
+                {despesas.filter(d => !d.cartao && d.pago).length} pagas
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'rgba(245,158,11,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(245,158,11,0.15)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {despesas.filter(d => !d.cartao && !d.pago).length} pendentes
+              </span>
+            </div>
           </div>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
@@ -341,7 +405,7 @@ export function FinancasNegocioPage() {
               <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
-          <FinanceColList list={despesas} isRec={false} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
+          <FinanceColList list={despesas} isRec={false} showNf={true} showPayStatus={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
             onEdit={id => openModal('negocioDespesa', id)} onDelete={(id, desc) => deleteItem('negocio', id, desc)} />
         </div>
       </div>

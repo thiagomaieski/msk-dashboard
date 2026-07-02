@@ -4,7 +4,7 @@ import {
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Tooltip,
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
-import { useDash, fmtBRL, fmtDate } from '../store/useStore';
+import { useDash, fmtBRL, fmtDate, getRecorrenciaVencimento, fmtDateISO } from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
@@ -355,11 +355,16 @@ export default function DashboardPage() {
       .map(([name, value], i) => ({ name, value, fill: `hsl(${(i * 137) % 360}, 70%, 65%)` }))
       .sort((a, b) => b.value - a.value);
 
-    const recorrenciasVencendo = recorrencia.filter(r => {
-      if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
-      const days = (new Date(r.proximoVencimento + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24);
-      return days <= 5 && days >= 0;
-    });
+    const recorrenciasVencendo = recorrencia
+      .map(r => ({
+        ...r,
+        proximoVencimento: getRecorrenciaVencimento(r, negocio)
+      }))
+      .filter(r => {
+        if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
+        const days = (r.proximoVencimento - new Date()) / (1000 * 60 * 60 * 24);
+        return days <= 5 && days >= -31;
+      });
 
     const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
     const isMetaActive = metaFaturamento > 0;
@@ -642,7 +647,7 @@ export default function DashboardPage() {
                 >
                   <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, marginBottom: 4 }}>Recorrência Vencendo</div>
                   <div style={{ fontWeight: 500, fontSize: 14 }}>{r.cliente}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Vence: {fmtDate(r.proximoVencimento)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Vence: {fmtDate(fmtDateISO(r.proximoVencimento))}</div>
                 </div>
               ))}
             </div>

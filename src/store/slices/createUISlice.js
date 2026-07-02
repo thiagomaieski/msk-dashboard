@@ -1,5 +1,5 @@
 import { db, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, collection, query, orderBy, writeBatch, addDoc } from '../../firebase';
-import { uCol, uDoc, fmtDateISO, fmtDate, fmtBRL, detectCSVDelimiter, parseCSVRows, cleanCSVValue, buildCSVHeaderMap, getCSVCell, normalizeImportedStatus, TRASH_COLS, ALL_COLS, EMPTY_DATA } from '../storeUtils';
+import { uCol, uDoc, fmtDateISO, fmtDate, fmtBRL, detectCSVDelimiter, parseCSVRows, cleanCSVValue, buildCSVHeaderMap, getCSVCell, normalizeImportedStatus, TRASH_COLS, ALL_COLS, EMPTY_DATA, getRecorrenciaVencimento } from '../storeUtils';
 import { syncAlertsWithHostinger } from '../../utils/syncAlerts';
 import { MOCK_DATA } from '../mockData';
 
@@ -389,6 +389,30 @@ export const createUISlice = (set, get) => ({
     get().toast('Movido para a lixeira (restaurável por 15 dias)');
     updateDoc(uDoc(colName, id), { deletadoEm: now }).catch(e => get().toast('Sync Error: ' + e.message, 'error'));
     if (colName === 'lembretes') get()._cleanupNotif(id);
+  },
+
+  duplicateItem: async (colName, item) => {
+    const { toast, _refreshData } = get();
+    const { id, criadoEm, modificadoEm, parcelamento, deletadoEm, nfNumero, ...rest } = item;
+    const desc = rest.descricao || '';
+    const payload = {
+      ...rest,
+      descricao: desc + ' (Cópia)',
+      criadoEm: serverTimestamp(),
+      modificadoEm: serverTimestamp()
+    };
+    const tempId = 'temp_dup_' + Date.now();
+    const local = { ...payload, id: tempId, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+    
+    set(s => ({ realData: { ...s.realData, [colName]: [local, ...s.realData[colName]] } }));
+    _refreshData();
+    toast('Lançamento duplicado!');
+    
+    addDoc(uCol(colName), payload).then(r => {
+      set(s => ({ realData: { ...s.realData, [colName]: s.realData[colName].map(x => x.id === tempId ? { ...x, id: r.id } : x) } }));
+      _refreshData();
+      syncAlertsWithHostinger(get);
+    }).catch(e => toast('Erro ao duplicar: ' + e.message, 'error'));
   },
 
   deleteLembrete: async (id) => {
@@ -803,9 +827,7 @@ export const createUISlice = (set, get) => ({
 
     data.recorrencia.forEach(rec => {
       if (rec.status !== 'Ativo') return;
-      let targetDate = null;
-      if (rec.periodicidade === 'Mensal' && rec.vencimento) targetDate = new Date(now.getFullYear(), now.getMonth(), parseInt(rec.vencimento));
-      else if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) targetDate = new Date(rec.renovacao + 'T12:00:00');
+      const targetDate = getRecorrenciaVencimento(rec, data.negocio);
       if (!targetDate) return;
       const diffRec = Math.ceil((targetDate.getTime() - now.getTime()) / 86400000);
       if (diffRec >= 0 && diffRec <= 7) {
