@@ -63,6 +63,7 @@ function ModalContent({ type }) {
   if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm recorrenciaId={editingId.recorrencia} />;
   if (type === 'pessoalReceita') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Receita" />;
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
+  if (type === 'pessoalInvestimento') return <PessoalInvestimentoForm item={data.pessoal.find(x => x.id === editingId.pessoal)} />;
   if (type === 'cliente') return <ClienteForm item={data.clientes.find(x => x.id === editingId.clientes)} />;
   if (type === 'lembrete') return <LembreteForm item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
   if (type === 'verNota') return <VerNotaModal item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
@@ -733,36 +734,51 @@ function ProjetoForm({ item }) {
       </div>
       <div className="form-group"><label className="form-label">Nome do Projeto</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Landing Page para Advogados" /></div>
       <div className="form-group">
-        <label className="form-label">Anotações do Projeto</label>
-        <textarea 
-          className="form-textarea" 
-          placeholder="Anote aqui a estrutura do projeto, acessos, observações importantes..." 
-          style={{ minHeight: 100, fontSize: 13, lineHeight: 1.5 }} 
-          value={f.anotacoes} 
-          onChange={u('anotacoes')} 
+        <label className="form-label">Anota\u00e7\u00f5es do Projeto</label>
+        <textarea
+          className="form-textarea"
+          placeholder="Anote aqui a estrutura do projeto, acessos, observa\u00e7\u00f5es importantes..."
+          style={{ minHeight: 100, fontSize: 13, lineHeight: 1.5 }}
+          value={f.anotacoes}
+          onChange={u('anotacoes')}
         />
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Tipo de Projeto</label>
           <select className="form-select" value={f.tipoProjeto} onChange={u('tipoProjeto')}>
-            {['', 'Site', 'Landing Page', 'E-commerce', 'Identidade Visual', 'Social Media', 'Tráfego Pago', 'SEO', 'Consultoria', 'Outro'].map(t => <option key={t} value={t}>{t || '-- Selecione --'}</option>)}
+            {['', 'Site', 'Landing Page', 'E-commerce', 'Identidade Visual', 'Social Media', 'Tr\u00e1fego Pago', 'SEO', 'Consultoria', 'Outro'].map(t => <option key={t} value={t}>{t || '-- Selecione --'}</option>)}
           </select>
         </div>
-        <div className="form-group"><label className="form-label">Status</label>
+        <div className="form-group"><label className="form-label">Status do Projeto</label>
           <select className="form-select" value={f.status} onChange={u('status')}>
-            {['Em andamento', 'Aguardando cliente', 'Aguardando Aprovação', 'Concluído', 'Pausado', 'Cancelado'].map(s => <option key={s}>{s}</option>)}
+            {['Em andamento', 'Aguardando cliente', 'Aguardando Aprova\u00e7\u00e3o', 'Conclu\u00eddo', 'Pausado', 'Cancelado'].map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Status do Pagamento</label>
+          <select className="form-select" value={f.pagamento} onChange={u('pagamento')}>
+            {['Pendente', 'Parcial (50%)', 'Pago'].map(p => <option key={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="form-group"><label className="form-label">Nota Fiscal</label>
+          <select className="form-select" value={f.nf} onChange={u('nf')}>
+            <option value="nao">Não emitida</option>
+            <option value="sim">Emitida</option>
+            <option value="pendente">Pendente</option>
           </select>
         </div>
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-          <button className="btn btn-primary" onClick={() => {
-            if (!f.cliente || !f.descricao) return useDash.getState().toast('Cliente e Nome do Projeto são obrigatórios.', 'error');
-            saveProjeto({ ...f, valor: parseFloat(f.valor) || 0 });
-          }}>Salvar</button>
-        </div>
+        <div className="form-group"><label className="form-label">Prazo / Entrega</label><input className="form-input" type="date" value={f.prazo} onChange={u('prazo')} /></div>
+      </div>
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button className="btn btn-primary" onClick={() => {
+          if (!f.cliente || !f.descricao) return useDash.getState().toast('Cliente e Nome do Projeto são obrigatórios.', 'error');
+          saveProjeto({ ...f, valor: parseFloat(f.valor) || 0 });
+        }}>Salvar</button>
       </div>
     </div>
   );
@@ -1062,7 +1078,6 @@ function FinancaForm({ item, defaultTipo }) {
   </div>
 );
 }
-
 // ── PESSOAL FORM ──
 function PessoalForm({ item, defaultTipo }) {
   const configData = useDash(s => s.configData);
@@ -1079,9 +1094,12 @@ function PessoalForm({ item, defaultTipo }) {
   const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasPessoal || []);
   const today = new Date().toISOString().split('T')[0];
   const [f, setF] = useState({
-    data: item?.data || today, valor: item?.valor || '',
-    descricao: item?.descricao || '', categoria: item?.categoria || cats[0] || '',
+    data: item?.data || today,
+    valor: item?.valor || '',
+    descricao: item?.descricao || '',
+    categoria: item?.categoria || cats[0] || '',
     cartao: item?.cartao || false,
+    investimento: item?.investimento || false,
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   return (
@@ -1107,19 +1125,55 @@ function PessoalForm({ item, defaultTipo }) {
         </div>
       </div>
       {isDespesa && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 'var(--radius-sm)' }}>
-          <input type="checkbox" id="f-cartao" className="checkbox-blue" checked={f.cartao} onChange={e => setF(p => ({ ...p, cartao: e.target.checked }))} />
-          <label htmlFor="f-cartao" style={{ fontSize: 13, color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--blue)' }}>
-              <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-            Despesa no cartão de crédito
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 'var(--radius-sm)' }}>
+            <input 
+              type="checkbox" 
+              id="f-cartao" 
+              className="checkbox-blue" 
+              checked={f.cartao} 
+              onChange={e => setF(p => ({ ...p, cartao: e.target.checked }))} 
+            />
+            <label htmlFor="f-cartao" style={{ fontSize: 13, color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--blue)' }}>
+                <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+              </svg>
+              Despesa no cartão de crédito
+            </label>
+          </div>
         </div>
       )}
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => savePessoal({ ...f, tipo, valor: parseFloat(f.valor) || 0, cartao: isDespesa ? f.cartao : false })}>Salvar</button>
+        <button className="btn btn-primary" onClick={() => savePessoal({ ...f, tipo, valor: parseFloat(f.valor) || 0, cartao: isDespesa ? f.cartao : false, investimento: false })}>Salvar</button>
+      </div>
+    </div>
+  );
+}
+
+// ── PESSOAL INVESTIMENTO FORM ──
+function PessoalInvestimentoForm({ item }) {
+  const savePessoal = useDash(s => s.savePessoal);
+  const closeModal = useDash(s => s.closeModal);
+  const today = new Date().toISOString().split('T')[0];
+  const [f, setF] = useState({
+    data: item?.data || today,
+    valor: item?.valor || '',
+    descricao: item?.descricao || '',
+    categoria: 'Investimento',
+    investimento: true,
+  });
+  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  return (
+    <div className="form-grid">
+      <div className="form-grid form-grid-2">
+        <div className="form-group"><label className="form-label">Data</label><input className="form-input" type="date" value={f.data} onChange={u('data')} /></div>
+        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
+      </div>
+      <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Aporte Tesouro Direto, Poupança..." /></div>
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button className="btn btn-primary" onClick={() => savePessoal({ ...f, tipo: 'Despesa', valor: parseFloat(f.valor) || 0 })}>Salvar</button>
       </div>
     </div>
   );

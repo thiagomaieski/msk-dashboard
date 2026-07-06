@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { generateReciboPDF } from '../components/PDFGenerator';
+import { NumberStepper } from '../components/shared';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
@@ -73,11 +74,12 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
   const bulkDeleteParcelamento = useDash(s => s.bulkDeleteParcelamento);
   if (!list.length) return <div className="finance-col-empty">Nenhuma {isRec ? 'receita' : 'despesa'}</div>;
   const CARD_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3 }} title="Cartão de crédito"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
+  const INVEST_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3, color: 'var(--amber)' }} title="Investimento"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
   return list.map(m => {
     const displayTitle = m.entidade ? `${m.entidade} — ${m.descricao || ''}` : (m.descricao || '-');
     const parc = m.parcelamento;
     const isCartao = !!m.cartao;
-    const showPill = showPayStatus && !isRec && !isCartao;
+    const showPill = showPayStatus && !isRec && !isCartao && !m.investimento;
     return (
       <div key={m.id} className={`finance-card card-in${m.pago && showPill ? ' finance-card--paid' : ''}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <input type="checkbox" style={{ marginTop: 4 }} checked={selectedItems.includes(m.id)} onChange={() => toggleSelect(colPrefix, m.id)} />
@@ -89,7 +91,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
               onClick={() => onEdit(m.id)}
               title="Clique para editar"
             >
-              {m.cartao && !isRec ? CARD_ICON : null}{displayTitle}
+              {m.cartao && !isRec ? CARD_ICON : m.investimento ? INVEST_ICON : null}{displayTitle}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {parc && (
@@ -97,7 +99,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
                   {parc.parcela}/{parc.total}
                 </span>
               )}
-              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)', opacity: m.pago && showPill ? 0.5 : 1 }}>
+              <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : m.investimento ? 'var(--amber)' : 'var(--red)', opacity: m.pago && showPill ? 0.5 : 1 }}>
                 {fmtBRL(m.valor)}
                 {isRec && m.taxaGateway > 0 && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>{fmtBRL(m.valorLiquido)} Liq</div>}
               </div>
@@ -115,6 +117,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
             )}
             {m.categoria && <><span>&bull;</span><span>{m.categoria}</span></>}
             {m.cartao && !isRec && <><span>&bull;</span><span style={{ color: 'var(--blue)', fontSize: 11, fontWeight: 500 }}>Cartão</span></>}
+            {m.investimento && <><span>&bull;</span><span style={{ color: 'var(--amber)', fontSize: 11, fontWeight: 600 }}>Investimento</span></>}
           </div>
           <div className="finance-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {showPill && <PayStatusPill id={m.id} pago={!!m.pago} colPrefix={colPrefix} />}
@@ -543,6 +546,10 @@ export function FinancasPessoaisPage() {
   const selectedItems = useDash(s => s.selectedItems);
   const toggleSelect = useDash(s => s.toggleSelect);
   const exportFinancasCSV = useDash(s => s.exportFinancasCSV);
+  const saveMetaInvestimento = useDash(s => s.saveMetaInvestimento);
+
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [metaInput, setMetaInput] = useState('');
   
   const now = new Date();
   const [ano, setAno] = useState(String(CURRENT_YEAR));
@@ -552,7 +559,7 @@ export function FinancasPessoaisPage() {
   const [searchRec, setSearchRec] = useState('');
   const [searchDesp, setSearchDesp] = useState('');
 
-  const { filtered, receitas, despesas, rec, desp, saldo, cartao } = useMemo(() => {
+  const { filtered, receitas, despesas, rec, desp, saldo, cartao, totalInvestido } = useMemo(() => {
     const list = data.pessoal.filter(f => {
       if (!f.data) return false;
       const d = new Date(f.data + 'T12:00:00');
@@ -574,7 +581,8 @@ export function FinancasPessoaisPage() {
     });
 
     const totalRec = recList.reduce((s, p) => s + (p.valor || 0), 0);
-    const totalDesp = despList.reduce((s, p) => s + (p.valor || 0), 0);
+    const totalDesp = despList.filter(p => !p.investimento).reduce((s, p) => s + (p.valor || 0), 0);
+    const totalInvestido = despList.filter(p => p.investimento).reduce((s, p) => s + (p.valor || 0), 0);
     
     return {
       filtered: list,
@@ -582,10 +590,24 @@ export function FinancasPessoaisPage() {
       despesas: despList,
       rec: totalRec,
       desp: totalDesp,
-      saldo: totalRec - totalDesp,
-      cartao: despList.filter(p => p.cartao).reduce((s, p) => s + (p.valor || 0), 0)
+      saldo: totalRec - totalDesp - totalInvestido,
+      cartao: despList.filter(p => p.cartao).reduce((s, p) => s + (p.valor || 0), 0),
+      totalInvestido
     };
   }, [data.pessoal, ano, mes, catRec, catDesp, searchRec, searchDesp]);
+
+  const metaVal = configData.metaInvestimento || 1500;
+
+  const startEditMeta = () => {
+    setMetaInput(String(metaVal));
+    setEditingMeta(true);
+  };
+
+  const handleSaveMeta = async () => {
+    const val = parseFloat(metaInput) || 0;
+    await saveMetaInvestimento(val);
+    setEditingMeta(false);
+  };
 
   const filterMonth = mes !== '' ? parseInt(mes) : now.getMonth();
   const mesNome = MESES[filterMonth];
@@ -617,10 +639,58 @@ export function FinancasPessoaisPage() {
         <div className="summary-card"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
         <div className="summary-card"><div className="summary-card-label">Saldo</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div></div>
         <div className="summary-card"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div></div>
-        <div className="summary-card" style={{ borderColor: 'rgba(59,130,246,.3)', background: 'var(--blue-bg)', position: 'relative', paddingBottom: 28 }}>
-          <div className="summary-card-label" style={{ color: 'var(--blue)' }}>Fatura Cartão ({mesNome})</div>
-          <div className="summary-card-val" style={{ color: 'var(--blue)' }}>{fmtBRL(cartao)}</div>
-          {cartaoExtra && <div style={{ position: 'absolute', bottom: 8, right: 12, fontSize: 11, fontWeight: 500, opacity: .8 }}>{cartaoExtra}</div>}
+        <div className="summary-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyGap: 'space-between', gap: 6, minHeight: 90 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="summary-card-label" style={{ margin: 0 }}>Meta de Investimento</span>
+            {editingMeta ? (
+              <div style={{ display: 'flex', gap: 4, zIndex: 10 }}>
+                <button className="btn btn-xs btn-primary" onClick={handleSaveMeta} style={{ padding: '2px 6px', fontSize: 10, background: 'var(--amber)', borderColor: 'var(--amber)', color: '#000' }}>Salvar</button>
+                <button className="btn btn-xs btn-secondary" onClick={() => setEditingMeta(false)} style={{ padding: '2px 6px', fontSize: 10 }}>X</button>
+              </div>
+            ) : (
+              <button 
+                className="row-btn" 
+                style={{ color: 'var(--amber)', padding: 0, opacity: 0.7 }} 
+                onClick={startEditMeta}
+                title="Ajustar Meta Mensal"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+              </button>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span className="summary-card-val" style={{ color: 'var(--amber)' }}>{fmtBRL(totalInvestido)}</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+              de {editingMeta ? (
+                <div style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                  <NumberStepper 
+                    mode="currency" 
+                    value={metaInput} 
+                    onChange={setMetaInput} 
+                    style={{ width: 120, height: 26, fontSize: 11, display: 'inline-flex' }}
+                    className="form-input"
+                  />
+                </div>
+              ) : fmtBRL(metaVal)}
+            </span>
+          </div>
+
+          {/* Barra de progresso */}
+          {(() => {
+            const pct = metaVal > 0 ? Math.min((totalInvestido / metaVal) * 100, 100) : 0;
+            return (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: 'var(--amber)', borderRadius: 3, transition: 'width 0.4s ease' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text3)', marginTop: 4 }}>
+                  <span>{pct.toFixed(0)}% da meta</span>
+                  <span>{fmtBRL(Math.max(0, metaVal - totalInvestido))} restante</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
       <div className="finance-cols">
@@ -652,9 +722,16 @@ export function FinancasPessoaisPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span className="finance-col-title red">↓ Despesas</span>
-                <button className="btn btn-sm btn-danger" onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-sm btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
+                    Despesa
+                  </button>
+                  <button className="btn btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,0.2)', fontWeight: 600 }} onClick={() => openModal('pessoalInvestimento')} title="Novo Investimento">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    Investir
+                  </button>
+                </div>
               </div>
               <span className="finance-col-total red">{fmtBRL(desp)}</span>
             </div>
@@ -680,7 +757,14 @@ export function FinancasPessoaisPage() {
             </div>
           </div>
           <FinanceColList list={despesas} isRec={false} showPayStatus={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
-            onEdit={id => openModal('pessoalDespesa', id)} onDelete={(id, desc) => deleteItem('pessoal', id, desc)} />
+            onEdit={id => {
+              const it = data.pessoal.find(x => x.id === id);
+              if (it?.investimento) {
+                openModal('pessoalInvestimento', id);
+              } else {
+                openModal('pessoalDespesa', id);
+              }
+            }} onDelete={(id, desc) => deleteItem('pessoal', id, desc)} />
         </div>
       </div>
     </div>

@@ -1719,6 +1719,12 @@ tbody tr:hover .row-actions {
   background: var(--green-bg) !important;
 }
 
+.row-btn[style*="var(--amber)"]:hover {
+  color: var(--amber) !important;
+  border-color: var(--amber) !important;
+  background: var(--amber-bg) !important;
+}
+
 .row-btn.del:hover {
   color: var(--red) !important;
   border-color: var(--red) !important;

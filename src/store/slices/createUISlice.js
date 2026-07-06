@@ -585,6 +585,12 @@ export const createUISlice = (set, get) => ({
     set(s => ({ configData: { ...s.configData, cartaoNome: nome, cartaoVenc: venc } }));
     toast('Cartão atualizado');
   },
+  saveMetaInvestimento: async (valor) => {
+    const { toast } = get();
+    await setDoc(uDoc('settings', 'main'), { metaInvestimento: valor }, { merge: true });
+    set(s => ({ configData: { ...s.configData, metaInvestimento: valor } }));
+    toast('Meta de investimento atualizada');
+  },
 
   openProjectView: (id) => set({ activeProjectView: id }),
   closeProjectView: () => set({ activeProjectView: null }),
