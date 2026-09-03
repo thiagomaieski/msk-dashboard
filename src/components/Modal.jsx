@@ -3,6 +3,7 @@ import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { NumberStepper } from './shared';
 import ImportFinancasModal from './ImportFinancasModal';
 import ImportLeadsModal from './ImportLeadsModal';
+import { generatePitchAngle, generatePitchMessage, INTERACAO_TIPO_LABELS, INTERACAO_TIPOS } from '../utils/crmAnalyticsUtils';
 
 
 export default function Modal() {
@@ -143,6 +144,9 @@ function LeadForm({ item }) {
   const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
 
   const [intText, setIntText] = useState('');
+  const [intTipo, setIntTipo] = useState('outro');
+  const [pitchMsg, setPitchMsg] = useState('');
+  const [pitchMsgCopiada, setPitchMsgCopiada] = useState(false);
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
     email: item?.email || '', origem: item?.origem || '',
@@ -151,6 +155,19 @@ function LeadForm({ item }) {
     status: item?.status || 'Novo', site: item?.site || '', observacoes: item?.observacoes || '',
     interacoes: item?.interacoes || [],
   });
+
+  // Ganchos de abordagem via pré-qualificação
+  const pitchAngles = item ? generatePitchAngle(item) : [];
+
+  const handleCopyPitch = async (tipo) => {
+    const msg = generatePitchMessage(item || f, tipo);
+    setPitchMsg(msg);
+    try {
+      await navigator.clipboard.writeText(msg);
+      setPitchMsgCopiada(true);
+      setTimeout(() => setPitchMsgCopiada(false), 2500);
+    } catch { /* silencioso */ }
+  };
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
 
   const [isPrequaling, setIsPrequaling] = useState(false);
@@ -244,15 +261,34 @@ function LeadForm({ item }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 120, overflowY: 'auto' }}>
                 {(f.interacoes || []).map((int, i) => (
-                  <div key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)' }}>
-                    <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap' }}>{int.data.split('T')[0].split('-').reverse().join('/')}</span>
-                    <span style={{ color: 'var(--text)' }}>{int.texto}</span>
-                    <button className="row-btn del" style={{ marginLeft: 'auto', padding: 0 }} onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}>x</button>
+                  <div key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{(int.data || int.criadoEm || '').split('T')[0].split('-').reverse().join('/')}</span>
+                    {int.tipo && int.tipo !== 'outro' && (
+                      <span style={{ fontSize: 10, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        {INTERACAO_TIPO_LABELS[int.tipo] || int.tipo}
+                      </span>
+                    )}
+                    <span style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
+                    <button className="row-btn del" style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }} onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}>×</button>
                   </div>
                 ))}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+            {/* Tags rápidas de tipo de interação */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+              {INTERACAO_TIPOS.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`btn btn-sm ${intTipo === t ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 10, padding: '3px 8px' }}
+                  onClick={() => setIntTipo(t)}
+                >
+                  {INTERACAO_TIPO_LABELS[t] || t}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
               <input
                 className="form-input"
                 style={{ flex: 1, fontSize: 12, padding: '6px 8px' }}
@@ -264,8 +300,9 @@ function LeadForm({ item }) {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     if (!intText) return;
-                    const newInt = { data: new Date().toISOString(), texto: intText };
-                    setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: new Date().toISOString().split('T')[0] }));
+                    const nowISO = new Date().toISOString();
+                    const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+                    setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
                     setIntText('');
                   }
                 }}
@@ -274,10 +311,10 @@ function LeadForm({ item }) {
                 id="lead-int-btn"
                 className="btn btn-sm btn-secondary"
                 onClick={() => {
-                  const txt = intText;
-                  if (!txt) return;
-                  const newInt = { data: new Date().toISOString(), texto: txt };
-                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: new Date().toISOString().split('T')[0] }));
+                  if (!intText) return;
+                  const nowISO = new Date().toISOString();
+                  const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
                   setIntText('');
                 }}
               >Adicionar</button>
@@ -393,6 +430,84 @@ function LeadForm({ item }) {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Assistente de Abordagem ──────────────────────────────── */}
+        {item && (
+          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: '#8b5cf6' }}>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                <circle cx="12" cy="12" r="6" />
+              </svg>
+              <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>Assistente de Abordagem</span>
+            </div>
+            {pitchAngles.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                {pitchAngles.slice(0, 3).map((g, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 }}>
+                    <span style={{
+                      flexShrink: 0,
+                      fontSize: 10,
+                      marginTop: 1,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontWeight: 700,
+                      background: g.prioridade === 'alta' ? 'var(--red-bg, rgba(239,68,68,0.1))' : g.prioridade === 'media' ? 'rgba(245,158,11,0.1)' : 'var(--bg4)',
+                      color: g.prioridade === 'alta' ? 'var(--red)' : g.prioridade === 'media' ? 'var(--amber, #f59e0b)' : 'var(--text3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '.03em',
+                    }}>
+                      {g.prioridade === 'alta' ? 'Alta Prioridade' : g.prioridade === 'media' ? 'Média' : 'Baixa'}
+                    </span>
+                    <span style={{ color: 'var(--text2)', lineHeight: 1.4 }}>{g.gancho}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+                {prequalData ? 'Nenhum ponto crítico identificado.' : 'Execute a pré-qualificação para ver sugestões personalizadas.'}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('abordagem_inicial')}>Abordagem Inicial</button>
+              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('follow_up')}>Follow-up</button>
+              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('proposta')}>Proposta</button>
+            </div>
+            {pitchMsg && (
+              <div style={{ marginTop: 10 }}>
+                <textarea
+                  readOnly
+                  value={pitchMsg}
+                  style={{ width: '100%', fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', resize: 'vertical', minHeight: 75, color: 'var(--text)', lineHeight: 1.5 }}
+                />
+                <button
+                  className="btn btn-sm btn-primary"
+                  style={{ width: '100%', marginTop: 6, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(pitchMsg); setPitchMsgCopiada(true); setTimeout(() => setPitchMsgCopiada(false), 2000); } catch {}
+                  }}
+                >
+                  {pitchMsgCopiada ? (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copiar Texto da Abordagem
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -1385,7 +1500,14 @@ function CsvInfoModal() {
           Advocacia Silva,(21) 98888-1111,,
         </code>
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>⚠️ A primeira linha é o <strong>cabeçalho</strong> e será ignorada. Garanta que o arquivo está salvo com encoding <strong>UTF-8</strong>.</div>
+      <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--amber, #f59e0b)', flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>A primeira linha é o <strong>cabeçalho</strong> e será ignorada. Garanta que o arquivo está salvo com encoding <strong>UTF-8</strong>.</span>
+      </div>
       <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
         <button className="btn btn-primary" onClick={() => { closeModal(); document.getElementById('lead-csv')?.click(); }}>Escolher arquivo CSV</button>

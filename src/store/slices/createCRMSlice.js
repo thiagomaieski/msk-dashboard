@@ -3,6 +3,52 @@ import { uDoc, uCol } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
 
+// ── Tipos de interação válidos (enum fixo) ───────────────────────────────────
+export const INTERACAO_TIPOS = [
+  'abordagem_inicial',
+  'follow_up',
+  'resposta_recebida',
+  'reuniao',
+  'proposta',
+  'outro',
+];
+
+export const INTERACAO_TIPO_LABELS = {
+  abordagem_inicial: 'Abordagem Inicial',
+  follow_up: 'Follow-up',
+  resposta_recebida: 'Resposta Recebida',
+  reuniao: 'Reunião',
+  proposta: 'Proposta',
+  outro: 'Outro',
+};
+
+// ── Helper: grava entrada em historicoStatus ─────────────────────────────────
+function buildHistoricoEntry(statusAnterior, statusNovo) {
+  return { statusAnterior: statusAnterior || null, statusNovo, data: new Date().toISOString() };
+}
+
+// ── Helper: obtém historicoStatus seguro (retrocompatibilidade) ───────────────
+export function getHistoricoStatus(lead) {
+  if (lead?.historicoStatus?.length) return lead.historicoStatus;
+  return [{
+    statusAnterior: null,
+    statusNovo: lead?.status || 'Novo',
+    data: lead?.modificadoEm || lead?.criadoEm || new Date().toISOString(),
+  }];
+}
+
+// ── Helper: get data de hoje em YYYY-MM-DD ────────────────────────────────────
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ── Helper: calcula data futura em YYYY-MM-DD ─────────────────────────────────
+function addDaysISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export const createCRMSlice = (set, get) => ({
   prequalModal: null,
   setPrequalModal: (prequalModal) => set((state) => ({
@@ -19,10 +65,10 @@ export const createCRMSlice = (set, get) => ({
         id,
         name: lead?.nome || id,
         site: null,
-        status: 'pending', // pending | skipped | processing | success | error
+        status: 'pending',
         reason: null,
         result: null,
-        steps: {},    // { pagespeed, instagram, screenshot } → { status, ...meta }
+        steps: {},
       };
     });
 
@@ -62,18 +108,98 @@ export const createCRMSlice = (set, get) => ({
     runPreQualification(selectedItems, onProgress);
   },
 
+  // ── Fase 1.1: logLeadContact — action unificada de registro de contato ──────
+  logLeadContact: async (leadId, { tipo, texto, novoStatus, proximoContatoOffsetDays }) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const nowISO = new Date().toISOString();
+    const hoje = todayISO();
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+
+    // Monta a nova interação com tipo obrigatório
+    const novaInteracao = {
+      data: nowISO,
+      texto: texto || '',
+      tipo: INTERACAO_TIPOS.includes(tipo) ? tipo : 'outro',
+      statusNoMomento: novoStatus || lead.status || 'Novo',
+      criadoEm: nowISO,
+    };
+
+    const interacoes = [...(lead.interacoes || []), novaInteracao];
+
+    // Atualiza historicoStatus se houver mudança de status
+    const historicoBase = getHistoricoStatus(lead);
+    const historicoStatus = novoStatus && novoStatus !== lead.status
+      ? [...historicoBase, buildHistoricoEntry(lead.status, novoStatus)]
+      : historicoBase;
+
+    // dataAbordagem: preenche apenas na 1ª abordagem_inicial
+    const dataAbordagem = tipo === 'abordagem_inicial' && !lead.dataAbordagem
+      ? nowISO
+      : (lead.dataAbordagem || null);
+
+    // proximoContato: só atualiza se offset fornecido explicitamente
+    const proximoContato = typeof proximoContatoOffsetDays === 'number'
+      ? addDaysISO(proximoContatoOffsetDays)
+      : (lead.proximoContato || null);
+
+    const updatedLead = {
+      ...lead,
+      interacoes,
+      historicoStatus,
+      dataAbordagem,
+      ultimoContato: hoje,
+      ...(novoStatus ? { status: novoStatus } : {}),
+      ...(proximoContato !== lead.proximoContato ? { proximoContato } : {}),
+      modificadoEm: nowISO,
+    };
+
+    // Atualiza state local
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? updatedLead : l) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? updatedLead : l) } }));
+
+      // Payload de update parcial ao Firestore (não reescreve o doc inteiro)
+      const firestorePayload = {
+        interacoes,
+        historicoStatus,
+        dataAbordagem,
+        ultimoContato: hoje,
+        modificadoEm: serverTimestamp(),
+        ...(novoStatus ? { status: novoStatus } : {}),
+        ...(proximoContato !== lead.proximoContato ? { proximoContato } : {}),
+      };
+
+      updateDoc(uDoc('leads', leadId), firestorePayload)
+        .catch(e => toast('Erro ao registrar contato: ' + e.message, 'error'));
+    }
+
+    get()._refreshData();
+    toast(tipo === 'abordagem_inicial' ? 'Abordagem registrada com sucesso' : 'Interação registrada com sucesso');
+  },
+
+  // ── Fase 1.2: Salva meta diária de abordagens ─────────────────────────────
+  saveMetaDiariaAbordagens: async (valor) => {
+    const { toast } = get();
+    const meta = Math.max(1, parseInt(valor, 10) || 10);
+    set(s => ({ configData: { ...s.configData, metaDiariaAbordagens: meta } }));
+    setDoc(uDoc('settings', 'main'), { metaDiariaAbordagens: meta }, { merge: true })
+      .catch(e => toast('Erro ao salvar meta: ' + e.message, 'error'));
+    toast('Meta diária atualizada!');
+  },
+
   saveLead: async (fields) => {
     const { data, deleteFile } = get();
-    
-    // ── Etapa 3: Limpeza automática de screenshot ao mudar para "Perdido" ──
-    // Detecta se o status está mudando para "Perdido" em um lead existente
+
+    // Limpeza automática de screenshot ao mudar para "Perdido"
     if (fields.status === 'Perdido' && fields.id) {
       const existingLead = data.leads.find(l => l.id === fields.id);
       const screenshotPath = existingLead?.prequalData?.screenshotPath;
       if (screenshotPath) {
-        // Deleta permanentemente do storage via endpoint PHP existente
         deleteFile(screenshotPath).catch(e => console.warn('[saveLead] Falha ao deletar screenshot:', e));
-        // Remove screenshotUrl e screenshotPath do payload para limpar no Firestore
         fields = {
           ...fields,
           prequalData: {
@@ -81,6 +207,18 @@ export const createCRMSlice = (set, get) => ({
             screenshotUrl: null,
             screenshotPath: null,
           },
+        };
+      }
+    }
+
+    // ── Fase 1.3: Gravar historicoStatus quando status muda via saveLead ──────
+    if (fields.id && fields.status) {
+      const existingLead = data.leads.find(l => l.id === fields.id);
+      if (existingLead && existingLead.status !== fields.status) {
+        const historicoBase = getHistoricoStatus(existingLead);
+        fields = {
+          ...fields,
+          historicoStatus: [...historicoBase, buildHistoricoEntry(existingLead.status, fields.status)],
         };
       }
     }
@@ -167,29 +305,36 @@ export const createCRMSlice = (set, get) => ({
     if (isMock) {
       set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
     } else {
-      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
-      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao converter: ' + e.message, 'error'));
+      // Gravar historicoStatus na conversão
+      const historicoBase = getHistoricoStatus(lead);
+      const historicoStatus = [...historicoBase, buildHistoricoEntry(lead.status, 'Fechado')];
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', historicoStatus, modificadoEm: new Date().toISOString() } : l) } }));
+      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', historicoStatus, modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao converter: ' + e.message, 'error'));
     }
     get()._refreshData();
     toast(`${lead.nome} convertido para cliente!`);
   },
 
   addLeadInteracao: async (leadId, interacao) => {
-    const { data, toast, fmtDateISO } = get();
+    const { data, toast } = get();
     const lead = data.leads.find(l => l.id === leadId);
     if (!lead) return;
+    const tipo = INTERACAO_TIPOS.includes(interacao.tipo) ? interacao.tipo : 'outro';
+    const nowISO = new Date().toISOString();
     const interacoes = [...(lead.interacoes || []), {
-      data: new Date().toISOString().split('T')[0],
+      data: nowISO,
       texto: interacao.texto || '',
-      tipo: interacao.tipo || 'Contato',
-      criadoEm: new Date().toISOString(),
+      tipo,
+      statusNoMomento: lead.status || 'Novo',
+      criadoEm: nowISO,
     }];
+    const dataAbordagem = tipo === 'abordagem_inicial' && !lead.dataAbordagem ? nowISO : (lead.dataAbordagem || null);
     const isMock = leadId.toString().startsWith('m-');
     if (isMock) {
-      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, interacoes, dataAbordagem, modificadoEm: nowISO } : l) } }));
     } else {
-      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, interacoes, modificadoEm: new Date().toISOString() } : l) } }));
-      updateDoc(uDoc('leads', leadId), { interacoes, modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao salvar interação: ' + e.message, 'error'));
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, interacoes, dataAbordagem, modificadoEm: nowISO } : l) } }));
+      updateDoc(uDoc('leads', leadId), { interacoes, dataAbordagem, ultimoContato: todayISO(), modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao salvar interação: ' + e.message, 'error'));
     }
     get()._refreshData();
     toast('Interação registrada!');
@@ -225,12 +370,13 @@ export const createCRMSlice = (set, get) => ({
           leads: s.realData.leads.map(l => {
             if (realIds.includes(l.id)) {
               const updated = { ...l, [field]: value, modificadoEm: nowISO };
+              // ── Fase 1.3: Gravar historicoStatus em bulk ───────────────────
+              if (field === 'status' && value !== l.status) {
+                const historicoBase = getHistoricoStatus(l);
+                updated.historicoStatus = [...historicoBase, buildHistoricoEntry(l.status, value)];
+              }
               if (isPerdido && updated.prequalData) {
-                updated.prequalData = {
-                  ...updated.prequalData,
-                  screenshotUrl: null,
-                  screenshotPath: null,
-                };
+                updated.prequalData = { ...updated.prequalData, screenshotUrl: null, screenshotPath: null };
               }
               return updated;
             }
@@ -246,12 +392,12 @@ export const createCRMSlice = (set, get) => ({
           leads: s.mockData.leads.map(l => {
             if (mockIds.includes(l.id)) {
               const updated = { ...l, [field]: value, modificadoEm: nowISO };
+              if (field === 'status' && value !== l.status) {
+                const historicoBase = getHistoricoStatus(l);
+                updated.historicoStatus = [...historicoBase, buildHistoricoEntry(l.status, value)];
+              }
               if (isPerdido && updated.prequalData) {
-                updated.prequalData = {
-                  ...updated.prequalData,
-                  screenshotUrl: null,
-                  screenshotPath: null,
-                };
+                updated.prequalData = { ...updated.prequalData, screenshotUrl: null, screenshotPath: null };
               }
               return updated;
             }
@@ -268,27 +414,18 @@ export const createCRMSlice = (set, get) => ({
     for (const id of realIds) {
       const lead = data.leads.find(l => l.id === id);
       const updatePayload = { [field]: value, modificadoEm: serverTimestamp() };
+      if (field === 'status' && value !== lead?.status) {
+        const historicoBase = getHistoricoStatus(lead);
+        updatePayload.historicoStatus = [...historicoBase, buildHistoricoEntry(lead.status, value)];
+      }
       if (isPerdido && lead?.prequalData) {
-        updatePayload.prequalData = {
-          ...lead.prequalData,
-          screenshotUrl: null,
-          screenshotPath: null,
-        };
+        updatePayload.prequalData = { ...lead.prequalData, screenshotUrl: null, screenshotPath: null };
       }
       updateDoc(uDoc('leads', id), updatePayload).catch(e => get().toast('Erro ao atualizar em massa: ' + e.message, 'error'));
     }
   },
 
-  // ── Etapa 2: Lógica de Pré-Qualificação em massa ───────────────────────────
-  /**
-   * Roda a pré-qualificação para uma lista de IDs de leads.
-   * Ignora leads sem site válido. Salva resultado em prequalData no Firestore.
-   *
-   * @param {string[]} leadIds
-   * @param {Function} [onProgress] - Callback: ({ type, leadId, leadName, site, result?, error?, reason? })
-   *   Types: 'start' | 'skipped' | 'processing' | 'success' | 'error' | 'done'
-   * @returns {Promise<{ processed: number, skipped: number }>}
-   */
+  // ── Pré-Qualificação ─────────────────────────────────────────────────────────
   runPreQualification: async (leadIds, onProgress) => {
     const { data, uploadFile, deleteFile } = get();
     const emit = (event) => { if (onProgress) onProgress(event); };
@@ -297,7 +434,6 @@ export const createCRMSlice = (set, get) => ({
       const lead = data.leads.find(l => l.id === id);
       if (!lead) return acc;
       const { site, instagram } = parseLeadLinks(lead.site || '');
-      // Aceita lead que tenha site OU instagram (um dos dois já basta)
       if (!site && !instagram) {
         emit({ type: 'skipped', leadId: id, leadName: lead.nome || id, reason: 'Sem site ou Instagram válido no campo Site/Instagram' });
         return acc;
@@ -331,61 +467,38 @@ export const createCRMSlice = (set, get) => ({
       get()._refreshData();
 
       try {
-        // Emitir step "running" para cada API antes de iniciá-las
         const step = (name, status, extra = {}) =>
           emit({ type: 'step', leadId: lead.id, step: name, status, ...extra });
 
-        // PageSpeed e Screenshot só fazem sentido com um site real
-        if (site) {
-          step('pagespeed', 'running');
-        } else {
-          step('pagespeed', 'skipped', { error: 'Sem site — apenas Instagram' });
-        }
+        if (site) { step('pagespeed', 'running'); } else { step('pagespeed', 'skipped', { error: 'Sem site — apenas Instagram' }); }
         if (instagram) step('instagram', 'running');
 
-        // PageSpeed — somente se tiver site
         const speedPromise = site
           ? fetchPageSpeed(site).then(r => {
-              r.error
-                ? step('pagespeed', 'error', { error: r.error })
-                : step('pagespeed', 'done', { mobile: r.mobile, desktop: r.desktop });
+              r.error ? step('pagespeed', 'error', { error: r.error }) : step('pagespeed', 'done', { mobile: r.mobile, desktop: r.desktop });
               return r;
             })
           : Promise.resolve({ mobile: null, desktop: null });
 
         const instaPromise = (instagram ? fetchInstagramData(instagram) : Promise.resolve({ followers: null, bio: null, lastPost: null, bioLink: null }))
           .then(r => {
-            if (instagram) {
-              r.error
-                ? step('instagram', 'error', { error: r.error })
-                : step('instagram', 'done', { followers: r.followers });
-            }
+            if (instagram) { r.error ? step('instagram', 'error', { error: r.error }) : step('instagram', 'done', { followers: r.followers }); }
             return r;
           });
 
-        const [speedResult, instaResult] = await Promise.all([
-          speedPromise, instaPromise,
-        ]);
+        const [speedResult, instaResult] = await Promise.all([speedPromise, instaPromise]);
 
-        // Screenshot — somente se tiver site
         let screenshotResult = { url: null, path: null };
         if (site) {
           step('screenshot', 'running');
-
-          // Se já existia um screenshot antigo, deleta-o para não vazar recursos no Storage
           const oldScreenshotPath = lead.prequalData?.screenshotPath;
           if (oldScreenshotPath) {
-            await deleteFile(oldScreenshotPath).catch(e =>
-              console.warn('[runPreQualification] Failed to delete old screenshot:', e)
-            );
+            await deleteFile(oldScreenshotPath).catch(e => console.warn('[runPreQualification] Failed to delete old screenshot:', e));
           }
-
           screenshotResult = isMock
             ? (() => { step('screenshot', 'skipped', { error: 'Modo demo' }); return { url: null, path: null }; })()
             : await fetchScreenshot(site, lead.id, uploadFile).then(r => {
-                r && r.url
-                  ? step('screenshot', 'done')
-                  : step('screenshot', 'error', { error: r?.error || 'Sem URL retornada' });
+                r && r.url ? step('screenshot', 'done') : step('screenshot', 'error', { error: r?.error || 'Sem URL retornada' });
                 return r || { url: null, path: null };
               });
         } else {
@@ -396,12 +509,7 @@ export const createCRMSlice = (set, get) => ({
           site,
           instagram: instagram || null,
           pagespeed: { mobile: speedResult.mobile, desktop: speedResult.desktop },
-          instagramData: { 
-            followers: instaResult.followers, 
-            bio: instaResult.bio, 
-            lastPost: instaResult.lastPost,
-            bioLink: instaResult.bioLink 
-          },
+          instagramData: { followers: instaResult.followers, bio: instaResult.bio, lastPost: instaResult.lastPost, bioLink: instaResult.bioLink },
           screenshotUrl: screenshotResult.url || null,
           screenshotPath: screenshotResult.path || null,
           prequalizedAt: new Date().toISOString(),
@@ -421,18 +529,7 @@ export const createCRMSlice = (set, get) => ({
         }
 
         processed++;
-        emit({
-          type: 'success',
-          leadId: lead.id,
-          leadName: lead.nome || lead.id,
-          site,
-          result: {
-            pagespeedMobile: prequalData.pagespeed.mobile,
-            pagespeedDesktop: prequalData.pagespeed.desktop,
-            hasScreenshot: !!prequalData.screenshotUrl,
-            hasInstagram: instaResult.followers != null,
-          },
-        });
+        emit({ type: 'success', leadId: lead.id, leadName: lead.nome || lead.id, site, result: { pagespeedMobile: prequalData.pagespeed.mobile, pagespeedDesktop: prequalData.pagespeed.desktop, hasScreenshot: !!prequalData.screenshotUrl, hasInstagram: instaResult.followers != null } });
       } catch (e) {
         console.error('[runPreQualification] Error for lead', lead.id, e);
         setLoading(false);
@@ -445,10 +542,6 @@ export const createCRMSlice = (set, get) => ({
     return { processed, skipped };
   },
 
-  /**
-   * Deleta manualmente o screenshot de um lead do storage e limpa o Firestore.
-   * @param {string} leadId
-   */
   deleteLeadScreenshot: async (leadId) => {
     const { data, deleteFile, toast } = get();
     const lead = data.leads.find(l => l.id === leadId);
@@ -458,21 +551,14 @@ export const createCRMSlice = (set, get) => ({
       console.warn('[deleteLeadScreenshot] Storage delete failed:', e)
     );
 
-    const updatedPrequalData = {
-      ...lead.prequalData,
-      screenshotUrl: null,
-      screenshotPath: null,
-    };
+    const updatedPrequalData = { ...lead.prequalData, screenshotUrl: null, screenshotPath: null };
 
     const isMock = leadId.toString().startsWith('m-');
     if (isMock) {
       set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, prequalData: updatedPrequalData } : l) } }));
     } else {
       set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, prequalData: updatedPrequalData } : l) } }));
-      updateDoc(uDoc('leads', leadId), {
-        prequalData: updatedPrequalData,
-        modificadoEm: serverTimestamp(),
-      }).catch(e => console.error('[deleteLeadScreenshot] Firestore sync error:', e));
+      updateDoc(uDoc('leads', leadId), { prequalData: updatedPrequalData, modificadoEm: serverTimestamp() }).catch(e => console.error('[deleteLeadScreenshot] Firestore sync error:', e));
     }
 
     get()._refreshData();
@@ -489,6 +575,9 @@ export const createCRMSlice = (set, get) => ({
         ...it,
         uid: currentUser.uid,
         id: `temp_bulk_${Date.now()}_${idx}`,
+        // Fase 0: inicializa historicoStatus na criação
+        historicoStatus: [{ statusAnterior: null, statusNovo: it.status || 'Novo', data: now }],
+        dataAbordagem: null,
         criadoEm: now,
         modificadoEm: now
       }));
@@ -507,6 +596,8 @@ export const createCRMSlice = (set, get) => ({
           const payload = {
             ...it,
             uid: currentUser.uid,
+            historicoStatus: [{ statusAnterior: null, statusNovo: it.status || 'Novo', data: now }],
+            dataAbordagem: null,
             criadoEm: st,
             modificadoEm: st
           };

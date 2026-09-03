@@ -3,6 +3,9 @@ import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 import { getWaLink } from '../store/useStore';
 import { leadHasValidSite } from '../utils/prequalUtils';
+import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
+import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
+import { computePendingResponseLeads, computeTodayAbordagens } from '../utils/crmAnalyticsUtils';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
 
@@ -280,13 +283,18 @@ export default function LeadsPage() {
   const [nicho, setNicho] = useState('');
   const [ddd, setDdd] = useState('');
   const [prequalFilter, setPrequalFilter] = useState('');
+  const [quickFilter, setQuickFilter] = useState(''); // 'abordadosHoje' | 'aguardandoRetorno'
   const [sort, setSort] = useState('criadoDesc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [columnSort, setColumnSort] = useState({ key: null, direction: 'asc' });
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const hasActiveFilters = !!(search || status || nicho || ddd || prequalFilter || sort !== 'criadoDesc');
+  const hasActiveFilters = !!(search || status || nicho || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
+
+  // Métricas para os filtros rápidos
+  const abordadosHoje = useMemo(() => computeTodayAbordagens(data.leads), [data.leads]);
+  const aguardandoRetorno = useMemo(() => computePendingResponseLeads(data.leads), [data.leads]);
 
   const handleClearFilters = () => {
     setSearch('');
@@ -294,6 +302,7 @@ export default function LeadsPage() {
     setNicho('');
     setDdd('');
     setPrequalFilter('');
+    setQuickFilter('');
     setSort('criadoDesc');
     setPage(1);
     setColumnSort({ key: null, direction: 'asc' });
@@ -320,6 +329,21 @@ export default function LeadsPage() {
       }
       if (prequalFilter === 'sim' && !l.prequalData) return false;
       if (prequalFilter === 'nao' && l.prequalData) return false;
+      // Filtros rápidos
+      if (quickFilter === 'abordadosHoje') {
+        const hoje = new Date().toISOString().split('T')[0];
+        const temAbordagemHoje = (l.interacoes || []).some(i => {
+          if (i.tipo !== 'abordagem_inicial') return false;
+          const d = i.data || i.criadoEm || '';
+          return d.split('T')[0] === hoje;
+        });
+        if (!temAbordagemHoje) return false;
+      }
+      if (quickFilter === 'aguardandoRetorno') {
+        if (l.status === 'Fechado' || l.status === 'Perdido') return false;
+        const temResposta = (l.interacoes || []).some(i => i.tipo === 'resposta_recebida');
+        if (!temResposta) return false;
+      }
       return true;
     });
 
@@ -510,6 +534,34 @@ export default function LeadsPage() {
           <option value="nomeZa">Nome Z-A</option>
           <option value="modificadoDesc">Últ. modificação</option>
         </select>
+        {/* ─── Filtros Rápidos ─────────────────────────────────────── */}
+        <button
+          className={`btn btn-sm ${quickFilter === 'abordadosHoje' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => { setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje'); setPage(1); }}
+          title="Mostrar leads abordados hoje"
+          style={{ fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+          <span>Abordados hoje</span>
+          {abordadosHoje > 0 && <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 99, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>{abordadosHoje}</span>}
+        </button>
+        <button
+          className={`btn btn-sm ${quickFilter === 'aguardandoRetorno' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => { setQuickFilter(q => q === 'aguardandoRetorno' ? '' : 'aguardandoRetorno'); setPage(1); }}
+          title="Leads que responderam mas não avançaram"
+          style={{ fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span>Aguardando retorno</span>
+          {aguardandoRetorno > 0 && <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 99, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>{aguardandoRetorno}</span>}
+        </button>
         {hasActiveFilters && (
           <button
             className="btn btn-secondary"
@@ -557,11 +609,17 @@ export default function LeadsPage() {
             </div>
           )}
           <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Visualização em Lista">
+            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Lista">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
-            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
+            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Kanban">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'fila' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'fila' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'analytics' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'analytics' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('analytics')} title="Analytics">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </button>
           </div>
         </div>
@@ -570,8 +628,21 @@ export default function LeadsPage() {
       {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
       <div className="page-header mobile-only">
         <div className="page-title">Leads</div>
-        <div className="page-actions">
-
+        <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Kanban">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'fila' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'fila' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </button>
+            <button className={`btn-icon ${viewMode === 'analytics' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'analytics' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('analytics')} title="Analytics">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </button>
+          </div>
           <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
@@ -681,6 +752,12 @@ export default function LeadsPage() {
           </div>
         )}
       </MobileFilterSheet>
+
+      {/* ─── FILA DO DIA ──────────────────────────────── */}
+      {viewMode === 'fila' && <LeadsFollowUpQueue />}
+
+      {/* ─── ANALYTICS ──────────────────────────────────── */}
+      {viewMode === 'analytics' && <LeadsCRMAnalytics />}
 
       {viewMode === 'kanban' ? (
         <div 

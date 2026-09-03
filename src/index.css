@@ -6021,3 +6021,77 @@ body.light .status-badge-mini {
   border-color: #818cf8;
   color: #a5b4fc;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRM ANALYTICS & PROSPECÇÃO — Design System Refinado
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Fila de Prospecção Diária ──────────────────────────────────────────── */
+.followup-queue-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  padding: 14px 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+.followup-queue-card:hover {
+  border-color: var(--border2);
+  background: var(--bg2-hover, var(--bg2));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.followup-queue-section {
+  padding-left: 0;
+  margin-bottom: 24px;
+}
+
+.followup-priority-tag {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+}
+
+/* ── Barra de progresso de meta diária ─────────────────────────────────── */
+.crm-outreach-progress-bar {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 12px);
+  padding: 18px 22px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* ── KPI Cards do Analytics ─────────────────────────────────────────────── */
+.crm-kpi-card {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.crm-kpi-card:hover {
+  border-color: var(--border2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* ── Funil de conversão ─────────────────────────────────────────────────── */
+.crm-funnel-card {
+  transition: border-color 0.2s ease;
+}
+.crm-funnel-card:hover {
+  border-color: var(--border2);
+}
+
+/* ── Cores semânticas ───────────────────────────────────────────────────── */
+:root {
+  --amber: #f59e0b;
+  --red-bg: rgba(239, 68, 68, 0.08);
+  --blue-bg: rgba(59, 130, 246, 0.08);
+}
+body.light {
+  --amber: #d97706;
+  --red-bg: rgba(239, 68, 68, 0.06);
+  --blue-bg: rgba(59, 130, 246, 0.06);
+}
