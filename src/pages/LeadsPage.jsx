@@ -6,8 +6,22 @@ import { leadHasValidSite } from '../utils/prequalUtils';
 import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
 import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
 import { computePendingResponseLeads, computeTodayAbordagens } from '../utils/crmAnalyticsUtils';
+import CustomSelect from '../components/CustomSelect';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
+
+function getPaginationItems(currentPage, pagesCount) {
+  if (pagesCount <= 7) {
+    return Array.from({ length: pagesCount }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', pagesCount];
+  }
+  if (currentPage >= pagesCount - 3) {
+    return [1, '...', pagesCount - 4, pagesCount - 3, pagesCount - 2, pagesCount - 1, pagesCount];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', pagesCount];
+}
 
 /* ─── Mobile Filter Sheet ─────────────────────────────────────────── */
 function MobileFilterSheet({ open, onClose, children, hasActiveFilters, onClear }) {
@@ -281,6 +295,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [nicho, setNicho] = useState('');
+  const [cidade, setCidade] = useState('');
   const [ddd, setDdd] = useState('');
   const [prequalFilter, setPrequalFilter] = useState('');
   const [quickFilter, setQuickFilter] = useState(''); // 'abordadosHoje' | 'aguardandoRetorno'
@@ -290,16 +305,38 @@ export default function LeadsPage() {
   const [columnSort, setColumnSort] = useState({ key: null, direction: 'asc' });
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const hasActiveFilters = !!(search || status || nicho || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
+  const hasActiveFilters = !!(search || status || nicho || cidade || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (search) count++;
+    if (status) count++;
+    if (nicho) count++;
+    if (cidade) count++;
+    if (ddd) count++;
+    if (prequalFilter) count++;
+    if (quickFilter) count++;
+    if (sort !== 'criadoDesc') count++;
+    return count;
+  }, [search, status, nicho, cidade, ddd, prequalFilter, quickFilter, sort]);
 
   // Métricas para os filtros rápidos
   const abordadosHoje = useMemo(() => computeTodayAbordagens(data.leads), [data.leads]);
   const aguardandoRetorno = useMemo(() => computePendingResponseLeads(data.leads), [data.leads]);
 
+  const cidadesDisponiveis = useMemo(() => {
+    const set = new Set();
+    (data.leads || []).forEach(l => {
+      if (l.cidade && l.cidade.trim()) set.add(l.cidade.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data.leads]);
+
   const handleClearFilters = () => {
     setSearch('');
     setStatus('');
     setNicho('');
+    setCidade('');
     setDdd('');
     setPrequalFilter('');
     setQuickFilter('');
@@ -310,19 +347,22 @@ export default function LeadsPage() {
 
   const resolvedPageSize = Math.max(1, parseInt(pageSize, 10) || 30);
   
-  const { totalLeadsNovos, totalLeadsAbordados, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
+  const { totalLeadsNovos, totalLeadsAbordados, totalLeadsFollowUp, totalLeadsEmNegociacao, totalLeadsPerdidos, totalLeadsFechados, list, paginated, totalItems, totalPages, safePage } = useMemo(() => {
     const leads = data.leads;
     const totals = {
       totalLeadsNovos: leads.filter(l => (l.status || 'Novo') === 'Novo').length,
       totalLeadsAbordados: leads.filter(l => l.status === 'Abordado').length,
+      totalLeadsFollowUp: leads.filter(l => l.status === 'Follow-up').length,
+      totalLeadsEmNegociacao: leads.filter(l => l.status === 'Em negociação').length,
       totalLeadsPerdidos: leads.filter(l => l.status === 'Perdido').length,
       totalLeadsFechados: leads.filter(l => l.status === 'Fechado').length,
     };
 
     let filtered = leads.filter((l) => {
-      if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search))) return false;
+      if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.cidade || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search))) return false;
       if (status && l.status !== status) return false;
       if (nicho && l.nicho !== nicho) return false;
+      if (cidade && (l.cidade || '').trim().toLowerCase() !== cidade.trim().toLowerCase()) return false;
       if (ddd) {
         const phone = (l.telefone || '').replace(/\D/g, '');
         if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
@@ -363,7 +403,37 @@ export default function LeadsPage() {
     const pag = filtered.slice((sPage - 1) * resolvedPageSize, sPage * resolvedPageSize);
 
     return { ...totals, list: filtered, paginated: pag, totalItems: tItems, totalPages: tPages, safePage: sPage };
-  }, [data.leads, search, status, nicho, ddd, prequalFilter, sort, columnSort, page, resolvedPageSize]);
+  }, [data.leads, search, status, nicho, cidade, ddd, prequalFilter, quickFilter, sort, columnSort, page, resolvedPageSize]);
+
+  const kanbanFilteredLeads = useMemo(() => {
+    let filtered = (data.leads || []).filter((l) => {
+      if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.cidade || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search) || (l.telefone || '').includes(search))) return false;
+      if (nicho && l.nicho !== nicho) return false;
+      if (cidade && (l.cidade || '').trim().toLowerCase() !== cidade.trim().toLowerCase()) return false;
+      if (ddd) {
+        const phone = (l.telefone || '').replace(/\D/g, '');
+        if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
+      }
+      if (prequalFilter === 'sim' && !l.prequalData) return false;
+      if (prequalFilter === 'nao' && l.prequalData) return false;
+      if (quickFilter === 'abordadosHoje') {
+        const hoje = new Date().toISOString().split('T')[0];
+        const temAbordagemHoje = (l.interacoes || []).some(i => {
+          if (i.tipo !== 'abordagem_inicial') return false;
+          const d = i.data || i.criadoEm || '';
+          return d.split('T')[0] === hoje;
+        });
+        if (!temAbordagemHoje) return false;
+      }
+      if (quickFilter === 'aguardandoRetorno') {
+        if (l.status === 'Fechado' || l.status === 'Perdido') return false;
+        const temResposta = (l.interacoes || []).some(i => i.tipo === 'resposta_recebida');
+        if (!temResposta) return false;
+      }
+      return true;
+    });
+    return sortData(filtered, sort);
+  }, [data.leads, search, nicho, cidade, ddd, prequalFilter, quickFilter, sort]);
 
   const totalLeads = data.leads.length;
   const pageIds = paginated.map(x => x.id).join(',');
@@ -444,203 +514,524 @@ export default function LeadsPage() {
 
   return (
     <div>
-      {/* ─── DESKTOP HEADER (Restored to original) ────────────────── */}
-      <div className="page-header desktop-only">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, flex: 1 }}>
-          {[
-            { label: 'Total de Leads', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
-            { label: 'Novos', value: totalLeadsNovos, color: 'var(--text)', bg: 'var(--bg4)', status: 'Novo' },
-            { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
-            { label: 'Leads Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
-            { label: 'Leads Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              onClick={() => { setStatus(item.status); setPage(1); }}
-              style={{
-                minWidth: 150,
-                padding: '12px 14px',
-                borderRadius: 'var(--radius)',
-                background: 'var(--bg2)',
-                border: '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text3)', fontWeight: 500 }}>
-                {item.label}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    background: item.color,
-                    boxShadow: `0 0 0 5px ${item.bg}`,
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ fontSize: 22, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--sans)' }}>
-                  {item.value.toLocaleString('pt-BR')}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="page-actions">
-
-
-          <button className="btn btn-secondary" onClick={() => openModal('csvInfo')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importar CSV
-          </button>
-          <button className="btn btn-primary" onClick={() => openModal('lead')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
-            Novo Lead
-          </button>
-        </div>
-      </div>
-
-      {/* ─── DESKTOP FILTERS (Restored to original) ────────────────── */}
-      <div className="filters desktop-only">
-        <div className="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="filter-input" placeholder="Buscar lead..." value={search} onChange={updateFilter(setSearch)} />
-        </div>
-        <div className="search-wrap" style={{ width: 85 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <input className="filter-input" placeholder="DDD" style={{ paddingLeft: 30, width: '100%', minWidth: 'auto' }} value={ddd} onChange={updateFilter(setDdd)} />
-        </div>
-        <select className="filter-select" value={status} onChange={updateFilter(setStatus)}>
-          <option value="">Todos os status</option>
-          {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <select className="filter-select" value={nicho} onChange={updateFilter(setNicho)}>
-          <option value="">Todos os nichos</option>
-          {configData.nichos.map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <select className="filter-select" value={prequalFilter} onChange={updateFilter(setPrequalFilter)}>
-          <option value="">Pré-Qual (Todos)</option>
-          <option value="sim">Pré-Qualificados</option>
-          <option value="nao">Sem Pré-Qual.</option>
-        </select>
-        <select className="filter-select" value={sort} onChange={updateFilter(setSort)}>
-          <option value="criadoDesc">Mais recentes</option>
-          <option value="criadoAsc">Mais antigos</option>
-          <option value="nomeAz">Nome A-Z</option>
-          <option value="nomeZa">Nome Z-A</option>
-          <option value="modificadoDesc">Últ. modificação</option>
-        </select>
-        {/* ─── Filtros Rápidos ─────────────────────────────────────── */}
-        <button
-          className={`btn btn-sm ${quickFilter === 'abordadosHoje' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => { setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje'); setPage(1); }}
-          title="Mostrar leads abordados hoje"
-          style={{ fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="6" />
-            <circle cx="12" cy="12" r="2" />
-          </svg>
-          <span>Abordados hoje</span>
-          {abordadosHoje > 0 && <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 99, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>{abordadosHoje}</span>}
-        </button>
-        <button
-          className={`btn btn-sm ${quickFilter === 'aguardandoRetorno' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => { setQuickFilter(q => q === 'aguardandoRetorno' ? '' : 'aguardandoRetorno'); setPage(1); }}
-          title="Leads que responderam mas não avançaram"
-          style={{ fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          <span>Aguardando retorno</span>
-          {aguardandoRetorno > 0 && <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 99, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>{aguardandoRetorno}</span>}
-        </button>
-        {hasActiveFilters && (
-          <button
-            className="btn btn-secondary"
-            onClick={handleClearFilters}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: 'var(--red)',
-              borderColor: 'rgba(239, 68, 68, 0.2)',
-              background: 'var(--red-bg)',
-              padding: '6px 12px',
-              height: 38,
-              fontSize: 13,
-              borderRadius: 'var(--radius-sm)',
-            }}
-            title="Limpar todos os filtros ativos"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}><path d="M18 6 6 18M6 6l12 12"/></svg>
-            Limpar Filtros
-          </button>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {viewMode === 'list' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Exibir:</span>
-              {PAGE_SIZE_OPTIONS.map((item) => (
-                <button
-                  key={item}
-                  className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => { setPageSize(item); setPage(1); }}
-                >
-                  {item}
-                </button>
-              ))}
-              <NumberStepper
-                min={1}
-                value={pageSize}
-                onChange={updatePageSize}
-                className="filter-input filter-input-sm"
-                wrapperClass="number-stepper-sm"
-                style={{ width: 80 }}
-                title="Quantidade de leads por página"
-              />
-            </div>
-          )}
-          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Lista">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Kanban">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </button>
-            <button className={`btn-icon ${viewMode === 'fila' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'fila' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            </button>
-            <button className={`btn-icon ${viewMode === 'analytics' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'analytics' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('analytics')} title="Analytics">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </button>
+      {/* ─── DESKTOP HEADER BAR ────────────────────────────────────── */}
+      <div className="leads-page-header desktop-only">
+        <div className="leads-page-header-left">
+          <div className="leads-page-title-wrap">
+            <h1 className="leads-page-title">Leads & CRM</h1>
+            <span className="leads-page-count-badge">
+              {totalLeads.toLocaleString('pt-BR')} leads
+            </span>
           </div>
         </div>
+
+        <div className="leads-page-header-right">
+          {/* Alternador de Visualização em Segmented Pill */}
+          <div className="pill-tab-group">
+            <button className={`pill-tab-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} title="Visualização em Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>Lista</span>
+            </button>
+            <button className={`pill-tab-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <span>Kanban</span>
+            </button>
+            <button className={`pill-tab-btn ${viewMode === 'fila' ? 'active' : ''}`} onClick={() => setViewMode('fila')} title="Fila do Dia">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Fila do Dia</span>
+            </button>
+            <button className={`pill-tab-btn ${viewMode === 'analytics' ? 'active' : ''}`} onClick={() => setViewMode('analytics')} title="Dashboard Analytics">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Analytics</span>
+            </button>
+          </div>
+
+          <button className="btn btn-secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Importar CSV</span>
+          </button>
+
+          <button className="btn btn-primary" onClick={() => openModal('lead')} title="Adicionar novo lead">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="M12 5v14M5 12h14" /></svg>
+            <span>Novo Lead</span>
+          </button>
+        </div>
       </div>
+
+      {/* ─── STATUS METRICS ROW (Only in List View) ────────────── */}
+      {viewMode === 'list' && (
+        <div className="leads-status-grid desktop-only">
+          {[
+            { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: '#94a3b8' },
+            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', dot: '#38bdf8' },
+            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', dot: '#3b82f6' },
+            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', dot: '#f59e0b' },
+            { label: 'Em Negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)', dot: '#a855f7' },
+            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', dot: '#10b981' },
+            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', dot: '#ef4444' },
+          ].map((item) => {
+            const isSelected = item.status === '' ? status === '' : status === item.status;
+            return (
+              <div
+                key={item.label}
+                className={`leads-status-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => {
+                  if (item.status === '') {
+                    setStatus('');
+                  } else {
+                    setStatus(current => current === item.status ? '' : item.status);
+                  }
+                  setPage(1);
+                }}
+                style={{
+                  '--card-accent': item.color,
+                  '--card-glow': item.bg,
+                }}
+                title={item.status ? `Filtrar por ${item.label}` : 'Ver todos os leads'}
+              >
+                <div className="leads-status-card-header">
+                  <span className="leads-status-card-label">{item.label}</span>
+                  <span
+                    className="leads-status-card-dot"
+                    style={{ background: item.dot, boxShadow: `0 0 0 3px ${item.bg}` }}
+                  />
+                </div>
+                <div className="leads-status-card-value">
+                  {item.value.toLocaleString('pt-BR')}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── FILTERS & SEARCH TOOLBAR (LIST VIEW ONLY) ────────── */}
+      {viewMode === 'list' && (
+        <div className="leads-toolbar desktop-only">
+          {/* Linha 1: Busca Ampla + Filtros Rápidos + Paginação */}
+          <div className="leads-toolbar-row leads-toolbar-row-top">
+            <div className="leads-search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="leads-search-icon">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                className="leads-search-input"
+                placeholder="Buscar leads por nome, telefone, nicho, cidade ou site..."
+                value={search}
+                onChange={updateFilter(setSearch)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="leads-search-clear"
+                  onClick={() => { setSearch(''); setPage(1); }}
+                  title="Limpar busca"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="leads-quick-filters">
+              <button
+                type="button"
+                className={`leads-quick-btn ${quickFilter === 'abordadosHoje' ? 'active' : ''}`}
+                onClick={() => { setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje'); setPage(1); }}
+                title="Mostrar leads abordados hoje"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+                <span>Abordados hoje</span>
+                {abordadosHoje > 0 && <span className="leads-quick-badge">{abordadosHoje}</span>}
+              </button>
+
+              <button
+                type="button"
+                className={`leads-quick-btn ${quickFilter === 'aguardandoRetorno' ? 'active' : ''}`}
+                onClick={() => { setQuickFilter(q => q === 'aguardandoRetorno' ? '' : 'aguardandoRetorno'); setPage(1); }}
+                title="Leads que responderam mas não avançaram"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>Aguardando retorno</span>
+                {aguardandoRetorno > 0 && <span className="leads-quick-badge">{aguardandoRetorno}</span>}
+              </button>
+            </div>
+
+            <div className="leads-page-size-wrap">
+              <span className="leads-page-size-label">Exibir:</span>
+              <div className="pill-tab-group" style={{ padding: 2 }}>
+                {PAGE_SIZE_OPTIONS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`pill-tab-btn ${Number(pageSize) === item ? 'active' : ''}`}
+                    style={{ padding: '4px 9px', fontSize: 11 }}
+                    onClick={() => { setPageSize(item); setPage(1); }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="leads-page-size-custom-box" title="Digite uma quantidade personalizada de itens">
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  className="leads-page-size-custom-input"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setPageSize('');
+                    } else {
+                      const num = parseInt(raw, 10);
+                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
+                    }
+                    setPage(1);
+                  }}
+                  onBlur={() => {
+                    if (!pageSize || Number(pageSize) < 1) {
+                      setPageSize(30);
+                    }
+                  }}
+                />
+                <span className="leads-page-size-custom-unit">por pág.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Linha 2: Barra de Chips de Filtro e Ordenação */}
+          <div className="leads-toolbar-row leads-toolbar-row-bottom">
+            <div className="leads-chips-group">
+              {/* Cidade */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                }
+                label="Cidade:"
+                value={cidade}
+                onChange={updateFilter(setCidade)}
+                title="Filtrar por Cidade"
+                placeholder="Todas"
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...cidadesDisponiveis.map(item => ({ value: item, label: item }))
+                ]}
+              />
+
+              {/* Status */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                }
+                label="Status:"
+                value={status}
+                onChange={updateFilter(setStatus)}
+                title="Filtrar por Status"
+                placeholder="Todos"
+                options={[
+                  { value: '', label: 'Todos' },
+                  ...['Novo', 'Abordado', 'Follow-up', 'Em negociação', 'Fechado', 'Perdido'].map(item => ({ value: item, label: item }))
+                ]}
+              />
+
+              {/* Nicho */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                    <line x1="7" y1="7" x2="7.01" y2="7" />
+                  </svg>
+                }
+                label="Nicho:"
+                value={nicho}
+                onChange={updateFilter(setNicho)}
+                title="Filtrar por Nicho"
+                placeholder="Todos"
+                options={[
+                  { value: '', label: 'Todos' },
+                  ...configData.nichos.map(item => ({ value: item, label: item }))
+                ]}
+              />
+
+              {/* DDD */}
+              <label className={`filter-chip ${ddd ? 'active' : ''}`} title="Filtrar por DDD" style={{ cursor: 'text' }}>
+                <span className="filter-chip-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                </span>
+                <span className="filter-chip-label">DDD:</span>
+                <input
+                  className="filter-chip-input"
+                  placeholder="Ex: 11"
+                  value={ddd}
+                  onChange={updateFilter(setDdd)}
+                  maxLength={3}
+                />
+              </label>
+
+              {/* Pré-Qualificação */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                }
+                label="Pré-Qual:"
+                value={prequalFilter}
+                onChange={updateFilter(setPrequalFilter)}
+                title="Filtrar por Pré-Qualificação"
+                placeholder="Todas"
+                options={[
+                  { value: '', label: 'Todas' },
+                  { value: 'sim', label: 'Qualificados' },
+                  { value: 'nao', label: 'Sem qualificação' }
+                ]}
+              />
+            </div>
+
+            <div className="leads-chips-actions">
+              {/* Ordenação */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="m3 16 4 4 4-4" />
+                    <path d="M7 20V4" />
+                    <path d="m21 8-4-4-4 4" />
+                    <path d="M17 4v16" />
+                  </svg>
+                }
+                label="Ordenar:"
+                value={sort}
+                onChange={updateFilter(setSort)}
+                title="Ordenar lista"
+                options={[
+                  { value: 'criadoDesc', label: 'Mais recentes' },
+                  { value: 'criadoAsc', label: 'Mais antigos' },
+                  { value: 'nomeAz', label: 'Nome A-Z' },
+                  { value: 'nomeZa', label: 'Nome Z-A' },
+                  { value: 'modificadoDesc', label: 'Última modificação' }
+                ]}
+              />
+
+              {/* Limpar Filtros */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="filter-chip filter-chip-clear"
+                  onClick={handleClearFilters}
+                  title="Limpar todos os filtros ativos"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                  <span>Limpar</span>
+                  <span className="filter-chip-clear-badge">{activeFiltersCount}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── KANBAN TOOLBAR (Coherent Pipeline Filters) ────────── */}
+      {viewMode === 'kanban' && (
+        <div className="leads-toolbar desktop-only leads-toolbar-kanban">
+          <div className="leads-toolbar-row leads-toolbar-row-top">
+            <div className="leads-search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="leads-search-icon">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                className="leads-search-input"
+                placeholder="Filtrar cards no Kanban por nome, telefone, nicho ou cidade..."
+                value={search}
+                onChange={updateFilter(setSearch)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="leads-search-clear"
+                  onClick={() => setSearch('')}
+                  title="Limpar busca"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="leads-quick-filters">
+              <button
+                type="button"
+                className={`leads-quick-btn ${quickFilter === 'abordadosHoje' ? 'active' : ''}`}
+                onClick={() => setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje')}
+                title="Mostrar leads abordados hoje"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+                <span>Abordados hoje</span>
+                {abordadosHoje > 0 && <span className="leads-quick-badge">{abordadosHoje}</span>}
+              </button>
+
+              <button
+                type="button"
+                className={`leads-quick-btn ${quickFilter === 'aguardandoRetorno' ? 'active' : ''}`}
+                onClick={() => setQuickFilter(q => q === 'aguardandoRetorno' ? '' : 'aguardandoRetorno')}
+                title="Leads que responderam mas não avançaram"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>Aguardando retorno</span>
+                {aguardandoRetorno > 0 && <span className="leads-quick-badge">{aguardandoRetorno}</span>}
+              </button>
+            </div>
+
+            <div className="leads-kanban-total-info">
+              <span>Total no Kanban:</span>
+              <strong>{kanbanFilteredLeads.length} leads</strong>
+            </div>
+          </div>
+
+          <div className="leads-toolbar-row leads-toolbar-row-bottom">
+            <div className="leads-chips-group">
+              <CustomSelect
+                variant="chip"
+                icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>}
+                label="Cidade:"
+                value={cidade}
+                onChange={updateFilter(setCidade)}
+                title="Filtrar por Cidade"
+                placeholder="Todas"
+                options={[{ value: '', label: 'Todas' }, ...cidadesDisponiveis.map(item => ({ value: item, label: item }))]}
+              />
+
+              <CustomSelect
+                variant="chip"
+                icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>}
+                label="Nicho:"
+                value={nicho}
+                onChange={updateFilter(setNicho)}
+                title="Filtrar por Nicho"
+                placeholder="Todos"
+                options={[{ value: '', label: 'Todos' }, ...configData.nichos.map(item => ({ value: item, label: item }))]}
+              />
+
+              <label className={`filter-chip ${ddd ? 'active' : ''}`} title="Filtrar por DDD" style={{ cursor: 'text' }}>
+                <span className="filter-chip-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                </span>
+                <span className="filter-chip-label">DDD:</span>
+                <input
+                  className="filter-chip-input"
+                  placeholder="Ex: 11"
+                  value={ddd}
+                  onChange={updateFilter(setDdd)}
+                  maxLength={3}
+                />
+              </label>
+
+              <CustomSelect
+                variant="chip"
+                icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>}
+                label="Pré-Qual:"
+                value={prequalFilter}
+                onChange={updateFilter(setPrequalFilter)}
+                title="Filtrar por Pré-Qualificação"
+                placeholder="Todas"
+                options={[{ value: '', label: 'Todas' }, { value: 'sim', label: 'Qualificados' }, { value: 'nao', label: 'Sem qualificação' }]}
+              />
+            </div>
+
+            <div className="leads-chips-actions">
+              <CustomSelect
+                variant="chip"
+                icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><path d="m3 16 4 4 4-4" /><path d="M7 20V4" /><path d="m21 8-4-4-4 4" /><path d="M17 4v16" /></svg>}
+                label="Ordenar:"
+                value={sort}
+                onChange={updateFilter(setSort)}
+                title="Ordenar cards"
+                options={[
+                  { value: 'criadoDesc', label: 'Mais recentes' },
+                  { value: 'criadoAsc', label: 'Mais antigos' },
+                  { value: 'nomeAz', label: 'Nome A-Z' },
+                  { value: 'nomeZa', label: 'Nome Z-A' },
+                  { value: 'modificadoDesc', label: 'Última modificação' }
+                ]}
+              />
+
+              {(search || nicho || cidade || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc') && (
+                <button
+                  type="button"
+                  className="filter-chip filter-chip-clear"
+                  onClick={() => {
+                    setSearch('');
+                    setNicho('');
+                    setCidade('');
+                    setDdd('');
+                    setPrequalFilter('');
+                    setQuickFilter('');
+                    setSort('criadoDesc');
+                  }}
+                  title="Limpar todos os filtros do Kanban"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                  <span>Limpar</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
       <div className="page-header mobile-only">
         <div className="page-title">Leads</div>
         <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'list' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('list')} title="Lista">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <div className="pill-tab-group">
+            <button className={`pill-tab-btn ${viewMode === 'list' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('list')} title="Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
-            <button className={`btn-icon ${viewMode === 'kanban' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'kanban' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('kanban')} title="Kanban">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <button className={`pill-tab-btn ${viewMode === 'kanban' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('kanban')} title="Kanban">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             </button>
-            <button className={`btn-icon ${viewMode === 'fila' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'fila' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <button className={`pill-tab-btn ${viewMode === 'fila' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             </button>
-            <button className={`btn-icon ${viewMode === 'analytics' ? 'active' : ''}`} style={{ width: 34, height: 34, borderRadius: 0, border: 'none', background: viewMode === 'analytics' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('analytics')} title="Analytics">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <button className={`pill-tab-btn ${viewMode === 'analytics' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('analytics')} title="Analytics">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </button>
           </div>
           <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
@@ -652,47 +1043,65 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* MOBILE STATS CHIPS (Optimized) ─────────────────────────── */}
-      <div className="leads-stats-row mobile-only">
-        {[
-          { label: 'Total', value: totalLeads, color: 'var(--text3)', bg: 'var(--bg4)', status: '' },
-          { label: 'Novos', value: totalLeadsNovos, color: 'var(--text)', bg: 'var(--bg4)', status: 'Novo' },
-          { label: 'Abordados', value: totalLeadsAbordados, color: 'var(--blue)', bg: 'var(--blue-bg)', status: 'Abordado' },
-          { label: 'Perdidos', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'var(--red-bg)', status: 'Perdido' },
-          { label: 'Fechados', value: totalLeadsFechados, color: 'var(--green)', bg: 'var(--green-bg)', status: 'Fechado' },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className="leads-stat-chip"
-            onClick={() => { setStatus(item.status); setPage(1); }}
-            style={{ '--chip-color': item.color, '--chip-bg': item.bg, borderColor: status === item.status ? item.color : undefined }}
-          >
-            <span className="leads-stat-dot" style={{ background: item.color, boxShadow: `0 0 0 4px ${item.bg}` }} />
-            <span className="leads-stat-val">{item.value.toLocaleString('pt-BR')}</span>
-            <span className="leads-stat-label">{item.label}</span>
-          </div>
-        ))}
-      </div>
+      {/* MOBILE STATS CHIPS (7 statuses - List only) ───────────── */}
+      {viewMode === 'list' && (
+        <div className="leads-stats-row mobile-only">
+          {[
+            { label: 'Total', status: '', value: totalLeads, color: 'var(--text3)', dot: '#94a3b8' },
+            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: '#38bdf8', dot: '#38bdf8' },
+            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: '#3b82f6', dot: '#3b82f6' },
+            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: '#f59e0b', dot: '#f59e0b' },
+            { label: 'Em negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: '#a855f7', dot: '#a855f7' },
+            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: '#10b981', dot: '#10b981' },
+            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: '#ef4444', dot: '#ef4444' },
+          ].map((item) => {
+            const isSelected = item.status === '' ? status === '' : status === item.status;
+            return (
+              <div
+                key={item.label}
+                className={`leads-stat-chip ${isSelected ? 'active' : ''}`}
+                onClick={() => {
+                  if (item.status === '') {
+                    setStatus('');
+                  } else {
+                    setStatus(current => current === item.status ? '' : item.status);
+                  }
+                  setPage(1);
+                }}
+                style={{
+                  borderColor: isSelected ? item.color : undefined,
+                }}
+              >
+                <span className="leads-stat-dot" style={{ background: item.dot }} />
+                <span className="leads-stat-val">{item.value.toLocaleString('pt-BR')}</span>
+                <span className="leads-stat-label">{item.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* MOBILE FILTERS (Optimized) ─────────────────────────────── */}
-      <div className="filters mobile-only">
-        <div className="search-wrap" style={{ flex: 1 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="filter-input" placeholder="Buscar lead..." value={search} onChange={updateFilter(setSearch)} />
+      {(viewMode === 'list' || viewMode === 'kanban') && (
+        <div className="filters mobile-only">
+          <div className="search-wrap" style={{ flex: 1 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input className="filter-input" placeholder={viewMode === 'kanban' ? "Filtrar cards no Kanban..." : "Buscar lead..."} value={search} onChange={updateFilter(setSearch)} />
+          </div>
+          <button
+            className={`btn-filter-toggle ${hasActiveFilters ? 'has-filters' : ''}`}
+            onClick={() => setFilterOpen(true)}
+            title="Filtros"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="4" y1="6" x2="20" y2="6"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+              <line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            {hasActiveFilters && <span className="filter-active-dot" />}
+          </button>
         </div>
-        <button
-          className={`btn-filter-toggle ${hasActiveFilters ? 'has-filters' : ''}`}
-          onClick={() => setFilterOpen(true)}
-          title="Filtros"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="4" y1="6" x2="20" y2="6"/>
-            <line x1="8" y1="12" x2="16" y2="12"/>
-            <line x1="11" y1="18" x2="13" y2="18"/>
-          </svg>
-          {hasActiveFilters && <span className="filter-active-dot" />}
-        </button>
-      </div>
+      )}
 
       <MobileFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} hasActiveFilters={hasActiveFilters} onClear={handleClearFilters}>
         <div className="mobile-filter-group">
@@ -702,52 +1111,111 @@ export default function LeadsPage() {
             <input className="filter-input" placeholder="Ex: 47" value={ddd} onChange={updateFilter(setDdd)} />
           </div>
         </div>
-        <div className="mobile-filter-group">
-          <label className="mobile-filter-label">Status</label>
-          <select className="filter-select" style={{ width: '100%' }} value={status} onChange={updateFilter(setStatus)}>
-            <option value="">Todos os status</option>
-            {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </div>
+        {viewMode === 'list' && (
+          <div className="mobile-filter-group">
+            <label className="mobile-filter-label">Status</label>
+            <CustomSelect
+              variant="form"
+              value={status}
+              onChange={updateFilter(setStatus)}
+              placeholder="Todos os status"
+              options={[
+                { value: '', label: 'Todos os status' },
+                ...['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(item => ({ value: item, label: item }))
+              ]}
+            />
+          </div>
+        )}
         <div className="mobile-filter-group">
           <label className="mobile-filter-label">Nicho</label>
-          <select className="filter-select" style={{ width: '100%' }} value={nicho} onChange={updateFilter(setNicho)}>
-            <option value="">Todos os nichos</option>
-            {configData.nichos.map((item) => <option key={item}>{item}</option>)}
-          </select>
+          <CustomSelect
+            variant="form"
+            value={nicho}
+            onChange={updateFilter(setNicho)}
+            placeholder="Todos os nichos"
+            options={[
+              { value: '', label: 'Todos os nichos' },
+              ...configData.nichos.map(item => ({ value: item, label: item }))
+            ]}
+          />
+        </div>
+        <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Cidade</label>
+          <CustomSelect
+            variant="form"
+            value={cidade}
+            onChange={updateFilter(setCidade)}
+            placeholder="Todas as cidades"
+            options={[
+              { value: '', label: 'Todas as cidades' },
+              ...cidadesDisponiveis.map(item => ({ value: item, label: item }))
+            ]}
+          />
         </div>
         <div className="mobile-filter-group">
           <label className="mobile-filter-label">Pré-Qualificação</label>
-          <select className="filter-select" style={{ width: '100%' }} value={prequalFilter} onChange={updateFilter(setPrequalFilter)}>
-            <option value="">Todos</option>
-            <option value="sim">Pré-Qualificados</option>
-            <option value="nao">Sem Pré-Qual.</option>
-          </select>
+          <CustomSelect
+            variant="form"
+            value={prequalFilter}
+            onChange={updateFilter(setPrequalFilter)}
+            placeholder="Todas"
+            options={[
+              { value: '', label: 'Todas' },
+              { value: 'sim', label: 'Pré-Qualificados' },
+              { value: 'nao', label: 'Sem Pré-Qual.' }
+            ]}
+          />
         </div>
         <div className="mobile-filter-group">
           <label className="mobile-filter-label">Ordenar por</label>
-          <select className="filter-select" style={{ width: '100%' }} value={sort} onChange={updateFilter(setSort)}>
-            <option value="criadoDesc">Mais recentes</option>
-            <option value="criadoAsc">Mais antigos</option>
-            <option value="nomeAz">Nome A-Z</option>
-            <option value="nomeZa">Nome Z-A</option>
-            <option value="modificadoDesc">Últ. modificação</option>
-          </select>
+          <CustomSelect
+            variant="form"
+            value={sort}
+            onChange={updateFilter(setSort)}
+            options={[
+              { value: 'criadoDesc', label: 'Mais recentes' },
+              { value: 'criadoAsc', label: 'Mais antigos' },
+              { value: 'nomeAz', label: 'Nome A-Z' },
+              { value: 'nomeZa', label: 'Nome Z-A' },
+              { value: 'modificadoDesc', label: 'Últ. modificação' }
+            ]}
+          />
         </div>
         {viewMode === 'list' && (
           <div className="mobile-filter-group">
             <label className="mobile-filter-label">Leads por página</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {PAGE_SIZE_OPTIONS.map((item) => (
                 <button
                   key={item}
-                  className={`btn btn-sm ${resolvedPageSize === item ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn btn-sm ${Number(pageSize) === item ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ flex: 1 }}
                   onClick={() => { setPageSize(item); setPage(1); }}
                 >
                   {item}
                 </button>
               ))}
+              <div className="leads-page-size-custom-box" style={{ height: 32 }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  className="leads-page-size-custom-input"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') setPageSize('');
+                    else {
+                      const num = parseInt(raw, 10);
+                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
+                    }
+                    setPage(1);
+                  }}
+                  onBlur={() => {
+                    if (!pageSize || Number(pageSize) < 1) setPageSize(30);
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -759,7 +1227,8 @@ export default function LeadsPage() {
       {/* ─── ANALYTICS ──────────────────────────────────── */}
       {viewMode === 'analytics' && <LeadsCRMAnalytics />}
 
-      {viewMode === 'kanban' ? (
+      {/* ─── KANBAN BOARD ───────────────────────────────── */}
+      {viewMode === 'kanban' && (
         <div 
           className="kanban-board" 
           onMouseDown={(e) => {
@@ -791,7 +1260,7 @@ export default function LeadsPage() {
           style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, marginTop: 16, minHeight: 400, userSelect: 'none' }}
         >
           {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(colStatus => {
-            const colLeads = list.filter(l => (l.status || 'Novo') === colStatus);
+            const colLeads = kanbanFilteredLeads.filter(l => (l.status || 'Novo') === colStatus);
             return (
               <div 
                 key={colStatus} 
@@ -822,7 +1291,7 @@ export default function LeadsPage() {
                       onDragEnd={e => {
                         e.currentTarget.style.opacity = '1';
                       }}
-                      style={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'grab' }}
+                      style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'grab' }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ fontWeight: 500, cursor: 'pointer' }} onClick={() => openModal('lead', l.id)}>{l.nome || '-'}</div>
@@ -863,7 +1332,10 @@ export default function LeadsPage() {
             );
           })}
         </div>
-      ) : (
+      )}
+
+      {/* ─── LISTA (TABELA) ─────────────────────────────── */}
+      {viewMode === 'list' && (
       <div className="table-wrap">
         <table>
           <colgroup>
@@ -902,13 +1374,21 @@ export default function LeadsPage() {
                 <tr key={l.id} className="row-in">
                   <td><input type="checkbox" checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
                   <td style={{ maxWidth: 220 }}>
-                    <span
-                      style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                      onClick={() => openModal('lead', l.id)}
-                      title="Clique para editar"
-                    >
-                      {l.nome || '-'}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span
+                        style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        onClick={() => openModal('lead', l.id)}
+                        title="Clique para editar"
+                      >
+                        {l.nome || '-'}
+                      </span>
+                      {l.cidade && (
+                        <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {l.cidade}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1007,50 +1487,121 @@ export default function LeadsPage() {
       </div>
       )}
 
-      {viewMode === 'list' && totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '0 4px', flexWrap: 'wrap', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--sans)' }}>
-            {((safePage - 1) * resolvedPageSize) + 1}–{Math.min(safePage * resolvedPageSize, totalItems)} de {totalItems.toLocaleString('pt-BR')} leads
-          </span>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button className="btn btn-sm btn-secondary" disabled={safePage === 1} onClick={() => setPage(1)} title="Primeira página" style={{ padding: '5px 8px' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
-              </svg>
-            </button>
-            <button className="btn btn-sm btn-secondary" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} title="Página anterior" style={{ padding: '5px 8px' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let p;
-              if (totalPages <= 5) p = i + 1;
-              else if (safePage <= 3) p = i + 1;
-              else if (safePage >= totalPages - 2) p = totalPages - 4 + i;
-              else p = safePage - 2 + i;
-              return (
-                <button
-                  key={p}
-                  className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setPage(p)}
-                  style={{ minWidth: 30, padding: '5px 6px', fontFamily: 'var(--sans)', fontSize: 12 }}
-                >
-                  {p}
-                </button>
-              );
-            })}
-            <button className="btn btn-sm btn-secondary" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} title="Próxima página" style={{ padding: '5px 8px' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-            <button className="btn btn-sm btn-secondary" disabled={safePage === totalPages} onClick={() => setPage(totalPages)} title="Última página" style={{ padding: '5px 8px' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
-              </svg>
-            </button>
+      {viewMode === 'list' && (
+        <div className="leads-pagination-bar">
+          <div className="leads-pagination-info-group">
+            <span className="leads-pagination-count">
+              {totalItems === 0 ? (
+                'Nenhum lead encontrado'
+              ) : (
+                <>
+                  Mostrando <strong>{((safePage - 1) * resolvedPageSize) + 1}–{Math.min(safePage * resolvedPageSize, totalItems)}</strong> de <strong>{totalItems.toLocaleString('pt-BR')}</strong> leads
+                </>
+              )}
+            </span>
+
+            {totalItems > 0 && (
+              <div className="leads-pagination-footer-size">
+                <span>Por página:</span>
+                <div className="leads-page-size-custom-box" style={{ height: 26, padding: '0 6px' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    className="leads-page-size-custom-input"
+                    style={{ width: 34, fontSize: 11 }}
+                    value={pageSize}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') setPageSize('');
+                      else {
+                        const num = parseInt(raw, 10);
+                        setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
+                      }
+                      setPage(1);
+                    }}
+                    onBlur={() => {
+                      if (!pageSize || Number(pageSize) < 1) setPageSize(30);
+                    }}
+                  />
+                  <span className="leads-page-size-custom-unit" style={{ fontSize: 10 }}>itens</span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="leads-pagination-controls">
+              <button
+                className="leads-pagination-btn"
+                disabled={safePage === 1}
+                onClick={() => setPage(1)}
+                title="Primeira página"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+                </svg>
+              </button>
+
+              <button
+                className="leads-pagination-btn"
+                disabled={safePage === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                title="Página anterior"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                <span className="leads-pagination-nav-text">Anterior</span>
+              </button>
+
+              {getPaginationItems(safePage, totalPages).map((item, idx) => {
+                if (item === '...') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="leads-pagination-ellipsis">
+                      …
+                    </span>
+                  );
+                }
+                const pageNum = Number(item);
+                const isCurrent = pageNum === safePage;
+                return (
+                  <button
+                    key={pageNum}
+                    className={`leads-pagination-btn ${isCurrent ? 'active' : ''}`}
+                    onClick={() => setPage(pageNum)}
+                    title={`Ir para a página ${pageNum}`}
+                    aria-current={isCurrent ? 'page' : undefined}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              <button
+                className="leads-pagination-btn"
+                disabled={safePage === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                title="Próxima página"
+              >
+                <span className="leads-pagination-nav-text">Próxima</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+
+              <button
+                className="leads-pagination-btn"
+                disabled={safePage === totalPages}
+                onClick={() => setPage(totalPages)}
+                title="Última página"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

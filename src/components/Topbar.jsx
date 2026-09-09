@@ -1,205 +1,148 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDash } from '../store/useStore';
 import NotificationCenter from './NotificationCenter';
-import logoLight from '../assets/dashboard-logo-light-theme.svg';
-import logoDark from '../assets/dashboard-logo.svg';
-import nonProfilePhoto from '../assets/non-profile-photo.png';
+import CommandPalette from './CommandPalette';
 
-export default function Topbar() {
-  const profile = useDash(s => s.profile);
-  const theme = useDash(s => s.theme);
-  const data = useDash(s => s.data);
-  const toggleTheme = useDash(s => s.toggleTheme);
-  const signOut = useDash(s => s.signOut);
-  const goTo = useDash(s => s.goTo);
+const PAGE_TITLES = {
+  'dashboard': { title: 'Dashboard', sub: 'Visão Geral & Performance' },
+  'leads': { title: 'Leads & CRM', sub: 'Prospecção & Pipeline', actionModal: 'lead', actionLabel: 'Novo Lead' },
+  'projetos': { title: 'Projetos', sub: 'Gestão de Entregas & Status', actionModal: 'projeto', actionLabel: 'Novo Projeto' },
+  'recorrencia': { title: 'Recorrência', sub: 'Assinaturas & Contratos', actionModal: 'recorrencia', actionLabel: 'Nova Recorrência' },
+  'financas-negocio': { title: 'Finanças Negócio', sub: 'Fluxo de Caixa da Empresa', actionModal: 'negocioReceita', actionLabel: 'Nova Receita' },
+  'financas-pessoais': { title: 'Finanças Pessoais', sub: 'Gestão Financeira Pessoal', actionModal: 'pessoalReceita', actionLabel: 'Nova Receita' },
+  'clientes': { title: 'Clientes', sub: 'Base Ativa & Histórico', actionModal: 'cliente', actionLabel: 'Novo Cliente' },
+  'uptime': { title: 'Monitor de Uptime', sub: 'Status de Servidores & Sites' },
+  'configuracoes': { title: 'Configurações', sub: 'Preferências do Sistema' },
+  'lixeira': { title: 'Lixeira', sub: 'Itens Excluídos' },
+};
+
+export default function Topbar({ onOpenMobile }) {
   const activePage = useDash(s => s.activePage);
+  const data = useDash(s => s.data);
   const openModal = useDash(s => s.openModal);
-  
-  const isLight = theme === 'light';
-  const logo = isLight ? logoLight : logoDark;
 
   const [notifOpen, setNotifOpen] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const notifBtnRef = useRef(null);
-  const logoutBtnRef = useRef(null);
-  const unreadCount = data.notificacoes.filter(n => !n.lida).length;
+  const unreadCount = (data.notificacoes || []).filter(n => !n.lida).length;
 
+  const pageMeta = PAGE_TITLES[activePage] || { title: 'Dashboard', sub: 'Visão Geral' };
+
+  // Atalho global de teclado: Ctrl+K para abrir busca rápida
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (showLogoutConfirm && logoutBtnRef.current && !logoutBtnRef.current.contains(e.target)) {
-        setShowLogoutConfirm(false);
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showLogoutConfirm]);
-
-  const AvatarFallback = () => (
-    <img className="user-avatar" src={nonProfilePhoto} alt="User" />
-  );
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
-    <div className="topbar">
-      <div className="topbar-left">
-        <div 
-          className="topbar-logo" 
-          onClick={() => goTo('dashboard')}
-          style={{ cursor: 'pointer' }}
-          title="Ir para Dashboard"
-        >
-          <img src={logo} alt="Dashboard" className="logo-img" style={{ height: 35 }} />
-        </div>
-      </div>
-      <div className="topbar-right">
-        {/* Account Button — full on desktop, icon-only on mobile */}
-        <button
-          className="topbar-account"
-          onClick={() => goTo('configuracoes')}
-          title="Minha Conta"
-        >
-          {profile.photoURL ? (
-            <img 
-              className="user-avatar" 
-              src={profile.photoURL.includes('googleusercontent.com') ? profile.photoURL : `${profile.photoURL}${profile.photoURL.includes('?') ? '&' : '?'}_t=${profile.photoUpdated || 0}`} 
-              alt="" 
-            />
-          ) : <AvatarFallback />}
-          <span className="topbar-account-text topbar-account-text--desktop">
-            <span className="topbar-account-label">Minha Conta</span>
-            <span className="topbar-account-name">{profile.name || 'Usuário'}</span>
-          </span>
-        </button>
+    <>
+      <header className="topbar-utility">
+        {/* Lado Esquerdo: Mobile Menu + Breadcrumb Contextual */}
+        <div className="topbar-utility-left">
+          {/* Botão de menu no mobile */}
+          <button
+            className="btn-icon mobile-only"
+            onClick={onOpenMobile}
+            title="Abrir Menu"
+            style={{ width: 36, height: 36, padding: 6, borderRadius: 'var(--radius-sm, 10px)', border: 'none', background: 'var(--bg3)', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
 
-        {/* Theme switch — hidden on mobile (available in settings) */}
-        <div className="theme-switch topbar-theme-switch" title="Alternar tema">
-          <input
-            type="checkbox"
-            className="checkbox"
-            id="theme-toggle"
-            checked={!isLight}
-            onChange={toggleTheme}
-          />
-          <label htmlFor="theme-toggle" className="label">
-            <svg className="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M3 11.5C3 16.75 7.25 21 12.5 21c3.72 0 6.95-2.15 8.5-5.27-8.5 0-12.73-4.23-12.73-12.73C5.15 4.55 3 7.78 3 11.5Z" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Breadcrumb Contextual */}
+          <div className="topbar-breadcrumb">
+            <span style={{ color: 'var(--text3)' }}>Sistema</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12, color: 'var(--text3)' }}>
+              <polyline points="9 18 15 12 9 6" />
             </svg>
-            <svg className="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <div className="ball"></div>
-          </label>
+            <span className="topbar-breadcrumb-current">{pageMeta.title}</span>
+          </div>
         </div>
 
-        {/* Theme toggle — icon only, mobile only */}
-        <button
-          className="btn-icon topbar-theme-icon"
-          onClick={toggleTheme}
-          title="Alternar tema"
-        >
-          {isLight ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M3 11.5C3 16.75 7.25 21 12.5 21c3.72 0 6.95-2.15 8.5-5.27-8.5 0-12.73-4.23-12.73-12.73C5.15 4.55 3 7.78 3 11.5Z" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Lado Direito: Busca Rápida + Ação Dinâmica + Notificações + Feedback */}
+        <div className="topbar-utility-right">
+          {/* Barra de busca funcional com atalho Ctrl+K (Windows) */}
+          <div
+            className="topbar-search-box"
+            onClick={() => setSearchOpen(true)}
+            title="Abrir Busca Rápida (Ctrl+K)"
+            style={{ cursor: 'pointer' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--text3)' }}>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </button>
+            <span>Buscar no sistema...</span>
+            <span className="topbar-kbd">Ctrl+K</span>
+          </div>
 
-        {/* Notifications */}
+
+        {/* Notificações */}
         <div style={{ position: 'relative' }}>
           <button
-            ref={notifBtnRef}
             className={`btn-icon ${notifOpen ? 'active' : ''}`}
+            ref={notifBtnRef}
             onClick={() => setNotifOpen(!notifOpen)}
             title="Notificações"
+            style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm, 10px)', border: '1px solid var(--border)', background: 'var(--bg3)', position: 'relative' }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 999,
+                background: 'var(--accent)',
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 4px',
+                border: '2px solid var(--bg2)',
+              }}>
+                {unreadCount}
+              </span>
+            )}
           </button>
           {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} toggleRef={notifBtnRef} />}
         </div>
 
-        {/* Feedback — hidden on mobile to save space */}
+        {/* Feedback & Suporte */}
         <button
-          className="btn-icon topbar-feedback-btn"
+          className="btn-icon"
           onClick={() => openModal('feedback')}
           title="Feedback & Suporte"
-          style={{ position: 'relative' }}
+          style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm, 10px)', border: '1px solid var(--border)', background: 'var(--bg3)' }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            <line x1="12" y1="7" x2="12" y2="11"/>
-            <line x1="12" y1="15" x2="12.01" y2="15"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <line x1="12" y1="7" x2="12" y2="11" />
+            <line x1="12" y1="15" x2="12.01" y2="15" />
           </svg>
         </button>
-
-        {/* Settings — hidden on mobile (accessible via bottom nav) */}
-        <button
-          className={`btn-icon topbar-settings-btn ${activePage === 'configuracoes' ? 'active' : ''}`}
-          id="btn-settings"
-          onClick={() => goTo('configuracoes')}
-          title="Configurações"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-          </svg>
-        </button>
-        
-        {/* Signout */}
-        <div style={{ position: 'relative' }} ref={logoutBtnRef}>
-          <button 
-            className={`btn-signout ${showLogoutConfirm ? 'active' : ''}`} 
-            onClick={() => setShowLogoutConfirm(!showLogoutConfirm)}
-            title="Sair"
-          >
-            {/* Text on desktop, icon on mobile */}
-            <span className="btn-signout-text">Sair</span>
-            <svg className="btn-signout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
-          
-          {showLogoutConfirm && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-              background: 'var(--bg3)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)', padding: '12px', width: 180,
-              boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 100,
-              display: 'flex', flexDirection: 'column', gap: 10
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Deseja sair do sistema?</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button 
-                  className="btn btn-sm btn-secondary" 
-                  style={{ flex: 1, fontSize: 11 }}
-                  onClick={() => setShowLogoutConfirm(false)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  className="btn btn-sm btn-danger" 
-                  style={{ flex: 1, fontSize: 11, background: 'var(--red)', color: '#fff' }}
-                  onClick={() => {
-                    setShowLogoutConfirm(false);
-                    signOut();
-                  }}
-                >
-                  Sair
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </header>
+
+    {/* Paleta de Busca Rápida Funcional */}
+    <CommandPalette isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+  </>
   );
 }

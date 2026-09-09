@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { useDash } from '../store/useStore';
 import { normalizeImportedStatus } from '../store/storeUtils';
+import { cleanMojibake } from '../utils/textUtils';
 
 export default function ImportLeadsModal() {
-  const { bulkAddLeads, closeModal, toast, configData, setModalSize } = useDash();
+  const { bulkAddLeads, closeModal, toast, configData, setModalSize, data } = useDash();
   const [step, setStep] = useState(1); // 1: Upload, 2: Mapping/Config
 
   useEffect(() => {
@@ -22,12 +23,22 @@ export default function ImportLeadsModal() {
   const [dataRows, setDataRows] = useState([]);
 
   const [mapping, setMapping] = useState({
-    nome: '', telefone: '', site: '', observacoes: '', nicho: '', status: ''
+    nome: '', telefone: '', site: '', observacoes: '', nicho: '', status: '', cidade: ''
   });
 
   const [defaultNicho, setDefaultNicho] = useState('');
   const [defaultStatus, setDefaultStatus] = useState('Novo');
+  const [defaultCidade, setDefaultCidade] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+
+  // Lista de cidades já cadastradas em leads anteriores
+  const existingCidades = useMemo(() => {
+    const set = new Set();
+    (data?.leads || []).forEach(l => {
+      if (l.cidade && l.cidade.trim()) set.add(l.cidade.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data?.leads]);
 
   const fileInputRef = useRef(null);
 
@@ -92,7 +103,7 @@ export default function ImportLeadsModal() {
     setHeaders(head);
     setDataRows(rows.slice(idx + 1));
 
-    const newMapping = { nome: '', telefone: '', site: '', observacoes: '', nicho: '', status: '' };
+    const newMapping = { nome: '', telefone: '', site: '', observacoes: '', nicho: '', status: '', cidade: '' };
     head.forEach((h) => {
       if (!h) return;
       const low = h.toLowerCase();
@@ -102,6 +113,7 @@ export default function ImportLeadsModal() {
       if (['observação', 'observacao', 'obs', 'qualificação', 'qualificacao', 'note', 'comment', 'histórico', 'historico', 'descricao', 'descrição'].some(k => low.includes(k))) newMapping.observacoes = h;
       if (['nicho', 'ramo', 'segmento', 'niche', 'área', 'area'].some(k => low.includes(k))) newMapping.nicho = h;
       if (['status', 'etapa', 'fase', 'pipeline'].some(k => low.includes(k))) newMapping.status = h;
+      if (['cidade', 'municipio', 'município', 'city', 'localidade', 'localizacao', 'localização'].some(k => low.includes(k))) newMapping.cidade = h;
     });
     setMapping(newMapping);
   };
@@ -140,18 +152,28 @@ export default function ImportLeadsModal() {
       statusVal = defaultStatus;
     }
 
+    let cidadeVal = '';
+    if (mapping.cidade) {
+      const val = getVal('cidade');
+      cidadeVal = val !== null && val !== undefined ? String(val).trim() : '';
+    }
+    if (!cidadeVal && defaultCidade) {
+      cidadeVal = defaultCidade;
+    }
+
     return {
-      nome: nomeVal,
+      nome: cleanMojibake(nomeVal),
       telefone: telefoneVal,
       site: siteVal,
-      observacoes: observacoesVal,
-      nicho: nichoVal,
-      status: statusVal
+      observacoes: cleanMojibake(observacoesVal),
+      nicho: cleanMojibake(nichoVal),
+      status: statusVal,
+      cidade: cleanMojibake(cidadeVal)
     };
   };
 
-  const processedPreview = useMemo(() => dataRows.slice(0, 10).map(normalizeRow), [dataRows, mapping, defaultNicho, defaultStatus, headers]);
-  const validRows = useMemo(() => dataRows.map(normalizeRow).filter(it => it.nome), [dataRows, mapping, defaultNicho, defaultStatus, headers]);
+  const processedPreview = useMemo(() => dataRows.slice(0, 10).map(normalizeRow), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, headers]);
+  const validRows = useMemo(() => dataRows.map(normalizeRow).filter(it => it.nome), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, headers]);
 
   const processImport = async () => {
     if (!mapping.nome) return toast('Mapeie pelo menos o campo Nome / Empresa', 'error');
@@ -258,6 +280,36 @@ export default function ImportLeadsModal() {
                   </select>
                 )}
               </div>
+
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label className="form-label" style={{ fontSize: 11 }}>Cidade / Localização</label>
+                <select className="form-select" value={mapping.cidade ? '__FROM_COL__' : '__FIXED__'} onChange={e => {
+                  if (e.target.value === '__FROM_COL__') setMapping(p => ({ ...p, cidade: headers[0] || '' }));
+                  else { setMapping(p => ({ ...p, cidade: '' })); }
+                }}>
+                  <option value="__FIXED__">Definir Cidade Fixa (escolher ou digitar)</option>
+                  <option value="__FROM_COL__">Mapear da Planilha ↓</option>
+                </select>
+                {mapping.cidade ? (
+                  <select className="form-select" style={{ marginTop: 4 }} value={mapping.cidade} onChange={e => setMapping(p => ({ ...p, cidade: e.target.value }))}>
+                    <option value="">Selecione a coluna de cidade...</option>
+                    {headers.map((h, i) => <option key={i} value={h}>{h || `Coluna ${i+1}`}</option>)}
+                  </select>
+                ) : (
+                  <div style={{ marginTop: 4 }}>
+                    <input 
+                      className="form-input" 
+                      list="existing-cidades-list" 
+                      placeholder="Ex: São Paulo - SP ou selecione..." 
+                      value={defaultCidade} 
+                      onChange={e => setDefaultCidade(e.target.value)} 
+                    />
+                    <datalist id="existing-cidades-list">
+                      {existingCidades.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -277,9 +329,9 @@ export default function ImportLeadsModal() {
               <table style={{ fontSize: 12, borderCollapse: 'separate', borderSpacing: 0 }}>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--bg3)', zIndex: 1 }}>
                   <tr>
-                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '25%' }}>Nome / Empresa</th>
-                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '15%' }}>Telefone</th>
-                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '20%' }}>Site / Rede Social</th>
+                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '22%' }}>Nome / Empresa</th>
+                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '14%' }}>Telefone</th>
+                    <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '15%' }}>Cidade</th>
                     <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '15%' }}>Nicho</th>
                     <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)', width: '12%' }}>Status</th>
                     <th style={{ padding: '12px', borderBottom: '1.5px solid var(--border)' }}>Obs.</th>
@@ -290,7 +342,7 @@ export default function ImportLeadsModal() {
                     <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>{row.nome || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.telefone || '-'}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 11 }}>{row.site || '-'}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', color: 'var(--accent)' }}>{row.cidade || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: 11, background: 'var(--bg3)', padding: '2px 6px', borderRadius: 4 }}>{row.nicho || '-'}</span>
                       </td>

@@ -2,6 +2,7 @@ import { db, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeB
 import { uDoc, uCol } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
+import { cleanMojibake, sanitizeObjectStrings } from '../../utils/textUtils';
 
 // ── Tipos de interação válidos (enum fixo) ───────────────────────────────────
 export const INTERACAO_TIPOS = [
@@ -622,6 +623,52 @@ export const createCRMSlice = (set, get) => ({
     } catch (e) {
       console.error('bulkAddLeads error:', e);
       toast('Erro ao importar leads: ' + e.message, 'error');
+    }
+  },
+
+  repairMojibakeData: async () => {
+    const { data, toast, _refreshData } = get();
+    const batch = writeBatch(db);
+    let count = 0;
+    const leadsToUpdate = [];
+
+    (data.leads || []).forEach(lead => {
+      if (lead.isMock) return;
+      const sanitized = sanitizeObjectStrings(lead);
+      let changed = false;
+      ['nome', 'nicho', 'cidade', 'observacoes'].forEach(field => {
+        if (lead[field] && sanitized[field] !== lead[field]) {
+          changed = true;
+        }
+      });
+      if (changed) {
+        count++;
+        leadsToUpdate.push(sanitized);
+        const ref = uDoc('leads', lead.id);
+        batch.update(ref, {
+          nome: sanitized.nome || '',
+          nicho: sanitized.nicho || '',
+          cidade: sanitized.cidade || '',
+          observacoes: sanitized.observacoes || ''
+        });
+      }
+    });
+
+    if (count > 0) {
+      await batch.commit();
+      set(s => ({
+        realData: {
+          ...s.realData,
+          leads: s.realData.leads.map(l => {
+            const updated = leadsToUpdate.find(u => u.id === l.id);
+            return updated ? { ...l, ...updated } : l;
+          })
+        }
+      }));
+      _refreshData();
+      toast(`${count} lead(s) tiveram sua acentuação reparada com sucesso!`, 'success');
+    } else {
+      toast('Todos os leads já estão com acentuação correta!', 'info');
     }
   },
 });

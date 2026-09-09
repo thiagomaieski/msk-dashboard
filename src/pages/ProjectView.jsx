@@ -72,7 +72,7 @@ function PVDetalhes({ p, onEdit, updateField }) {
   const configData = useDash(s => s.configData);
   const recsProjeto = data.negocio.filter(n => n.tipo === 'Receita' && n.projetoId === p.id);
   const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
-  const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' }[p.pagamento] || 'var(--text3)';
+  const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--amber)' }[p.pagamento] || 'var(--text3)';
   
   const handleSaveNotes = async () => {
     if (notes === p.anotacoes) return;

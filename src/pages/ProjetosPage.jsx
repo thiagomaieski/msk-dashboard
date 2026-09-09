@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, fmtDate } from '../store/useStore';
 import { EmptyDiv } from '../components/shared';
+import CustomSelect from '../components/CustomSelect';
 
 export default function ProjetosPage() {
   const data = useDash(s => s.data);
@@ -33,7 +34,7 @@ export default function ProjetosPage() {
   const allChecked = selectedItems.length === list.length && list.length > 0;
 
   const statusColors = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' };
-  const pagColors = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--red)' };
+  const pagColors = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--amber)' };
 
   return (
     <div>
@@ -70,21 +71,38 @@ export default function ProjetosPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input className="filter-input" placeholder="Buscar projeto..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="filter-select" value={status} onChange={e => setStatus(e.target.value)}>
-          <option value="">Todos os status</option>
-          {['Em andamento','Aguardando cliente','Aguardando Aprovação','Concluído','Pausado'].map(s => <option key={s}>{s}</option>)}
-        </select>
-        <select className="filter-select" value={pag} onChange={e => setPag(e.target.value)}>
-          <option value="">Todos pagamentos</option>
-          {['Pendente','Parcial (50%)','Pago'].map(s => <option key={s}>{s}</option>)}
-        </select>
-        <select className="filter-select" value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="criadoDesc">Mais recentes</option>
-          <option value="criadoAsc">Mais antigos</option>
-          <option value="nomeAz">Nome A-Z</option>
-          <option value="valorDesc">Maior valor</option>
-          <option value="valorAsc">Menor valor</option>
-        </select>
+        <CustomSelect
+          variant="filter"
+          value={status}
+          onChange={e => setStatus(e.target.value)}
+          placeholder="Todos os status"
+          options={[
+            { value: '', label: 'Todos os status' },
+            ...['Em andamento','Aguardando cliente','Aguardando Aprovação','Concluído','Pausado'].map(s => ({ value: s, label: s }))
+          ]}
+        />
+        <CustomSelect
+          variant="filter"
+          value={pag}
+          onChange={e => setPag(e.target.value)}
+          placeholder="Todos pagamentos"
+          options={[
+            { value: '', label: 'Todos pagamentos' },
+            ...['Pendente','Parcial (50%)','Pago'].map(s => ({ value: s, label: s }))
+          ]}
+        />
+        <CustomSelect
+          variant="filter"
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          options={[
+            { value: 'criadoDesc', label: 'Mais recentes' },
+            { value: 'criadoAsc', label: 'Mais antigos' },
+            { value: 'nomeAz', label: 'Nome A-Z' },
+            { value: 'valorDesc', label: 'Maior valor' },
+            { value: 'valorAsc', label: 'Menor valor' }
+          ]}
+        />
       </div>
 
       {!list.length ? (

@@ -13,9 +13,9 @@ const fadeUp = {
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  online:  { label: 'Online',   color: 'var(--green)', bg: 'var(--green-bg)', dot: '●' },
-  offline: { label: 'Offline',  color: 'var(--red)',   bg: 'var(--red-bg)',   dot: '●' },
-  pending: { label: 'Pendente', color: 'var(--text3)', bg: 'var(--bg4)',      dot: '○' },
+  online:  { label: 'Online',   color: 'var(--green)', bg: 'var(--green-bg)' },
+  offline: { label: 'Offline',  color: 'var(--red)',   bg: 'var(--red-bg)' },
+  pending: { label: 'Pendente', color: 'var(--text3)', bg: 'var(--bg4)' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,7 +45,14 @@ function StatusBadge({ status }) {
       fontSize: 12, fontWeight: 600, letterSpacing: '.02em',
       border: `1px solid color-mix(in srgb, ${cfg.color} 20%, transparent)`,
     }}>
-      <span style={{ fontSize: status === 'pending' ? 10 : 8, lineHeight: 1 }}>{cfg.dot}</span>
+      <span style={{ 
+        width: 6, 
+        height: 6, 
+        borderRadius: '50%', 
+        background: status === 'pending' ? 'transparent' : cfg.color, 
+        border: status === 'pending' ? `1.5px solid ${cfg.color}` : 'none',
+        display: 'inline-block' 
+      }} />
       {cfg.label}
     </span>
   );
@@ -170,55 +177,96 @@ function MonitorCard({ monitor, onDelete }) {
   const displayUrl = cleanDomain(monitor.domain);
   const lastChecked = formatLastChecked(monitor.lastChecked);
 
+  const statusGlow = monitor.status === 'online'
+    ? 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(34, 197, 94, 0.15) 0%, transparent 75%), var(--bg2)'
+    : monitor.status === 'offline'
+    ? 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(239, 68, 68, 0.2) 0%, transparent 75%), var(--bg2)'
+    : 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(148, 163, 184, 0.09) 0%, transparent 75%), var(--bg2)';
+
+  const borderColor = monitor.status === 'online'
+    ? 'rgba(34, 197, 94, 0.22)'
+    : monitor.status === 'offline'
+    ? 'rgba(239, 68, 68, 0.32)'
+    : 'rgba(255, 255, 255, 0.08)';
+
+  const shadowGlow = monitor.status === 'online'
+    ? '0 10px 28px -8px rgba(0, 0, 0, 0.5), 0 0 20px -4px rgba(34, 197, 94, 0.12)'
+    : monitor.status === 'offline'
+    ? '0 10px 28px -8px rgba(0, 0, 0, 0.5), 0 0 22px -4px rgba(239, 68, 68, 0.18)'
+    : '0 10px 28px -8px rgba(0, 0, 0, 0.4)';
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       style={{
-        background: 'var(--bg1)',
-        border: '1px solid var(--border)',
+        background: statusGlow,
+        border: 'none',
         borderRadius: 'var(--radius)',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
-        position: 'relative'
+        gap: '14px',
+        position: 'relative',
+        boxShadow: shadowGlow,
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Top Section: Domain info & Status */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <PulseDot status={monitor.status} />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{displayName}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              fontSize: 15, fontWeight: 600, color: 'var(--text)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+            }}>
+              {displayName}
+            </div>
             {monitor.label && (
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{displayUrl}</div>
+              <div style={{
+                fontSize: 12, color: 'var(--text3)', marginTop: 2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              }}>
+                {displayUrl}
+              </div>
             )}
           </div>
         </div>
         <StatusBadge status={monitor.status} />
       </div>
 
+      {/* Elegant Divider */}
+      <div style={{
+        height: 1,
+        width: '100%',
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 80%, transparent 100%)',
+      }} />
+
+      {/* Bottom Section: Metrics & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4, fontWeight: 500 }}>
             Tempo de Resposta
           </div>
           {monitor.responseTime != null ? (
             <div style={{
               fontSize: 16, fontFamily: 'var(--sans)', fontWeight: 600,
               color: monitor.responseTime < 500 ? 'var(--green)' : monitor.responseTime < 1500 ? 'var(--amber)' : 'var(--red)',
+              display: 'flex', alignItems: 'baseline', gap: 2
             }}>
               {monitor.responseTime}
-              <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginLeft: 2 }}>ms</span>
+              <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>ms</span>
             </div>
           ) : (
-            <div style={{ color: 'var(--text3)', fontSize: 16 }}>—</div>
+            <div style={{ color: 'var(--text3)', fontSize: 15 }}>—</div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
-            Última verificação: {lastChecked || 'Aguardando cron...'}
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+            Última verificação: {lastChecked || 'Aguardando verificação...'}
           </div>
         </div>
 
@@ -228,10 +276,16 @@ function MonitorCard({ monitor, onDelete }) {
             target="_blank"
             rel="noopener noreferrer"
             className="btn-icon"
-            title="Abrir site"
-            style={{ background: 'var(--bg3)' }}
+            title="Abrir site em nova aba"
+            style={{
+              background: 'var(--bg3)',
+              border: 'none',
+              width: 32,
+              height: 32,
+              borderRadius: 8
+            }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
               <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
@@ -242,22 +296,25 @@ function MonitorCard({ monitor, onDelete }) {
             onClick={handleDelete}
             style={{
               background: confirming ? 'var(--red)' : 'var(--bg3)',
+              border: 'none',
               color: confirming ? '#fff' : 'var(--text3)',
-              width: confirming ? 'auto' : 28,
-              padding: confirming ? '0 10px' : 6,
+              width: confirming ? 'auto' : 32,
+              height: 32,
+              borderRadius: 8,
+              padding: confirming ? '0 12px' : 0,
               gap: 6
             }}
           >
             {confirming ? (
               <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}>
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                 </svg>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Confirmar</span>
               </>
             ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                 <path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>

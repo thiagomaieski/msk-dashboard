@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { useDash, fmtBRL, fmtDate, getRecorrenciaVencimento, fmtDateISO } from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
+import LembretesCalendar from '../components/LembretesCalendar';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 const fadeUp = {
@@ -32,7 +33,7 @@ const MESES_COMPLETOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Jun
 
 const STATUS_LEAD_ORDER = ['Novo', 'Abordado', 'Follow-up', 'Em negociação', 'Fechado', 'Perdido'];
 const STATUS_COLORS = {
-  'Novo': '#cbd5e1',
+  'Novo': '#38bdf8',
   'Abordado': '#3b82f6',
   'Follow-up': '#f59e0b',
   'Em negociação': '#a855f7',
@@ -125,16 +126,17 @@ const CustomBarTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-// ─── Trend Indicator ──────────────────────────────────────────────────────────
+// ─── Trend Indicator Moderno (Sem símbolos de texto) ─────────────────────────
 function Trend({ value, suffix = '', invert = false }) {
   const isPositive = value >= 0;
-  let color = isPositive ? 'var(--accent)' : 'var(--red)';
-  if (invert) color = isPositive ? 'var(--red)' : 'var(--accent)';
-  
-  const arrow = isPositive ? '↑' : '↓';
+  const isGood = isPositive !== invert;
+
   return (
-    <span style={{ fontSize: 11, color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-      {arrow} {Math.abs(value).toFixed(0)}%{suffix && ` ${suffix}`}
+    <span className={`modern-trend-pill ${isGood ? 'positive' : 'negative'}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10, transform: isPositive ? 'none' : 'rotate(180deg)' }}>
+        <path d="m18 15-6-6-6 6" />
+      </svg>
+      <span>{Math.abs(value).toFixed(0)}%{suffix && ` ${suffix}`}</span>
     </span>
   );
 }
@@ -142,13 +144,13 @@ function Trend({ value, suffix = '', invert = false }) {
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 function Sparkline({ data, color = '#00C573', id }) {
   const gradientId = `spark-grad-${id}`;
-  
+
   return (
-    <ResponsiveContainer width="100%" height={40}>
+    <ResponsiveContainer width="100%" height={36}>
       <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -160,15 +162,15 @@ function Sparkline({ data, color = '#00C573', id }) {
           fill={`url(#${gradientId})`}
           dot={false}
           isAnimationActive={true}
-          animationDuration={800}
+          animationDuration={600}
         />
       </AreaChart>
     </ResponsiveContainer>
   );
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData, sparkColor, accentColor, index }) {
+// ─── KPI Card Moderno (Donezo & Beluga Style) ─────────────────────────────────
+function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData, sparkColor, accentColor, index, onClick }) {
   return (
     <motion.div
       custom={index}
@@ -176,27 +178,46 @@ function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData
       initial="hidden"
       animate="visible"
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className="dash-kpi-card"
-      style={{ '--kpi-accent': accentColor }}
+      className="modern-kpi-card"
+      style={{ '--kpi-accent': accentColor, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
     >
-      <div className="dash-kpi-top">
-        <div className="dash-kpi-icon" style={{ background: `color-mix(in srgb, ${accentColor}, transparent 88%)`, color: accentColor }}>
-          {icon}
+      <div className="modern-kpi-top">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            background: `color-mix(in srgb, ${accentColor}, transparent 88%)`,
+            color: accentColor,
+            width: 32,
+            height: 32,
+            borderRadius: 'var(--radius-sm, 10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {icon}
+          </div>
+          <span className="modern-kpi-label">{label}</span>
         </div>
-        <div className="dash-kpi-meta">
-          <div className="dash-kpi-label">{label}</div>
-          {trend !== undefined && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Trend value={trend} invert={trendInvert} />
-              {trendLabel && <span style={{ fontSize: 10, color: 'var(--text3)' }}>{trendLabel}</span>}
-            </div>
-          )}
+        <div className="modern-kpi-arrow-btn" title="Ver detalhes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+            <line x1="7" y1="17" x2="17" y2="7" />
+            <polyline points="7 7 17 7 17 17" />
+          </svg>
         </div>
       </div>
-      <div className="dash-kpi-value">{value}</div>
-      <div className="dash-kpi-spark">
+
+      <div className="modern-kpi-value">{value}</div>
+
+      <div style={{ marginTop: 2, marginBottom: -4 }}>
         <Sparkline data={sparkData} color={sparkColor || accentColor} id={index} />
       </div>
+
+      {trend !== undefined && (
+        <div className="modern-kpi-footer">
+          <Trend value={trend} invert={trendInvert} suffix={trendLabel} />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -286,6 +307,7 @@ export default function DashboardPage() {
   const firstName = (currentUser?.displayName || '').split(' ')[0] || 'usuário';
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const [lembretesView, setLembretesView] = useState('lista');
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -520,6 +542,7 @@ export default function DashboardPage() {
             trendLabel={`vs ${mesLabel}`}
             sparkData={stats.sparkRec}
             accentColor="var(--accent)"
+            onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}
           />
         )}
         {stats.isPessoalOn && (
@@ -534,6 +557,7 @@ export default function DashboardPage() {
             sparkData={stats.sparkDesp}
             sparkColor="var(--red)"
             accentColor="var(--red)"
+            onClick={() => goTo('financas-pessoais')}
           />
         )}
         {stats.isLeadsOn && (
@@ -546,6 +570,7 @@ export default function DashboardPage() {
             trendLabel="este mês"
             sparkData={stats.sparkLeads}
             accentColor="var(--blue)"
+            onClick={() => goTo('leads')}
           />
         )}
         {stats.isProjetosOn && (
@@ -558,53 +583,70 @@ export default function DashboardPage() {
             trendLabel="em andamento"
             sparkData={stats.sparkProj}
             accentColor="var(--amber)"
+            onClick={() => goTo('projetos')}
           />
         )}
         {stats.isRecorrenciaOn && (
           <KpiCard
             index={4}
             icon={<IconRecorrencia />}
-            label="Contratos de Recorrência"
+            label="Recorrência (MRR)"
             value={fmtBRL(stats.mrr)}
-            trendLabel="Serviços ativos faturados"
+            trendLabel="Serviços ativos"
             sparkData={stats.sparkRecorr}
             accentColor="#a855f7"
+            onClick={() => goTo('recorrencia')}
           />
         )}
       </div>
 
       <div className="dash-bento-grid">
 
-        {/* F4: Meta de Faturamento */}
+        {/* F4: Meta de Faturamento — Segmentada (Salesforce / Crextio Style) */}
         {stats.isMetaActive && (
           <motion.div
-            className="dash-glass-card full-width"
+            className="segmented-metric-container full-width"
             custom={0}
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20 }}
           >
-            <div style={{ flexShrink: 0 }}>
-              <div className="dash-glass-card-title">Meta de Faturamento</div>
-              <div className="dash-glass-card-sub">Progresso de {mesLabel}</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-                <span style={{ color: 'var(--accent)' }}>{fmtBRL(stats.recMesAtual)}</span>
-                <span style={{ color: 'var(--text3)' }}>{fmtBRL(stats.metaFaturamento)}</span>
+            <div className="segmented-metric-header">
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>Meta de Faturamento — {mesLabel}</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Progresso acumulado e projeção do período</div>
               </div>
-              <div style={{ height: 10, background: 'var(--bg3)', borderRadius: 5, overflow: 'hidden' }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stats.metaPct}%` }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                  style={{ height: '100%', background: stats.metaPct >= 100 ? 'var(--green)' : 'var(--accent)', borderRadius: 5 }}
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>
+                  <strong style={{ color: 'var(--accent)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong> de {fmtBRL(stats.metaFaturamento)}
+                </span>
+                <span className="sidebar-brand-tag" style={{ fontSize: 12, padding: '3px 9px' }}>
+                  {stats.metaPct.toFixed(1)}% atingido
+                </span>
               </div>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: stats.metaPct >= 100 ? 'var(--green)' : 'var(--text)' }}>
-              {stats.metaPct.toFixed(1)}%
+
+            {/* Segmented Track Bar */}
+            <div className="segmented-metric-track">
+              <div
+                className="segmented-metric-bar"
+                style={{
+                  width: `${Math.min(100, stats.metaPct)}%`,
+                  background: stats.metaPct >= 100 ? 'var(--green)' : 'linear-gradient(90deg, #00C573, #3ECF8E)',
+                }}
+                title={`Faturamento Realizado: ${fmtBRL(stats.recMesAtual)}`}
+              />
+            </div>
+
+            <div className="segmented-metric-legend">
+              <div className="segmented-legend-item">
+                <span className="segmented-legend-dot" style={{ background: 'var(--accent)' }} />
+                <span>Realizado ({fmtBRL(stats.recMesAtual)})</span>
+              </div>
+              <div className="segmented-legend-item">
+                <span className="segmented-legend-dot" style={{ background: 'var(--text3)' }} />
+                <span>Restante ({fmtBRL(Math.max(0, stats.metaFaturamento - stats.recMesAtual))})</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -785,18 +827,94 @@ export default function DashboardPage() {
                 {stats.lembretes.filter(l => !l.concluido).length} pendente{stats.lembretes.filter(l => !l.concluido).length !== 1 ? 's' : ''}
               </div>
             </div>
-            <motion.button
-              className="btn btn-sm btn-primary"
-              onClick={() => openModal('lembrete')}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              + Novo
-            </motion.button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Segmented View Switcher */}
+              <div style={{
+                display: 'inline-flex',
+                background: 'var(--bg3)',
+                padding: 3,
+                borderRadius: 'var(--radius-sm)',
+                border: 'none'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setLembretesView('lista')}
+                  title="Exibir em Lista"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: 'none',
+                    background: lembretesView === 'lista' ? 'var(--bg1)' : 'transparent',
+                    color: lembretesView === 'lista' ? 'var(--text)' : 'var(--text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLembretesView('calendario')}
+                  title="Exibir Calendário Mensal"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: 'none',
+                    background: lembretesView === 'calendario' ? 'var(--bg1)' : 'transparent',
+                    color: lembretesView === 'calendario' ? 'var(--text)' : 'var(--text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Calendário
+                </button>
+              </div>
+
+              <motion.button
+                className="btn btn-sm btn-primary"
+                onClick={() => openModal('lembrete')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                + Novo
+              </motion.button>
+            </div>
           </div>
           <div className="dash-glass-card-body dash-card-scroll">
-            {!stats.lembretes.length ? (
-              <div className="dash-empty">Tudo em dia! 🎉</div>
+            {lembretesView === 'calendario' ? (
+              <LembretesCalendar />
+            ) : !stats.lembretes.length ? (
+              <div className="dash-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--green)' }}>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Tudo em dia</span>
+              </div>
             ) : stats.lembretes.map((r, i) => {
               const taskDate = r.prazo;
               const taskTime = r.horario;

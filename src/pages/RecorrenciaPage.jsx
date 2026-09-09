@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, getRecorrenciaVencimento } from '../store/useStore';
 import { Badge, EmptyState } from '../components/shared';
+import CustomSelect from '../components/CustomSelect';
 
 export default function RecorrenciaPage() {
   const data = useDash(s => s.data);
@@ -60,18 +61,44 @@ export default function RecorrenciaPage() {
         <div className="page-actions">
           <button className="btn btn-primary desktop-only" onClick={() => openModal('recorrencia')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
-            Novo Cliente
+            Nova Recorrência
           </button>
-          <button className="btn-icon mobile-only btn-icon-accent" onClick={() => openModal('recorrencia')} title="Novo Cliente de Recorrência">
+          <button className="btn-icon mobile-only btn-icon-accent" onClick={() => openModal('recorrencia')} title="Nova Recorrência">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
           </button>
         </div>
       </div>
 
-      <div className="summary-cards">
-        <div className="summary-card"><div className="summary-card-label">Receita Mensal</div><div className="summary-card-val green">{fmtBRL(totalMensal)}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Clientes Ativos</div><div className="summary-card-val accent">{ativosCount}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Receita Anual Est.</div><div className="summary-card-val">{fmtBRL(totalAnual)}</div></div>
+      <div className="dash-kpi-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
+            <span className="recorrencia-kpi-label">Receita Mensal (MRR)</span>
+            <div className="recorrencia-kpi-icon" style={{ color: 'var(--green)', background: 'var(--green-bg)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div className="recorrencia-kpi-value" style={{ color: 'var(--green)' }}>{fmtBRL(totalMensal)}</div>
+        </div>
+
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
+            <span className="recorrencia-kpi-label">Clientes Ativos</span>
+            <div className="recorrencia-kpi-icon" style={{ color: 'var(--accent)', background: 'var(--accent-bg)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+          </div>
+          <div className="recorrencia-kpi-value">{ativosCount}</div>
+        </div>
+
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
+            <span className="recorrencia-kpi-label">Receita Anual Estimada (ARR)</span>
+            <div className="recorrencia-kpi-icon" style={{ color: 'var(--blue)', background: 'var(--blue-bg)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div className="recorrencia-kpi-value">{fmtBRL(totalAnual)}</div>
+        </div>
       </div>
 
       <div className="filters">
@@ -79,16 +106,29 @@ export default function RecorrenciaPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input className="filter-input" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="filter-select" value={status} onChange={e => setStatus(e.target.value)}>
-          <option value="">Todos</option><option>Ativo</option><option>Inativo</option>
-        </select>
-        <select className="filter-select" value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="criadoDesc">Mais recentes</option>
-          <option value="nomeAz">Nome A-Z</option>
-          <option value="valorDesc">Maior valor</option>
-          <option value="valorAsc">Menor valor</option>
-          <option value="vencimento">Próx. vencimento</option>
-        </select>
+        <CustomSelect
+          variant="filter"
+          value={status}
+          onChange={e => setStatus(e.target.value)}
+          placeholder="Todos os status"
+          options={[
+            { value: '', label: 'Todos' },
+            { value: 'Ativo', label: 'Ativo' },
+            { value: 'Inativo', label: 'Inativo' }
+          ]}
+        />
+        <CustomSelect
+          variant="filter"
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          options={[
+            { value: 'criadoDesc', label: 'Mais recentes' },
+            { value: 'nomeAz', label: 'Nome A-Z' },
+            { value: 'valorDesc', label: 'Maior valor' },
+            { value: 'valorAsc', label: 'Menor valor' },
+            { value: 'vencimento', label: 'Próx. vencimento' }
+          ]}
+        />
       </div>
 
       <div className="table-wrap">

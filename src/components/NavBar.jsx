@@ -204,7 +204,7 @@ function MobileNav({ filteredPages, activePage, goTo }) {
   );
 }
 
-// ─── Main Export ──────────────────────────────────────────────────────────────
+// ─── Main Export (Apenas Mobile/Tablet agora, já que desktop usa Sidebar) ───
 export default function NavBar() {
   const activePage = useDash(s => s.activePage);
   const goTo = useDash(s => s.goTo);
@@ -223,11 +223,6 @@ export default function NavBar() {
   });
 
   return (
-    <>
-      {/* Desktop nav — hidden on mobile via CSS */}
-      <DesktopNav filteredPages={filteredPages} activePage={activePage} goTo={goTo} />
-      {/* Mobile bottom nav — hidden on desktop via CSS */}
-      <MobileNav filteredPages={filteredPages} activePage={activePage} goTo={goTo} />
-    </>
+    <MobileNav filteredPages={filteredPages} activePage={activePage} goTo={goTo} />
   );
 }

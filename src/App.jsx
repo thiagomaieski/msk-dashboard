@@ -1,9 +1,11 @@
 import { useEffect, useState, Component } from 'react';
 import { useDash } from './store/useStore';
+import { initRouteSync } from './utils/routes';
 
 import LoadingScreen from './components/LoadingScreen';
 import AuthScreen from './components/AuthScreen';
 import SetupScreen from './components/SetupScreen';
+import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import NavBar from './components/NavBar';
 import Toast, { GlobalLoader } from './components/Toast';
@@ -45,12 +47,21 @@ class ErrorBoundary extends Component {
           justifyContent: 'center', flexDirection: 'column', background: 'var(--bg)',
           color: 'var(--text)', gap: 16, padding: 32, textAlign: 'center'
         }}>
-          <div style={{ fontSize: 32 }}>⚠️</div>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>Erro ao renderizar</div>
-          <div style={{ fontSize: 13, color: 'var(--text3)', maxWidth: 480, fontFamily: 'var(--sans)', background: 'var(--bg3)', padding: 16, borderRadius: 8 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%', background: 'var(--red-bg)',
+            color: 'var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 28, height: 28 }}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>Erro ao renderizar</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', maxWidth: 480, fontFamily: 'var(--sans)', background: 'var(--bg3)', padding: 16, borderRadius: 'var(--radius-sm, 10px)' }}>
             {this.state.error?.message || String(this.state.error)}
           </div>
-          <button className="btn btn-primary" onClick={() => window.location.reload()}>Recarregar</button>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>Recarregar Sistema</button>
         </div>
       );
     }
@@ -60,6 +71,7 @@ class ErrorBoundary extends Component {
 
 function AppInner() {
   const [fullyReady, setFullyReady] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const initAuth = useDash(s => s.initAuth);
   const authReady = useDash(s => s.authReady);
   const appReady = useDash(s => s.appReady);
@@ -72,9 +84,14 @@ function AppInner() {
   const confirm = useDash(s => s.confirm);
   const activeProjectView = useDash(s => s.activeProjectView);
   const checkNotifications = useDash(s => s.checkNotifications);
+  const sidebarCollapsed = useDash(s => s.sidebarCollapsed);
 
   useEffect(() => {
     initAuth();
+    const unbindRouteSync = initRouteSync((page) => {
+      useDash.getState().goTo(page, false);
+    });
+    return unbindRouteSync;
   }, []);
 
   useEffect(() => {
@@ -105,11 +122,18 @@ function AppInner() {
       position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', gap: 20, padding: 32, textAlign: 'center'
     }}>
-      <div style={{ fontSize: 56 }}>🔧</div>
-      <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em' }}>Em Manutenção</div>
+      <div style={{
+        width: 64, height: 64, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.12)',
+        color: 'var(--amber)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 32, height: 32 }}>
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+        </svg>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em' }}>Sistema em Manutenção</div>
       <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 400, lineHeight: 1.7 }}>
         O sistema está passando por uma atualização e estará de volta em breve.<br/>
-        Agradecemos sua paciência.
+        Agradecemos sua compreensão.
       </div>
       <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={() => window.location.reload()}>
         Verificar novamente
@@ -118,23 +142,31 @@ function AppInner() {
   );
 
   return (
-    <div id="app">
-      <Topbar />
-      <NavBar />
-      <Suspense fallback={<GlobalLoader forced />}>
-        <main className="main">
-          {activePage === 'dashboard' && <DashboardPage />}
-          {activePage === 'leads' && <LeadsPage />}
-          {activePage === 'projetos' && <ProjetosPage />}
-          {activePage === 'recorrencia' && <RecorrenciaPage />}
-          {activePage === 'financas-negocio' && <FinancasNegocioPage />}
-          {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
-          {activePage === 'lixeira' && <LixeiraPage />}
-          {activePage === 'clientes' && <ClientesPage />}
-          {activePage === 'configuracoes' && <ConfiguracoesPage />}
-          {activePage === 'uptime' && <UptimePage />}
-        </main>
-      </Suspense>
+    <div id="app" className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
+      {/* Sidebar Lateral Moderna (Desktop & Drawer Mobile) */}
+      <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
+
+      {/* Área Principal com Header Utilitário e Conteúdo */}
+      <div className="app-content">
+        <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />
+        <Suspense fallback={<GlobalLoader forced />}>
+          <main className="main">
+            {activePage === 'dashboard' && <DashboardPage />}
+            {activePage === 'leads' && <LeadsPage />}
+            {activePage === 'projetos' && <ProjetosPage />}
+            {activePage === 'recorrencia' && <RecorrenciaPage />}
+            {activePage === 'financas-negocio' && <FinancasNegocioPage />}
+            {activePage === 'financas-pessoais' && <FinancasPessoaisPage />}
+            {activePage === 'lixeira' && <LixeiraPage />}
+            {activePage === 'clientes' && <ClientesPage />}
+            {activePage === 'configuracoes' && <ConfiguracoesPage />}
+            {activePage === 'uptime' && <UptimePage />}
+          </main>
+        </Suspense>
+      </div>
+
+      {/* Navegação Mobile Inferior */}
+      <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />
       
       <Suspense fallback={null}>
         {!!activeProjectView && <ProjectView />}

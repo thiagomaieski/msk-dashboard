@@ -2,6 +2,8 @@ import { db, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, getDocs
 import { uCol, uDoc, fmtDateISO, fmtDate, fmtBRL, detectCSVDelimiter, parseCSVRows, cleanCSVValue, buildCSVHeaderMap, getCSVCell, normalizeImportedStatus, TRASH_COLS, ALL_COLS, EMPTY_DATA, getRecorrenciaVencimento } from '../storeUtils';
 import { syncAlertsWithHostinger } from '../../utils/syncAlerts';
 import { MOCK_DATA } from '../mockData';
+import { getPageFromUrl, syncUrlWithPage } from '../../utils/routes';
+import { sanitizeObjectStrings } from '../../utils/textUtils';
 
 let IS_REPORTING_AUTOMATIC_ERROR = false;
 
@@ -15,12 +17,14 @@ export const createUISlice = (set, get) => ({
   isSyncingAutomations: false,
   maintenanceMode: false,
   editingId: { leads: null, projetos: null, recorrencia: null, negocio: null, pessoal: null, clientes: null, lembretes: null, despesasFixas: null },
-  activePage: 'dashboard',
+  activePage: getPageFromUrl(),
+  previousPage: 'dashboard',
   configActiveTab: 'cfg-conta',
   activeProjectView: null,
   selectedItems: [],
   currentBulkCol: null,
   theme: localStorage.getItem('theme') || 'dark',
+  sidebarCollapsed: localStorage.getItem('msk_sidebar_collapsed') === 'true',
   zoomControl: localStorage.getItem('zoom') || '100',
   notifications: [],
   _firedReminders: new Set(),
@@ -47,7 +51,8 @@ export const createUISlice = (set, get) => ({
     const { realData, mockData, demoMode } = get();
     const combined = { ...EMPTY_DATA };
     Object.keys(EMPTY_DATA).forEach(k => {
-      combined[k] = [...(realData[k] || []), ...(demoMode ? (mockData[k] || []) : [])];
+      const items = [...(realData[k] || []), ...(demoMode ? (mockData[k] || []) : [])];
+      combined[k] = items.map(sanitizeObjectStrings);
     });
     set({ data: combined });
   },
@@ -59,7 +64,7 @@ export const createUISlice = (set, get) => ({
       const snap = await getDocs(uCol(colName));
       return {
         colName,
-        docs: snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => !x.deletadoEm)
+        docs: snap.docs.map(d => ({ id: d.id, ...sanitizeObjectStrings(d.data()) })).filter(x => !x.deletadoEm)
       };
     });
     
@@ -197,7 +202,26 @@ export const createUISlice = (set, get) => ({
     }
   },
 
-  goTo: (page) => set({ activePage: page, selectedItems: [], currentBulkCol: null }),
+  toggleSidebarCollapsed: () => {
+    const next = !get().sidebarCollapsed;
+    localStorage.setItem('msk_sidebar_collapsed', String(next));
+    set({ sidebarCollapsed: next });
+  },
+
+  setSidebarCollapsed: (val) => {
+    localStorage.setItem('msk_sidebar_collapsed', String(val));
+    set({ sidebarCollapsed: val });
+  },
+
+  goTo: (page, updateHistory = true) => {
+    const current = get().activePage;
+    let prev = get().previousPage || 'dashboard';
+    if (current && current !== 'configuracoes' && page === 'configuracoes') {
+      prev = current;
+    }
+    set({ activePage: page, previousPage: prev, selectedItems: [], currentBulkCol: null });
+    if (updateHistory) syncUrlWithPage(page);
+  },
   setConfigTab: (tab) => set({ configActiveTab: tab }),
 
   toast: (msg, type = 'success', duration = 3400) => {

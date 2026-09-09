@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL } from '../store/useStore';
+import CustomSelect from '../components/CustomSelect';
 
 const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
 
@@ -32,7 +33,15 @@ function ClientePerfilModal({ cliente, onClose }) {
     [data.negocio, cliente]
   );
 
-  const statusColor = { 'Concluído': 'var(--green)', 'Em andamento': 'var(--accent)', 'Aguardando': 'var(--yellow)', 'Aguardando Aprovação': 'var(--purple)', 'Cancelado': 'var(--red)' };
+  const statusColor = { 
+    'Concluído': 'var(--green)', 
+    'Em andamento': 'var(--blue)', 
+    'Aguardando cliente': 'var(--amber)', 
+    'Aguardando': 'var(--amber)', 
+    'Aguardando Aprovação': 'var(--purple)', 
+    'Pausado': 'var(--text3)', 
+    'Cancelado': 'var(--red)' 
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -93,8 +102,9 @@ function ClientePerfilModal({ cliente, onClose }) {
             {cliente.telefone && (
               <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px' }}>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>Telefone</div>
-                <a href={`https://wa.me/55${cliente.telefone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', fontWeight: 600, textDecoration: 'none', fontSize: 14 }}>
-                  {cliente.telefone} ↗
+                <a href={`https://wa.me/55${cliente.telefone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', fontWeight: 600, textDecoration: 'none', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {cliente.telefone}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12, opacity: 0.7 }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </a>
               </div>
             )}
@@ -392,12 +402,18 @@ export default function ClientesPage() {
           </svg>
           <input className="filter-input" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="filter-select" value={sort} onChange={e => setSort(e.target.value)} style={{ minWidth: 140 }}>
-          <option value="nomeAz">Nome A→Z</option>
-          <option value="nomeZa">Nome Z→A</option>
-          <option value="criadoDesc">Mais Recentes</option>
-          <option value="criadoAsc">Mais Antigos</option>
-        </select>
+        <CustomSelect
+          variant="filter"
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          style={{ minWidth: 140 }}
+          options={[
+            { value: 'nomeAz', label: 'Nome A-Z' },
+            { value: 'nomeZa', label: 'Nome Z-A' },
+            { value: 'criadoDesc', label: 'Mais Recentes' },
+            { value: 'criadoAsc', label: 'Mais Antigos' }
+          ]}
+        />
       </div>
 
       {totalClientes === 0 ? (

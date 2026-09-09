@@ -3,6 +3,7 @@ import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { generateReciboPDF } from '../components/PDFGenerator';
 import { NumberStepper } from '../components/shared';
+import CustomSelect from '../components/CustomSelect';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
@@ -37,9 +38,9 @@ function PayStatusPill({ id, pago, colPrefix }) {
         gap: 5,
         padding: '3px 10px',
         borderRadius: 99,
-        border: `1px solid ${pago ? 'var(--green)' : 'rgba(255,255,255,0.12)'}`,
-        background: pago ? 'rgba(0,197,115,0.12)' : 'var(--bg3)',
-        color: pago ? 'var(--green)' : 'var(--text3)',
+        border: `1px solid ${pago ? 'var(--green)' : 'rgba(245,158,11,0.35)'}`,
+        background: pago ? 'var(--green-bg)' : 'var(--amber-bg)',
+        color: pago ? 'var(--green)' : 'var(--amber)',
         fontSize: 11,
         fontWeight: 600,
         cursor: 'pointer',
@@ -283,14 +284,26 @@ export function FinancasNegocioPage() {
       </div>
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
-        <select className="filter-select" value={ano} onChange={e => setAno(e.target.value)}>
-          <option value="">Todos</option>
-          {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <select className="filter-select" value={mes} onChange={e => setMes(e.target.value)}>
-          <option value="">Todo ano</option>
-          {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
-        </select>
+        <CustomSelect
+          variant="filter"
+          value={ano}
+          onChange={e => setAno(e.target.value)}
+          placeholder="Todos"
+          options={[
+            { value: '', label: 'Todos' },
+            ...YEARS.map(y => ({ value: String(y), label: String(y) }))
+          ]}
+        />
+        <CustomSelect
+          variant="filter"
+          value={mes}
+          onChange={e => setMes(e.target.value)}
+          placeholder="Todo ano"
+          options={[
+            { value: '', label: 'Todo ano' },
+            ...MESES.map((m, i) => ({ value: String(i), label: m }))
+          ]}
+        />
         <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('esteMes')}>Este Mês</button>
         <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('mesPassado')}>Mês Passado</button>
         <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('esteAno')}>Este Ano</button>
@@ -413,7 +426,10 @@ export function FinancasNegocioPage() {
           <div className="finance-col">
             <div className="finance-col-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="finance-col-title green">↑ Receitas</span>
+                <span className="finance-col-title green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m18 15-6-6-6 6"/></svg>
+                  Receitas
+                </span>
                 <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')} title="Nova Receita">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
                 </button>
@@ -437,7 +453,10 @@ export function FinancasNegocioPage() {
           <div className="finance-col-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className="finance-col-title red">↓ Despesas</span>
+                <span className="finance-col-title red" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m6 9 6 6 6-6"/></svg>
+                  Despesas
+                </span>
                 <button className="btn btn-sm btn-danger" onClick={() => openModal('negocioDespesa')} title="Nova Despesa">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
                 </button>
@@ -493,8 +512,11 @@ export function FinancasNegocioPage() {
                   <td><input type="checkbox" checked={selectedItems.includes(m.id)} onChange={() => toggleSelect('negocio', m.id)} /></td>
                   <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
                   <td>
-                    <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
-                      {m.tipo === 'Receita' ? '↑ Receita' : '↓ Despesa'}
+                    <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
+                        {m.tipo === 'Receita' ? <path d="m18 15-6-6-6 6"/> : <path d="m6 9 6 6 6-6"/>}
+                      </svg>
+                      {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
                     </span>
                   </td>
                   <td>
@@ -626,14 +648,26 @@ export function FinancasPessoaisPage() {
       </div>
       <div className="finance-period">
         <span className="finance-period-label">Período:</span>
-        <select className="filter-select" value={ano} onChange={e => setAno(e.target.value)}>
-          <option value="">Todos</option>
-          {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <select className="filter-select" value={mes} onChange={e => setMes(e.target.value)}>
-          <option value="">Todo ano</option>
-          {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
-        </select>
+        <CustomSelect
+          variant="filter"
+          value={ano}
+          onChange={e => setAno(e.target.value)}
+          placeholder="Todos"
+          options={[
+            { value: '', label: 'Todos' },
+            ...YEARS.map(y => ({ value: String(y), label: String(y) }))
+          ]}
+        />
+        <CustomSelect
+          variant="filter"
+          value={mes}
+          onChange={e => setMes(e.target.value)}
+          placeholder="Todo ano"
+          options={[
+            { value: '', label: 'Todo ano' },
+            ...MESES.map((m, i) => ({ value: String(i), label: m }))
+          ]}
+        />
       </div>
       <div className="summary-cards">
         <div className="summary-card"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
@@ -697,7 +731,10 @@ export function FinancasPessoaisPage() {
         <div className="finance-col">
           <div className="finance-col-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="finance-col-title green">↑ Receitas</span>
+              <span className="finance-col-title green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m18 15-6-6-6 6"/></svg>
+                Receitas
+              </span>
               <button className="btn btn-sm btn-primary" onClick={() => openModal('pessoalReceita')} title="Nova Receita">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
               </button>
@@ -721,7 +758,10 @@ export function FinancasPessoaisPage() {
           <div className="finance-col-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className="finance-col-title red">↓ Despesas</span>
+                <span className="finance-col-title red" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m6 9 6 6 6-6"/></svg>
+                  Despesas
+                </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button className="btn btn-sm btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => openModal('pessoalDespesa')} title="Nova Despesa">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>

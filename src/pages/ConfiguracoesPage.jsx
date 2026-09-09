@@ -6,6 +6,7 @@ import nonProfilePhoto from '../assets/non-profile-photo.png';
 import LegalModals from '../components/LegalModals';
 import { generateOrcamentoPDF } from '../components/PDFGenerator';
 import AdminPanel from './AdminPanel';
+import CustomSelect from '../components/CustomSelect';
 
 export default function ConfiguracoesPage() {
   const activeTab = useDash(s => s.configActiveTab);
@@ -57,6 +58,7 @@ export default function ConfiguracoesPage() {
   const userRole = useDash(s => s.userRole);
   const isAdmin = userRole === 'admin';
   const saveEmpresaData = useDash(s => s.saveEmpresaData);
+  const repairMojibakeData = useDash(s => s.repairMojibakeData);
 
   const [nichoInput, setNichoInput] = useState('');
   const [catInput, setCatInput] = useState('');
@@ -465,12 +467,18 @@ export default function ConfiguracoesPage() {
                   <div className="settings-row-desc">Ajuste o tamanho de exibição para melhor leitura e acessibilidade.</div>
                 </div>
                 <div>
-                  <select className="form-select" value={zoomControl} onChange={(e) => setZoom(e.target.value)} style={{ width: 'auto' }}>
-                    <option value="90">Pequeno (90%)</option>
-                    <option value="100">Normal (100%)</option>
-                    <option value="110">Grande (110%)</option>
-                    <option value="125">Extra Grande (125%)</option>
-                  </select>
+                  <CustomSelect
+                    variant="form"
+                    value={zoomControl}
+                    onChange={(e) => setZoom(e.target.value)}
+                    style={{ width: 180 }}
+                    options={[
+                      { value: '90', label: 'Pequeno (90%)' },
+                      { value: '100', label: 'Normal (100%)' },
+                      { value: '110', label: 'Grande (110%)' },
+                      { value: '125', label: 'Extra Grande (125%)' }
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -480,11 +488,16 @@ export default function ConfiguracoesPage() {
                   <div className="settings-row-desc">Linguagem utilizada na interface da aplicação.</div>
                 </div>
                 <div>
-                  <select className="form-select" style={{ width: 'auto' }} defaultValue="pt-BR">
-                    <option value="pt-BR">Português (Brasil)</option>
-                    <option value="en-US">English (US)</option>
-                    <option value="es">Español</option>
-                  </select>
+                  <CustomSelect
+                    variant="form"
+                    value="pt-BR"
+                    style={{ width: 180 }}
+                    options={[
+                      { value: 'pt-BR', label: 'Português (Brasil)' },
+                      { value: 'en-US', label: 'English (US)' },
+                      { value: 'es', label: 'Español' }
+                    ]}
+                  />
                 </div>
               </div>
             </div>
@@ -517,18 +530,23 @@ export default function ConfiguracoesPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, maxWidth: 650, marginBottom: 16 }}>
                   <div className="form-group">
                     <label className="form-label">Tipo de Empresa</label>
-                    <select className="form-select" value={configData.tipoEmpresa || 'MEI'} onChange={async e => {
-                      const tipo = e.target.value;
-                      const limites = { 'MEI': 81000, 'MEI-Caminhoneiro': 251600, 'ME': 360000, 'EPP': 4800000, 'Outro': configData.limiteAnual || 81000 };
-                      const aliquotas = { 'MEI': 0, 'MEI-Caminhoneiro': 0, 'ME': 6, 'EPP': 6, 'Outro': configData.aliquotaImposto || 0 };
-                      await useDash.getState().saveBusinessConfig({ tipoEmpresa: tipo, limiteAnual: limites[tipo] || configData.limiteAnual || 81000, aliquotaImposto: aliquotas[tipo] || 0 });
-                    }}>
-                      <option value="MEI">MEI (R$ 81.000/ano)</option>
-                      <option value="MEI-Caminhoneiro">MEI Caminhoneiro (R$ 251.600/ano)</option>
-                      <option value="ME">ME (R$ 360.000/ano)</option>
-                      <option value="EPP">EPP (R$ 4.800.000/ano)</option>
-                      <option value="Outro">Personalizado</option>
-                    </select>
+                    <CustomSelect
+                      variant="form"
+                      value={configData.tipoEmpresa || 'MEI'}
+                      onChange={async e => {
+                        const tipo = e.target.value;
+                        const limites = { 'MEI': 81000, 'MEI-Caminhoneiro': 251600, 'ME': 360000, 'EPP': 4800000, 'Outro': configData.limiteAnual || 81000 };
+                        const aliquotas = { 'MEI': 0, 'MEI-Caminhoneiro': 0, 'ME': 6, 'EPP': 6, 'Outro': configData.aliquotaImposto || 0 };
+                        await useDash.getState().saveBusinessConfig({ tipoEmpresa: tipo, limiteAnual: limites[tipo] || configData.limiteAnual || 81000, aliquotaImposto: aliquotas[tipo] || 0 });
+                      }}
+                      options={[
+                        { value: 'MEI', label: 'MEI (R$ 81.000/ano)' },
+                        { value: 'MEI-Caminhoneiro', label: 'MEI Caminhoneiro (R$ 251.600/ano)' },
+                        { value: 'ME', label: 'ME (R$ 360.000/ano)' },
+                        { value: 'EPP', label: 'EPP (R$ 4.800.000/ano)' },
+                        { value: 'Outro', label: 'Personalizado' }
+                      ]}
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Limite Anual (R$)</label>
@@ -926,6 +944,16 @@ export default function ConfiguracoesPage() {
                 </div>
                 <div>
                   <button className="btn btn-secondary" onClick={exportData}>Fazer Download</button>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-info">
+                  <div className="settings-row-title">Reparar Acentuação dos Leads (Encoding)</div>
+                  <div className="settings-row-desc">Varre o banco de dados e corrige caracteres corrompidos de planilhas antigas (ex: "Ã£", "Ã©", "NÃEo", etc.).</div>
+                </div>
+                <div>
+                  <button className="btn btn-secondary" onClick={repairMojibakeData}>Reparar Textos</button>
                 </div>
               </div>
 

@@ -18,7 +18,7 @@ import {
 
 // ── Cores por status ─────────────────────────────────────────────────────────
 const STATUS_COLORS = {
-  'Novo': '#94a3b8',
+  'Novo': '#38bdf8',
   'Abordado': '#3b82f6',
   'Em negociação': '#a855f7',
   'Follow-up': '#f59e0b',

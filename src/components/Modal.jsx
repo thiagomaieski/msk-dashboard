@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { NumberStepper } from './shared';
 import ImportFinancasModal from './ImportFinancasModal';
 import ImportLeadsModal from './ImportLeadsModal';
-import { generatePitchAngle, generatePitchMessage, INTERACAO_TIPO_LABELS, INTERACAO_TIPOS } from '../utils/crmAnalyticsUtils';
+import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS } from '../utils/crmAnalyticsUtils';
+import CustomSelect from './CustomSelect';
 
 
 export default function Modal() {
@@ -33,14 +34,42 @@ export default function Modal() {
       onMouseDown={handleMouseDown} 
       onMouseUp={handleMouseUp}
     >
-      <div className={`modal ${modalSize ? 'modal-' + modalSize : ''}`}>
+      <div className={`modal ${modalSize ? 'modal-' + modalSize : ''} ${modalType === 'lead' ? 'modal-lead' : ''}`}>
         <div className="modal-header">
-          <div className="modal-title">{modalTitle}</div>
-          <button className="modal-close" onClick={closeModal}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div className="modal-title">{modalTitle}</div>
+          </div>
+          <div className="modal-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {modalType === 'lead' && (
+              <button
+                type="submit"
+                form="lead-modal-form"
+                className="btn btn-sm btn-primary lead-header-save-btn"
+                title="Salvar alterações (Ctrl+S)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span>Salvar</span>
+              </button>
+            )}
+            <button className="modal-close" onClick={closeModal} title="Fechar modal (Esc)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="modal-body">
           <ModalContent type={modalType} />
@@ -58,7 +87,7 @@ function ModalContent({ type }) {
   if (type === 'lead') return <LeadForm item={data.leads.find(x => x.id === editingId.leads)} />;
   if (type === 'projeto') return <ProjetoForm item={data.projetos.find(x => x.id === editingId.projetos)} />;
   if (type === 'recorrencia') return <RecorrenciaForm item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
-  if (type === 'negocioReceita') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
+  if (type === 'negocioReceita' || type === 'transacao') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
   if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
   if (type === 'parcela') return <ParcelaForm item={data.negocio.find(x => x.id === editingId.negocio)} />;
   if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm recorrenciaId={editingId.recorrencia} />;
@@ -66,7 +95,11 @@ function ModalContent({ type }) {
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'pessoalInvestimento') return <PessoalInvestimentoForm item={data.pessoal.find(x => x.id === editingId.pessoal)} />;
   if (type === 'cliente') return <ClienteForm item={data.clientes.find(x => x.id === editingId.clientes)} />;
-  if (type === 'lembrete') return <LembreteForm item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
+  if (type === 'lembrete') {
+    const found = data.lembretes.find(x => x.id === editingId.lembretes);
+    const item = found || (typeof editingId.lembretes === 'string' && editingId.lembretes.startsWith('date:') ? { prazo: editingId.lembretes.replace('date:', '') } : null);
+    return <LembreteForm item={item} />;
+  }
   if (type === 'verNota') return <VerNotaModal item={data.lembretes.find(x => x.id === editingId.lembretes)} />;
   if (type === 'despesaFixa') return <DespesaFixaForm item={data.despesasFixas.find(x => x.id === editingId.despesasFixas)} />;
   if (type === 'csvInfo') return <ImportLeadsModal />;
@@ -132,6 +165,7 @@ function PageSpeedScore({ label, value, icon }) {
 }
 
 function LeadForm({ item }) {
+  const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
   const saveLead = useDash(s => s.saveLead);
   const saveLeadNotes = useDash(s => s.saveLeadNotes);
@@ -143,12 +177,19 @@ function LeadForm({ item }) {
 
   const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
 
+  const existingCidades = useMemo(() => {
+    const set = new Set();
+    (data?.leads || []).forEach(l => {
+      if (l.cidade && l.cidade.trim()) set.add(l.cidade.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data?.leads]);
+
   const [intText, setIntText] = useState('');
   const [intTipo, setIntTipo] = useState('outro');
-  const [pitchMsg, setPitchMsg] = useState('');
-  const [pitchMsgCopiada, setPitchMsgCopiada] = useState(false);
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
+    cidade: item?.cidade || '',
     email: item?.email || '', origem: item?.origem || '',
     valorEstimado: item?.valorEstimado || '', proximoContato: item?.proximoContato || '',
     nicho: item?.nicho || configData.nichos[0] || '',
@@ -156,18 +197,6 @@ function LeadForm({ item }) {
     interacoes: item?.interacoes || [],
   });
 
-  // Ganchos de abordagem via pré-qualificação
-  const pitchAngles = item ? generatePitchAngle(item) : [];
-
-  const handleCopyPitch = async (tipo) => {
-    const msg = generatePitchMessage(item || f, tipo);
-    setPitchMsg(msg);
-    try {
-      await navigator.clipboard.writeText(msg);
-      setPitchMsgCopiada(true);
-      setTimeout(() => setPitchMsgCopiada(false), 2500);
-    } catch { /* silencioso */ }
-  };
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
 
   const [isPrequaling, setIsPrequaling] = useState(false);
@@ -216,43 +245,89 @@ function LeadForm({ item }) {
     });
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSaving) return;
+    if (!f.nome || !f.nome.trim()) {
+      return useDash.getState().toast('O Nome/Empresa é obrigatório.', 'error');
+    }
+    setIsSaving(true);
+    try {
+      await saveLead({ ...f, id: item?.id });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Suporte a atalho de teclado global Ctrl+S / Cmd+S para salvar rapidamente
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [f, item, isSaving]);
+
   return (
-    <div className="lead-modal-grid">
-      {/* COLUNA ESQUERDA: formulário original */}
-      <div className="form-grid" style={{ flex: 1, minWidth: 0 }}>
-        <div className="form-grid form-grid-2">
-          <div className="form-group"><label className="form-label">Nome / Empresa *</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
-          <div className="form-group"><label className="form-label">Telefone / WhatsApp</label><input className="form-input" value={f.telefone} onChange={u('telefone')} /></div>
+    <form id="lead-modal-form" onSubmit={handleSave} className="lead-modal-form-wrap">
+      <div className="lead-modal-scrollable">
+        <div className="lead-modal-grid">
+        {/* COLUNA ESQUERDA: formulário original */}
+        <div className="form-grid" style={{ flex: 1, minWidth: 0 }}>
+          <div className="form-grid form-grid-2">
+            <div className="form-group"><label className="form-label">Nome / Empresa *</label><input className="form-input" value={f.nome} onChange={u('nome')} /></div>
+            <div className="form-group"><label className="form-label">Telefone / WhatsApp</label><input className="form-input" value={f.telefone} onChange={u('telefone')} /></div>
+          </div>
+          <div className="form-grid form-grid-2">
+            <div className="form-group">
+              <label className="form-label">Cidade / Localização</label>
+              <input 
+                className="form-input" 
+              value={f.cidade} 
+              onChange={u('cidade')} 
+              list="existing-cidades-lead" 
+              placeholder="Ex: São Paulo - SP" 
+            />
+            <datalist id="existing-cidades-lead">
+              {existingCidades.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          <div className="form-group"><label className="form-label">Origem do Lead</label>
+            <CustomSelect variant="form" value={f.origem} onChange={u('origem')} placeholder="-- Selecione --">
+              {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
+            </CustomSelect>
+          </div>
         </div>
         <div className="form-grid form-grid-2">
           <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" type="email" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" /></div>
-          <div className="form-group"><label className="form-label">Origem do Lead</label>
-            <select className="form-select" value={f.origem} onChange={u('origem')}>
-              {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
-            </select>
-          </div>
+          <div className="form-group"><label className="form-label">Site / Instagram</label><input className="form-input" value={f.site} onChange={u('site')} /></div>
         </div>
         <div className="form-grid form-grid-2">
           <div className="form-group"><label className="form-label">Nicho</label>
-            <select className="form-select" value={f.nicho} onChange={u('nicho')}>
+            <CustomSelect variant="form" value={f.nicho} onChange={u('nicho')}>
               {configData.nichos.map(n => <option key={n}>{n}</option>)}
-            </select>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer' }} onClick={() => navTo('cfg-negocios')}>Gerenciar nichos →</div>
+            </CustomSelect>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => navTo('cfg-negocios')}>
+              Gerenciar nichos
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
           </div>
           <div className="form-group"><label className="form-label">Status</label>
-            <select className="form-select" value={f.status} onChange={u('status')}>
+            <CustomSelect variant="form" value={f.status} onChange={u('status')}>
               {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(s => <option key={s}>{s}</option>)}
-            </select>
+            </CustomSelect>
           </div>
         </div>
         <div className="form-grid form-grid-2">
           <div className="form-group"><label className="form-label">Valor Estimado (R$)</label><input className="form-input" type="number" min="0" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" /></div>
-          <div className="form-group"><label className="form-label">Site / Instagram</label><input className="form-input" value={f.site} onChange={u('site')} /></div>
-        </div>
-        <div className="form-grid form-grid-2">
           <div className="form-group"><label className="form-label">Último Contato</label><input className="form-input" type="date" value={f.ultimoContato} onChange={u('ultimoContato')} /></div>
-          <div className="form-group"><label className="form-label">Próximo Contato</label><input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} /></div>
         </div>
+        <div className="form-group"><label className="form-label">Próximo Contato (Agendamento)</label><input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} /></div>
         <div className="form-group">
           <label className="form-label">Histórico de Interações</label>
           <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border)' }}>
@@ -269,7 +344,7 @@ function LeadForm({ item }) {
                       </span>
                     )}
                     <span style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
-                    <button className="row-btn del" style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }} onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}>×</button>
+                    <button type="button" className="row-btn del" style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }} onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}>×</button>
                   </div>
                 ))}
               </div>
@@ -308,6 +383,7 @@ function LeadForm({ item }) {
                 }}
               />
               <button
+                type="button"
                 id="lead-int-btn"
                 className="btn btn-sm btn-secondary"
                 onClick={() => {
@@ -336,6 +412,7 @@ function LeadForm({ item }) {
           </div>
           {item?.id && (
             <button
+              type="button"
               className="btn btn-sm btn-secondary"
               onClick={handleSinglePreQual}
               disabled={isPrequaling}
@@ -382,7 +459,7 @@ function LeadForm({ item }) {
                 {singleProgress.status === 'skipped'    && (singleProgress.message || 'Lead ignorado')}
               </span>
               {(singleProgress.status === 'error' || singleProgress.status === 'skipped') && (
-                <button className="prequal-single-log-close" onClick={() => setSingleProgress(null)}>×</button>
+                <button type="button" className="prequal-single-log-close" onClick={() => setSingleProgress(null)}>×</button>
               )}
             </div>
 
@@ -430,84 +507,6 @@ function LeadForm({ item }) {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── Assistente de Abordagem ──────────────────────────────── */}
-        {item && (
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: '#8b5cf6' }}>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                <circle cx="12" cy="12" r="6" />
-              </svg>
-              <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>Assistente de Abordagem</span>
-            </div>
-            {pitchAngles.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                {pitchAngles.slice(0, 3).map((g, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 }}>
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: 10,
-                      marginTop: 1,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                      background: g.prioridade === 'alta' ? 'var(--red-bg, rgba(239,68,68,0.1))' : g.prioridade === 'media' ? 'rgba(245,158,11,0.1)' : 'var(--bg4)',
-                      color: g.prioridade === 'alta' ? 'var(--red)' : g.prioridade === 'media' ? 'var(--amber, #f59e0b)' : 'var(--text3)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '.03em',
-                    }}>
-                      {g.prioridade === 'alta' ? 'Alta Prioridade' : g.prioridade === 'media' ? 'Média' : 'Baixa'}
-                    </span>
-                    <span style={{ color: 'var(--text2)', lineHeight: 1.4 }}>{g.gancho}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
-                {prequalData ? 'Nenhum ponto crítico identificado.' : 'Execute a pré-qualificação para ver sugestões personalizadas.'}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('abordagem_inicial')}>Abordagem Inicial</button>
-              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('follow_up')}>Follow-up</button>
-              <button className="btn btn-sm btn-secondary" style={{ fontSize: 11 }} onClick={() => handleCopyPitch('proposta')}>Proposta</button>
-            </div>
-            {pitchMsg && (
-              <div style={{ marginTop: 10 }}>
-                <textarea
-                  readOnly
-                  value={pitchMsg}
-                  style={{ width: '100%', fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', resize: 'vertical', minHeight: 75, color: 'var(--text)', lineHeight: 1.5 }}
-                />
-                <button
-                  className="btn btn-sm btn-primary"
-                  style={{ width: '100%', marginTop: 6, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  onClick={async () => {
-                    try { await navigator.clipboard.writeText(pitchMsg); setPitchMsgCopiada(true); setTimeout(() => setPitchMsgCopiada(false), 2000); } catch {}
-                  }}
-                >
-                  {pitchMsgCopiada ? (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 13, height: 13 }}>
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Copiado!
-                    </>
-                  ) : (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                      Copiar Texto da Abordagem
-                    </>
-                  )}
-                </button>
               </div>
             )}
           </div>
@@ -565,7 +564,10 @@ function LeadForm({ item }) {
                     </div>
                   )}
                   {prequalData.instagram && (
-                    <a href={prequalData.instagram} target="_blank" rel="noreferrer" className="prequal-insta-link">Ver perfil →</a>
+                    <a href={prequalData.instagram} target="_blank" rel="noreferrer" className="prequal-insta-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Ver perfil
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
                   )}
                 </div>
                 {prequalData.instagramData.bio && (
@@ -594,6 +596,7 @@ function LeadForm({ item }) {
                 Screenshot do Site
                 {prequalData.screenshotUrl && (
                   <button
+                    type="button"
                     className="btn btn-sm btn-secondary"
                     style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 8px', color: 'var(--red)' }}
                     onClick={() => deleteLeadScreenshot(item.id)}
@@ -638,11 +641,13 @@ function LeadForm({ item }) {
                 <p className="lead-name">{item?.nome || 'Lead'}</p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <a href={screenshotUrlWithCacheBuster} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Abrir imagem ↗
+                    Abrir imagem
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   </a>
                   {prequalData?.site && (
                     <a href={prequalData.site.startsWith('http') ? prequalData.site : `https://${prequalData.site}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-primary" style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Visualizar Site Ao vivo ↗
+                      Visualizar Site Ao vivo
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </a>
                   )}
                 </div>
@@ -667,31 +672,75 @@ function LeadForm({ item }) {
             </div>
           </div>
         )}
+        </div>
+      </div>
+    </div>
 
-        <div className="form-actions" style={{ justifyContent: 'space-between', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          <div>
-            {item && (
-              <button className="btn btn-secondary" style={{ color: 'var(--green)', gap: 6 }} onClick={() => {
+      {/* ── FOOTER FIXO / STICKY - 100% VISÍVEL A TODO MOMENTO ── */}
+      <div className="lead-modal-footer">
+        <div className="lead-modal-footer-left">
+          {item && (
+            <button
+              type="button"
+              className="btn btn-secondary lead-btn-convert"
+              style={{ color: 'var(--green)', gap: 6, fontSize: 12 }}
+              onClick={() => {
                 if (window.confirm('Deseja converter este lead em cliente? Todos os dados serão migrados.')) {
                   useDash.getState().convertLeadToCliente(item.id);
                   closeModal();
                 }
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
-                Converter em Cliente
-              </button>
+              }}
+              title="Converter lead em cliente cadastrado"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+              </svg>
+              <span>Converter em Cliente</span>
+            </button>
+          )}
+          {item?.status && (
+            <span className="lead-modal-status-badge desktop-only">
+              Status: <strong>{item.status}</strong>
+            </span>
+          )}
+        </div>
+
+        <div className="lead-modal-footer-right">
+          <span className="lead-modal-shortcut-hint desktop-only" title="Pressione Ctrl+S a qualquer momento para salvar">
+            <kbd>Ctrl</kbd> + <kbd>S</kbd>
+          </span>
+          <button type="button" className="btn btn-secondary" onClick={closeModal}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary lead-btn-save"
+            disabled={isSaving}
+            title="Salvar alterações (Ctrl+S)"
+          >
+            {isSaving ? (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                <span>Salvando...</span>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span>{item ? 'Salvar Alterações' : 'Salvar Lead'}</span>
+              </>
             )}
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-            <button className="btn btn-primary" onClick={() => {
-              if (!f.nome) return useDash.getState().toast('O Nome/Empresa é obrigatório.', 'error');
-              saveLead({ ...f, id: item?.id });
-            }}>Salvar</button>
-          </div>
+          </button>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 // ── CLIENTE FORM ──
@@ -756,9 +805,9 @@ function ClienteForm({ item }) {
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Como Conheceu</label>
-          <select className="form-select" value={f.conheceu} onChange={u('conheceu')}>
+          <CustomSelect variant="form" value={f.conheceu} onChange={u('conheceu')}>
             {CONH.map(s => <option key={s}>{s}</option>)}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group"><label className="form-label">Segmento</label><input className="form-input" value={f.segmento} onChange={u('segmento')} /></div>
       </div>
@@ -830,8 +879,8 @@ function ProjetoForm({ item }) {
           style={{ textDecoration: 'underline', cursor: 'pointer', color: 'inherit', fontWeight: 600, transition: 'opacity 0.2s' }} 
           onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          onClick={() => navTo('cfg-negocios')}
-        >Configurações &rarr; Clientes</span> antes de criar projetos.
+          onClick={() => { closeModal(); goTo('clientes'); }}
+        >Negócio &rarr; Clientes</span> antes de criar projetos.
       </span>
     </div>
   );
@@ -839,20 +888,20 @@ function ProjetoForm({ item }) {
     <div className="form-grid">
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Cliente</label>
-          <select className="form-select" value={f.cliente} onChange={u('cliente')}>
+          <CustomSelect variant="form" value={f.cliente} onChange={u('cliente')} placeholder="-- Selecione um cliente --">
             <option value="">-- Selecione um cliente --</option>
             {data.clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-          </select>
+          </CustomSelect>
           {noCli}
         </div>
         <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
       <div className="form-group"><label className="form-label">Nome do Projeto</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Landing Page para Advogados" /></div>
       <div className="form-group">
-        <label className="form-label">Anota\u00e7\u00f5es do Projeto</label>
+        <label className="form-label">Anotações do Projeto</label>
         <textarea
           className="form-textarea"
-          placeholder="Anote aqui a estrutura do projeto, acessos, observa\u00e7\u00f5es importantes..."
+          placeholder="Anote aqui a estrutura do projeto, acessos, observações importantes..."
           style={{ minHeight: 100, fontSize: 13, lineHeight: 1.5 }}
           value={f.anotacoes}
           onChange={u('anotacoes')}
@@ -860,28 +909,28 @@ function ProjetoForm({ item }) {
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Tipo de Projeto</label>
-          <select className="form-select" value={f.tipoProjeto} onChange={u('tipoProjeto')}>
-            {['', 'Site', 'Landing Page', 'E-commerce', 'Identidade Visual', 'Social Media', 'Tr\u00e1fego Pago', 'SEO', 'Consultoria', 'Outro'].map(t => <option key={t} value={t}>{t || '-- Selecione --'}</option>)}
-          </select>
+          <CustomSelect variant="form" value={f.tipoProjeto} onChange={u('tipoProjeto')} placeholder="-- Selecione --">
+            {['', 'Site', 'Landing Page', 'E-commerce', 'Identidade Visual', 'Social Media', 'Tráfego Pago', 'SEO', 'Consultoria', 'Outro'].map(t => <option key={t} value={t}>{t || '-- Selecione --'}</option>)}
+          </CustomSelect>
         </div>
         <div className="form-group"><label className="form-label">Status do Projeto</label>
-          <select className="form-select" value={f.status} onChange={u('status')}>
-            {['Em andamento', 'Aguardando cliente', 'Aguardando Aprova\u00e7\u00e3o', 'Conclu\u00eddo', 'Pausado', 'Cancelado'].map(s => <option key={s}>{s}</option>)}
-          </select>
+          <CustomSelect variant="form" value={f.status} onChange={u('status')}>
+            {['Em andamento', 'Aguardando cliente', 'Aguardando Aprovação', 'Concluído', 'Pausado', 'Cancelado'].map(s => <option key={s}>{s}</option>)}
+          </CustomSelect>
         </div>
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Status do Pagamento</label>
-          <select className="form-select" value={f.pagamento} onChange={u('pagamento')}>
+          <CustomSelect variant="form" value={f.pagamento} onChange={u('pagamento')}>
             {['Pendente', 'Parcial (50%)', 'Pago'].map(p => <option key={p}>{p}</option>)}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group"><label className="form-label">Nota Fiscal</label>
-          <select className="form-select" value={f.nf} onChange={u('nf')}>
+          <CustomSelect variant="form" value={f.nf} onChange={u('nf')}>
             <option value="nao">Não emitida</option>
             <option value="sim">Emitida</option>
             <option value="pendente">Pendente</option>
-          </select>
+          </CustomSelect>
         </div>
       </div>
       <div className="form-grid form-grid-2">
@@ -940,8 +989,8 @@ function RecorrenciaForm({ item }) {
           style={{ textDecoration: 'underline', cursor: 'pointer', color: 'inherit', fontWeight: 600, transition: 'opacity 0.2s' }} 
           onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          onClick={() => navTo('cfg-negocios')}
-        >Configurações &rarr; Clientes</span> antes de criar recorrências.
+          onClick={() => { closeModal(); goTo('clientes'); }}
+        >Negócio &rarr; Clientes</span> antes de criar recorrências.
       </span>
     </div>
   );
@@ -949,10 +998,10 @@ function RecorrenciaForm({ item }) {
     <div className="form-grid">
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Cliente</label>
-          <select className="form-select" value={f.cliente} onChange={u('cliente')}>
+          <CustomSelect variant="form" value={f.cliente} onChange={u('cliente')} placeholder="-- Selecione um cliente --">
             <option value="">-- Selecione um cliente --</option>
             {data.clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-          </select>
+          </CustomSelect>
           {noCli}
         </div>
         <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
@@ -960,14 +1009,14 @@ function RecorrenciaForm({ item }) {
       <div className="form-group"><label className="form-label">Plano / Descrição</label><input className="form-input" value={f.plano} onChange={u('plano')} /></div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Periodicidade</label>
-          <select className="form-select" value={f.periodicidade} onChange={u('periodicidade')}>
+          <CustomSelect variant="form" value={f.periodicidade} onChange={u('periodicidade')}>
             <option>Mensal</option><option>Semestral</option><option>Anual</option>
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group"><label className="form-label">Status</label>
-          <select className="form-select" value={f.status} onChange={u('status')}>
+          <CustomSelect variant="form" value={f.status} onChange={u('status')}>
             <option>Ativo</option><option>Inativo</option>
-          </select>
+          </CustomSelect>
         </div>
       </div>
       <div className="form-grid form-grid-2">
@@ -978,9 +1027,9 @@ function RecorrenciaForm({ item }) {
           <div className="form-group"><label className="form-label">Data de Renovação</label><input className="form-input" type="date" value={f.renovacao} onChange={u('renovacao')} /></div>
         )}
         <div className="form-group"><label className="form-label">Método de Cobrança</label>
-          <select className="form-select" value={f.metodoPagamento} onChange={u('metodoPagamento')}>
+          <CustomSelect variant="form" value={f.metodoPagamento} onChange={u('metodoPagamento')}>
             {['PIX', 'Boleto', 'Cartão', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
-          </select>
+          </CustomSelect>
         </div>
       </div>
       <div className="form-grid form-grid-2">
@@ -1118,23 +1167,23 @@ function FinancaForm({ item, defaultTipo }) {
         <div style={{ display: 'grid', gridTemplateColumns: isCreditCard ? '1fr auto' : '1fr 1fr', gap: 12, alignItems: 'end' }}>
           <div className="form-group">
             <label className="form-label">Forma de Pagamento</label>
-            <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
+            <CustomSelect variant="form" value={f.formaPagamento} onChange={u('formaPagamento')}>
               {['PIX', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
-            </select>
+            </CustomSelect>
           </div>
           {isCreditCard ? (
             <div className="form-group" style={{ minWidth: 100 }}>
               <label className="form-label">Parcelas</label>
-              <select className="form-select" value={f.parcelas} onChange={e => setF(p => ({ ...p, parcelas: parseInt(e.target.value) }))}>
-                {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <option key={n} value={n}>{n}x</option>)}
-              </select>
+              <CustomSelect variant="form" value={String(f.parcelas)} onChange={e => setF(p => ({ ...p, parcelas: parseInt(e.target.value) }))}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <option key={n} value={String(n)}>{n}x</option>)}
+              </CustomSelect>
             </div>
           ) : (
             <div className="form-group">
               <label className="form-label">NF Emitida?</label>
-              <select className="form-select" value={f.nf} onChange={u('nf')}>
+              <CustomSelect variant="form" value={f.nf} onChange={u('nf')}>
                 <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
-              </select>
+              </CustomSelect>
             </div>
           )}
         </div>
@@ -1143,9 +1192,9 @@ function FinancaForm({ item, defaultTipo }) {
         {isCreditCard && (
           <div className="form-group">
             <label className="form-label">NF Emitida?</label>
-            <select className="form-select" value={f.nf} onChange={u('nf')}>
+            <CustomSelect variant="form" value={f.nf} onChange={u('nf')}>
               <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
-            </select>
+            </CustomSelect>
           </div>
       )}
 
@@ -1153,10 +1202,13 @@ function FinancaForm({ item, defaultTipo }) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div className="form-group">
           <label className="form-label">Categoria</label>
-          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
+          <CustomSelect variant="form" value={f.categoria} onChange={u('categoria')}>
             {cats.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <span style={{ fontSize:11, color:'var(--text3)', marginTop:3, cursor:'pointer', display:'inline-block' }} onClick={() => navTo('cfg-financas')}>Gerenciar →</span>
+          </CustomSelect>
+          <span style={{ fontSize:11, color:'var(--text3)', marginTop:3, cursor:'pointer', display:'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => navTo('cfg-financas')}>
+            Gerenciar
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
         </div>
         <div className="form-group">
           <label className="form-label">Cliente / Fornecedor</label>
@@ -1168,10 +1220,10 @@ function FinancaForm({ item, defaultTipo }) {
       {isReceita && (
         <div className="form-group">
           <label className="form-label">Vincular a Projeto</label>
-          <select className="form-select" value={f.projetoId} onChange={u('projetoId')}>
+          <CustomSelect variant="form" value={f.projetoId} onChange={u('projetoId')} placeholder="— Nenhum —">
             <option value="">— Nenhum —</option>
             {(data?.projetos||[]).map(p => <option key={p.id} value={p.id}>{p.descricao||p.cliente}</option>)}
-          </select>
+          </CustomSelect>
         </div>
       )}
 
@@ -1226,16 +1278,17 @@ function PessoalForm({ item, defaultTipo }) {
       <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Categoria</label>
-          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
+          <CustomSelect variant="form" value={f.categoria} onChange={u('categoria')}>
             {cats.map(c => <option key={c}>{c}</option>)}
-          </select>
+          </CustomSelect>
           <div 
-            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+            style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, transition: 'color 0.2s' }} 
             onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
             onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
             onClick={() => navTo('cfg-financas')}
           >
-            Gerenciar categorias →
+            Gerenciar categorias
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>
@@ -1322,12 +1375,13 @@ function DespesaFixaForm({ item }) {
           {cats.map(c => <option key={c}>{c}</option>)}
         </select>
         <div 
-          style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-block', transition: 'color 0.2s' }} 
+          style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, transition: 'color 0.2s' }} 
           onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
           onClick={() => navTo('cfg-financas')}
         >
-          Gerenciar categorias →
+          Gerenciar categorias
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 'var(--radius-sm)' }}>
