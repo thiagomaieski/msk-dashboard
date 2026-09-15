@@ -5,6 +5,8 @@ import ImportFinancasModal from './ImportFinancasModal';
 import ImportLeadsModal from './ImportLeadsModal';
 import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS } from '../utils/crmAnalyticsUtils';
 import CustomSelect from './CustomSelect';
+import { formatMinutes, getMesAtualKey, formatMesAnoLabel, navegarMes, getAtividadesDomes, calcularConsumoMes } from '../utils/timeUtils';
+import { generateManutencaoPDF } from './PDFGenerator';
 
 
 export default function Modal() {
@@ -107,6 +109,13 @@ function ModalContent({ type }) {
   if (type === 'changePassword') return <ChangePasswordForm />;
   if (type === 'feedback') return <FeedbackModal onClose={closeModal} />;
   if (type === 'importFinancas') return <ImportFinancasModal type={editingId.importType} />;
+  if (type === 'atividadeManutencao') {
+    const rec = data.recorrencia.find(x => x.id === editingId.recorrencia);
+    const atividade = rec && editingId.atividadeManutencaoId
+      ? (rec.atividades || []).find(a => a.id === editingId.atividadeManutencaoId)
+      : null;
+    return <AtividadeManutencaoForm recorrenciaId={editingId.recorrencia} atividade={atividade} />;
+  }
   return null;
 }
 
@@ -955,8 +964,15 @@ function RecorrenciaForm({ item }) {
   const closeModal = useDash(s => s.closeModal);
   const goTo = useDash(s => s.goTo);
   const setConfigTab = useDash(s => s.setConfigTab);
+  const openModal = useDash(s => s.openModal);
+  const deleteAtividadeManutencao = useDash(s => s.deleteAtividadeManutencao);
 
   const navTo = (tab) => { closeModal(); setConfigTab(tab); goTo('configuracoes'); };
+
+  const today = new Date().toISOString().split('T')[0];
+  const mesAtual = getMesAtualKey();
+  const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const [f, setF] = useState({
     cliente: item?.cliente || '', valor: item?.valor || '',
@@ -964,6 +980,7 @@ function RecorrenciaForm({ item }) {
     status: item?.status || 'Ativo', vencimento: item?.vencimento || '',
     renovacao: item?.renovacao || '', dataInicio: item?.dataInicio || '',
     metodoPagamento: item?.metodoPagamento || 'PIX', observacoes: item?.observacoes || '',
+    limiteHoras: item?.limiteHoras || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const isFixedDate = f.periodicidade === 'Anual' || f.periodicidade === 'Semestral';
@@ -994,62 +1011,304 @@ function RecorrenciaForm({ item }) {
       </span>
     </div>
   );
+
+  // ── Atividades de Manutenção: cálculo do mês selecionado ──
+  const atividades = item?.atividades || [];
+  const consumo = calcularConsumoMes(atividades, mesSelecionado, f.limiteHoras);
+  const atividadesMes = getAtividadesDomes(atividades, mesSelecionado);
+  const atividadesOrdenadas = [...atividadesMes].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+
+  const handleExportPDF = async () => {
+    if (atividadesMes.length === 0) {
+      useDash.getState().toast(`Nenhuma atividade registrada em ${formatMesAnoLabel(mesSelecionado)} para exportar.`, 'warning');
+      return;
+    }
+    const configData = useDash.getState().configData;
+    setGeneratingPdf(true);
+    try {
+      useDash.getState().toast('Gerando relatório em PDF...', 'info');
+      await generateManutencaoPDF({
+        cliente: f.cliente || item?.cliente || 'Cliente',
+        plano: f.plano || item?.plano || 'Manutenção',
+        mesKey: mesSelecionado,
+        mesLabel: formatMesAnoLabel(mesSelecionado),
+        atividades: atividadesOrdenadas,
+        consumo,
+      }, configData);
+      useDash.getState().toast('Relatório exportado com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao exportar PDF:', err);
+      useDash.getState().toast('Erro ao gerar relatório em PDF.', 'error');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  // Cor da barra de progresso de horas
+  const progressColor = consumo.percentual == null ? 'var(--accent)'
+    : consumo.excedeu ? 'var(--red)'
+    : consumo.percentual >= 80 ? '#f59e0b'
+    : 'var(--green)';
+
   return (
-    <div className="form-grid">
-      <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Cliente</label>
-          <CustomSelect variant="form" value={f.cliente} onChange={u('cliente')} placeholder="-- Selecione um cliente --">
-            <option value="">-- Selecione um cliente --</option>
-            {data.clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-          </CustomSelect>
-          {noCli}
+    <div className={item?.id ? 'rec-modal-split' : 'form-grid'}>
+      {/* ── COLUNA ESQUERDA: formulário de dados do cliente ── */}
+      <div className="form-grid rec-modal-left">
+        <div className="form-grid form-grid-2">
+          <div className="form-group"><label className="form-label">Cliente</label>
+            <CustomSelect variant="form" value={f.cliente} onChange={u('cliente')} placeholder="-- Selecione um cliente --">
+              <option value="">-- Selecione um cliente --</option>
+              {data.clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+            </CustomSelect>
+            {noCli}
+          </div>
+          <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
         </div>
-        <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
-      </div>
-      <div className="form-group"><label className="form-label">Plano / Descrição</label><input className="form-input" value={f.plano} onChange={u('plano')} /></div>
-      <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Periodicidade</label>
-          <CustomSelect variant="form" value={f.periodicidade} onChange={u('periodicidade')}>
-            <option>Mensal</option><option>Semestral</option><option>Anual</option>
-          </CustomSelect>
+        <div className="form-group"><label className="form-label">Plano / Descrição</label><input className="form-input" value={f.plano} onChange={u('plano')} /></div>
+        <div className="form-grid form-grid-2">
+          <div className="form-group"><label className="form-label">Periodicidade</label>
+            <CustomSelect variant="form" value={f.periodicidade} onChange={u('periodicidade')}>
+              <option>Mensal</option><option>Semestral</option><option>Anual</option>
+            </CustomSelect>
+          </div>
+          <div className="form-group"><label className="form-label">Status</label>
+            <CustomSelect variant="form" value={f.status} onChange={u('status')}>
+              <option>Ativo</option><option>Inativo</option>
+            </CustomSelect>
+          </div>
         </div>
-        <div className="form-group"><label className="form-label">Status</label>
-          <CustomSelect variant="form" value={f.status} onChange={u('status')}>
-            <option>Ativo</option><option>Inativo</option>
-          </CustomSelect>
+        <div className="form-grid form-grid-2">
+          {!isFixedDate && (
+            <div className="form-group"><label className="form-label">Dia de Vencimento</label><NumberStepper value={f.vencimento} onChange={(value) => setF(p => ({ ...p, vencimento: value }))} min={1} max={31} className="form-input" /></div>
+          )}
+          {isFixedDate && (
+            <div className="form-group"><label className="form-label">Data de Renovação</label><input className="form-input" type="date" value={f.renovacao} onChange={u('renovacao')} /></div>
+          )}
+          <div className="form-group"><label className="form-label">Método de Cobrança</label>
+            <CustomSelect variant="form" value={f.metodoPagamento} onChange={u('metodoPagamento')}>
+              {['PIX', 'Boleto', 'Cartão', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
+            </CustomSelect>
+          </div>
+        </div>
+        <div className="form-grid form-grid-2">
+          <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
+          <div className="form-group">
+            <label className="form-label">
+              Limite Mensal de Manutenção
+              <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>(horas)</span>
+            </label>
+            <input
+              className="form-input"
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="Ex: 4  (vazio = sem limite)"
+              value={f.limiteHoras}
+              onChange={u('limiteHoras')}
+            />
+          </div>
+        </div>
+        <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 50 }} value={f.observacoes} onChange={u('observacoes')} /></div>
+        <div className="form-actions">
+          <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => {
+            if (!f.cliente || !f.plano) return useDash.getState().toast('Cliente e Plano/Descrição são obrigatórios.', 'error');
+            const limiteHorasNum = f.limiteHoras !== '' && f.limiteHoras !== null ? parseFloat(f.limiteHoras) || null : null;
+            saveRecorrencia({
+              ...f,
+              valor: parseFloat(f.valor) || 0,
+              limiteHoras: limiteHorasNum,
+              vencimento: !isFixedDate ? (parseInt(f.vencimento) || 1) : null,
+              renovacao: isFixedDate ? f.renovacao : null,
+              // Preserva o array de atividades existente intacto (não sobrescreve)
+              atividades: item?.atividades || [],
+            });
+          }}>Salvar</button>
         </div>
       </div>
-      <div className="form-grid form-grid-2">
-        {!isFixedDate && (
-          <div className="form-group"><label className="form-label">Dia de Vencimento</label><NumberStepper value={f.vencimento} onChange={(value) => setF(p => ({ ...p, vencimento: value }))} min={1} max={31} className="form-input" /></div>
-        )}
-        {isFixedDate && (
-          <div className="form-group"><label className="form-label">Data de Renovação</label><input className="form-input" type="date" value={f.renovacao} onChange={u('renovacao')} /></div>
-        )}
-        <div className="form-group"><label className="form-label">Método de Cobrança</label>
-          <CustomSelect variant="form" value={f.metodoPagamento} onChange={u('metodoPagamento')}>
-            {['PIX', 'Boleto', 'Cartão', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
-          </CustomSelect>
+
+      {/* ── COLUNA DIREITA: Atividades de Manutenção (apenas edição) ── */}
+      {item?.id && (
+        <div className="rec-modal-right">
+          {/* Divisor vertical */}
+          <div className="rec-modal-divider" />
+
+          {/* Painel de manutenção */}
+          <div className="manutencao-panel">
+            {/* Cabeçalho da seção */}
+            <div className="manutencao-header">
+              <div className="manutencao-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Atividades de Manutenção
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '5px 10px' }}
+                  onClick={handleExportPDF}
+                  disabled={generatingPdf}
+                  title={`Exportar Relatório PDF (${formatMesAnoLabel(mesSelecionado)})`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, color: 'var(--red)' }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <polyline points="9 15 12 18 15 15"/>
+                  </svg>
+                  {generatingPdf ? 'Gerando...' : 'Exportar PDF'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary manutencao-add-btn"
+                  onClick={() => openModal('atividadeManutencao', item.id)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Registrar atividade
+                </button>
+              </div>
+            </div>
+
+            {/* Navegador de mês */}
+            <div className="manutencao-mes-nav">
+              <button
+                type="button"
+                className="mes-nav-btn"
+                onClick={() => setMesSelecionado(prev => navegarMes(prev, -1))}
+                title="Mês anterior"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span className="mes-nav-label">{formatMesAnoLabel(mesSelecionado)}</span>
+              <button
+                type="button"
+                className="mes-nav-btn"
+                onClick={() => setMesSelecionado(prev => navegarMes(prev, 1))}
+                title="Próximo mês"
+                disabled={mesSelecionado >= mesAtual}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+              {mesSelecionado !== mesAtual && (
+                <button
+                  type="button"
+                  className="mes-nav-hoje"
+                  onClick={() => setMesSelecionado(mesAtual)}
+                >Mês atual</button>
+              )}
+            </div>
+
+            {/* KPIs de consumo */}
+            <div className="manutencao-kpis">
+              {consumo.limiteMinutos != null ? (
+                <>
+                  <div className="manutencao-kpi">
+                    <span className="manutencao-kpi-label">Contratado</span>
+                    <span className="manutencao-kpi-value">{formatMinutes(consumo.limiteMinutos)}</span>
+                  </div>
+                  <div className="manutencao-kpi">
+                    <span className="manutencao-kpi-label">Utilizado</span>
+                    <span className="manutencao-kpi-value" style={{ color: consumo.excedeu ? 'var(--red)' : consumo.totalMinutos > 0 ? 'var(--text)' : 'var(--text3)' }}>
+                      {formatMinutes(consumo.totalMinutos)}
+                    </span>
+                  </div>
+                  <div className="manutencao-kpi">
+                    <span className="manutencao-kpi-label">Disponível</span>
+                    <span className="manutencao-kpi-value" style={{ color: consumo.excedeu ? 'var(--red)' : 'var(--green)' }}>
+                      {consumo.excedeu
+                        ? `+${formatMinutes(consumo.totalMinutos - consumo.limiteMinutos)} excedido`
+                        : formatMinutes(consumo.disponivelMinutos)
+                      }
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="manutencao-kpi" style={{ flex: 'none' }}>
+                  <span className="manutencao-kpi-label">Utilizado no mês</span>
+                  <span className="manutencao-kpi-value" style={{ color: consumo.totalMinutos > 0 ? 'var(--text)' : 'var(--text3)' }}>
+                    {consumo.totalMinutos > 0 ? formatMinutes(consumo.totalMinutos) : 'Nenhum registro'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Barra de progresso (apenas com limite) */}
+            {consumo.limiteMinutos != null && (
+              <div className="manutencao-progress-wrap">
+                <div className="manutencao-progress-track">
+                  <div
+                    className="manutencao-progress-fill"
+                    style={{
+                      width: `${Math.min(consumo.percentual, 100)}%`,
+                      background: progressColor,
+                    }}
+                  />
+                </div>
+                <span className="manutencao-progress-pct" style={{ color: progressColor }}>
+                  {consumo.percentual}%
+                </span>
+              </div>
+            )}
+
+            {/* Lista de atividades do mês */}
+            <div className="manutencao-list">
+              {atividadesOrdenadas.length === 0 ? (
+                <div className="manutencao-empty">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 28, height: 28, opacity: 0.3 }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span>Nenhuma atividade registrada em {formatMesAnoLabel(mesSelecionado)}.</span>
+                </div>
+              ) : (
+                atividadesOrdenadas.map(a => (
+                  <div key={a.id} className="manutencao-item">
+                    <div className="manutencao-item-meta">
+                      <span className="manutencao-item-data">
+                        {(a.data || '').split('-').reverse().join('/')}
+                      </span>
+                      <span className="manutencao-item-tempo">{formatMinutes(a.minutos)}</span>
+                    </div>
+                    <div className="manutencao-item-desc">{a.descricao}</div>
+                    <div className="manutencao-item-actions">
+                      <button
+                        type="button"
+                        className="row-btn"
+                        title="Editar atividade"
+                        onClick={() => openModal('atividadeManutencao', item.id, { atividadeId: a.id })}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                          <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/>
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="row-btn del"
+                        title="Excluir atividade"
+                        onClick={() => deleteAtividadeManutencao(item.id, a.id)}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
-      </div>
-      <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 50 }} value={f.observacoes} onChange={u('observacoes')} /></div>
-      <div className="form-actions">
-        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => {
-          if (!f.cliente || !f.plano) return useDash.getState().toast('Cliente e Plano/Descrição são obrigatórios.', 'error');
-          saveRecorrencia({
-            ...f, valor: parseFloat(f.valor) || 0,
-            vencimento: !isFixedDate ? (parseInt(f.vencimento) || 1) : null,
-            renovacao: isFixedDate ? f.renovacao : null
-          });
-        }}>Salvar</button>
-      </div>
+      )}
     </div>
   );
 }
+
+
 
 // ── FINANÇA (NEGÓCIO) FORM ──
 function FinancaForm({ item, defaultTipo }) {
@@ -1839,10 +2098,140 @@ function PagarRecorrenciaForm({ recorrenciaId }) {
         </div>
       </div>
 
-      <div className="form-actions">
+        <div className="form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
         <button className="btn btn-primary" onClick={() => registrarPagamentoRecorrencia(recorrenciaId, f)}>
           Registrar Pagamento
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ATIVIDADE DE MANUTENÇÃO FORM ──
+function AtividadeManutencaoForm({ recorrenciaId, atividade }) {
+  const data = useDash(s => s.data);
+  const saveAtividadeManutencao = useDash(s => s.saveAtividadeManutencao);
+  const closeModal = useDash(s => s.closeModal);
+
+  const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+  const today = new Date().toISOString().split('T')[0];
+  const isEditing = !!atividade?.id;
+
+  const [f, setF] = useState({
+    descricao: atividade?.descricao || '',
+    minutos: atividade?.minutos || '',
+    data: atividade?.data || today,
+  });
+  const descRef = useRef(null);
+
+  // Foco automático no campo de descrição ao abrir
+  useEffect(() => {
+    setTimeout(() => descRef.current?.focus(), 60);
+  }, []);
+
+  const handleSave = () => {
+    saveAtividadeManutencao(recorrenciaId, {
+      ...(isEditing ? { id: atividade.id } : {}),
+      descricao: f.descricao,
+      minutos: parseInt(f.minutos) || 0,
+      data: f.data,
+    });
+  };
+
+  if (!rec) return <div style={{ padding: 20, color: 'var(--text3)' }}>Recorrência não encontrada.</div>;
+
+  return (
+    <div className="form-grid">
+      {/* Contexto do cliente */}
+      <div style={{
+        background: 'var(--bg2)',
+        borderRadius: 8,
+        padding: '10px 14px',
+        fontSize: 13,
+        border: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--text3)', flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>
+          <strong style={{ color: 'var(--text)' }}>{rec.cliente}</strong>
+          {rec.plano && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>— {rec.plano}</span>}
+          {rec.limiteHoras && (
+            <span style={{
+              marginLeft: 10,
+              fontSize: 11,
+              background: 'var(--accent-bg)',
+              color: 'var(--accent)',
+              borderRadius: 4,
+              padding: '2px 7px',
+              fontWeight: 600,
+            }}>
+              {rec.limiteHoras}h/mês
+            </span>
+          )}
+        </span>
+      </div>
+
+      {/* Descrição */}
+      <div className="form-group">
+        <label className="form-label">Descrição da atividade *</label>
+        <input
+          ref={descRef}
+          id="atividade-descricao"
+          className="form-input"
+          value={f.descricao}
+          onChange={e => setF(p => ({ ...p, descricao: e.target.value }))}
+          placeholder="Ex: Correção do banner do Obituário"
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSave()}
+        />
+      </div>
+
+      <div className="form-grid form-grid-2">
+        {/* Tempo gasto */}
+        <div className="form-group">
+          <label className="form-label">
+            Tempo gasto (minutos) *
+            {f.minutos && parseInt(f.minutos) > 0 && (
+              <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--accent)', fontSize: 12 }}>
+                = {formatMinutes(parseInt(f.minutos))}
+              </span>
+            )}
+          </label>
+          <input
+            id="atividade-minutos"
+            className="form-input"
+            type="number"
+            min="1"
+            step="1"
+            value={f.minutos}
+            onChange={e => setF(p => ({ ...p, minutos: e.target.value }))}
+            placeholder="Ex: 18"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          />
+        </div>
+
+        {/* Data */}
+        <div className="form-group">
+          <label className="form-label">Data da atividade</label>
+          <input
+            id="atividade-data"
+            className="form-input"
+            type="date"
+            value={f.data}
+            max={today}
+            onChange={e => setF(p => ({ ...p, data: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button className="btn btn-primary" onClick={handleSave}>
+          {isEditing ? 'Salvar alterações' : 'Registrar atividade'}
         </button>
       </div>
     </div>

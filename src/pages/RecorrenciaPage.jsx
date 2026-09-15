@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, getRecorrenciaVencimento } from '../store/useStore';
 import { Badge, EmptyState } from '../components/shared';
 import CustomSelect from '../components/CustomSelect';
+import { formatMinutes, getMesAtualKey, calcularConsumoMes } from '../utils/timeUtils';
 
 export default function RecorrenciaPage() {
   const data = useDash(s => s.data);
@@ -136,7 +137,7 @@ export default function RecorrenciaPage() {
           <thead>
             <tr>
               <th style={{ width: 30 }}><input type="checkbox" onChange={() => selectAll('recorrencia', allIds)} checked={selectedItems.length === list.length && list.length > 0} /></th>
-              <th>Cliente</th><th>Plano / Descrição</th><th>Valor</th><th>Próx. Vencimento</th><th>Método</th><th>Status</th><th></th>
+              <th>Cliente</th><th>Plano / Descrição</th><th>Valor</th><th>Próx. Vencimento</th><th>Método</th><th style={{ width: 95 }}>Status</th><th style={{ width: 120 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +145,35 @@ export default function RecorrenciaPage() {
               <tr key={r.id} className="row-in">
                 <td><input type="checkbox" checked={selectedItems.includes(r.id)} onChange={() => toggleSelect('recorrencia', r.id)} /></td>
                 <td style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text)' }} onClick={() => openModal('recorrencia', r.id)}>{r.cliente || '-'}</td>
-                <td><span style={{ fontSize: 12 }}>{r.plano || '-'}</span></td>
+                <td>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px' }}>
+                    <span style={{ fontSize: 12 }}>{r.plano || '-'}</span>
+                    {/* Indicador compacto de manutenção (apenas se houver atividades no mês atual) */}
+                    {(() => {
+                      const mesAtual = getMesAtualKey();
+                      const consumo = calcularConsumoMes(r.atividades, mesAtual, r.limiteHoras);
+                      if (consumo.totalMinutos === 0) return null;
+                      const excedido = consumo.excedeu;
+                      const cor = excedido ? 'var(--red)' : consumo.percentual >= 80 ? '#f59e0b' : 'var(--text3)';
+                      return (
+                        <div className="manutencao-badge" style={{ color: cor }} title={`Manutenção ${mesAtual}: ${formatMinutes(consumo.totalMinutos)}${consumo.limiteMinutos ? ` de ${formatMinutes(consumo.limiteMinutos)}` : ''}`}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          <span>{formatMinutes(consumo.totalMinutos)}{consumo.limiteMinutos ? ` / ${formatMinutes(consumo.limiteMinutos)}` : ''}</span>
+                          {consumo.limiteMinutos && (
+                            <div className="manutencao-badge-track">
+                              <div
+                                className="manutencao-badge-fill"
+                                style={{ width: `${Math.min(consumo.percentual, 100)}%`, background: cor }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </td>
                 <td style={{ fontFamily: 'var(--sans)', fontSize: 13 }}>{fmtBRL(r.valor)}</td>
                 <td style={{ fontSize: 13 }}>
                   {(() => {
@@ -161,7 +190,7 @@ export default function RecorrenciaPage() {
                   })()}
                 </td>
                 <td><span style={{ fontSize: 11, color: 'var(--text3)' }}>{r.metodoPagamento || 'PIX'}</span></td>
-                <td><Badge status={r.status || 'Ativo'} /></td>
+                <td style={{ width: 95 }}><Badge status={r.status || 'Ativo'} /></td>
                 <td>
                   <div className="row-actions">
                     {r.status === 'Ativo' && (

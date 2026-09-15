@@ -8239,4 +8239,378 @@ button.custom-select-filter:focus-visible {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ══════════════════════════════════════════════════════
+   RECORRÊNCIA MODAL — Layout Split 50/50 (edição)
+   ══════════════════════════════════════════════════════ */
+
+/* Container externo: duas colunas lado a lado */
+.rec-modal-split {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  min-height: 0;
+  align-items: start;
+}
+
+/* Coluna esquerda: formulário compacto */
+.rec-modal-left {
+  padding-right: 20px;
+  min-width: 0;
+}
+
+/* Coluna direita: wrapper com divisor + painel */
+.rec-modal-right {
+  display: contents; /* permite o divisor e o painel ficarem no grid diretamente */
+}
+
+/* Divisor vertical entre as colunas */
+.rec-modal-divider {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+  margin: 0;
+}
+
+/* Painel de atividades (coluna direita real) */
+.manutencao-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-left: 20px;
+  min-width: 0;
+  /* Scroll independente para lista longa de atividades */
+  overflow-y: auto;
+  max-height: calc(min(90vh, 840px) - 80px);
+}
+
+/* No layout split, a manutencao-section não precisa da borda superior separadora */
+.rec-modal-split .manutencao-section {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Responsivo: em telas menores, empilha verticalmente */
+@media (max-width: 900px) {
+  .rec-modal-split {
+    grid-template-columns: 1fr;
+  }
+  .rec-modal-divider {
+    display: none;
+  }
+  .rec-modal-left {
+    padding-right: 0;
+  }
+  .manutencao-panel {
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    max-height: none;
+  }
+}
+
+
+/* Seção principal dentro do modal de Recorrência */
+.manutencao-section {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Cabeçalho da seção: título + botão de registro */
+.manutencao-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.manutencao-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.manutencao-title svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.manutencao-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Navegador de mês */
+.manutencao-mes-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  width: fit-content;
+}
+
+.mes-nav-btn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.mes-nav-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--bg3);
+}
+.mes-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.mes-nav-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 120px;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.mes-nav-hoje {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin-left: 4px;
+  line-height: 1.4;
+}
+.mes-nav-hoje:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* KPIs de consumo mensal */
+.manutencao-kpis {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.manutencao-kpi {
+  flex: 1;
+  min-width: 100px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.manutencao-kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manutencao-kpi-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Barra de progresso de horas */
+.manutencao-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.manutencao-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--bg4);
+  overflow: hidden;
+  position: relative;
+}
+
+.manutencao-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+}
+
+.manutencao-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Lista de atividades */
+.manutencao-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.manutencao-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--text3);
+  font-size: 13px;
+  text-align: center;
+  background: var(--bg2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Item de atividade */
+.manutencao-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.manutencao-item:hover {
+  border-color: var(--border2);
+  background: var(--bg3);
+}
+
+.manutencao-item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 64px;
+}
+
+.manutencao-item-data {
+  font-size: 11px;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.manutencao-item-tempo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.manutencao-item-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manutencao-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.manutencao-item:hover .manutencao-item-actions {
+  opacity: 1;
+}
+
+/* Indicador compacto na tabela de Recorrência */
+.manutencao-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text3);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.manutencao-badge svg {
+  flex-shrink: 0;
+}
+.manutencao-badge-track {
+  width: 42px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--bg4);
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.manutencao-badge-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+.manutencao-badge-excedido {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* Light theme overrides */
+body.light .manutencao-kpi,
+body.light .manutencao-item,
+body.light .manutencao-empty,
+body.light .manutencao-progress-wrap,
+body.light .manutencao-mes-nav {
+  border-color: var(--border);
+  background: var(--bg2);
+}
 

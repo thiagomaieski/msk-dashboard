@@ -334,5 +334,123 @@ export const createFinanceSlice = (set, get) => ({
     }
     get()._refreshData();
     toast(`${count} lançamentos criados!`);
-  }
+  },
+
+  // ── ATIVIDADES DE MANUTENÇÃO ──
+
+  /**
+   * Salva (cria ou edita) uma atividade de manutenção em uma recorrência.
+   * O campo `atividades` é um array armazenado diretamente no documento de recorrência.
+   * Cada atividade é um snapshot imutável; o limite histórico é preservado no campo `limiteHorasNaEpoca`
+   * (capturado no momento do lançamento), garantindo que futuras alterações no limiteHoras do cliente
+   * não reinterpretem retroativamente os meses já registrados.
+   *
+   * @param {string} recorrenciaId - ID da recorrência
+   * @param {object} atividade - { id?, descricao, minutos, data }
+   * @param {boolean} closeModalAfter - se deve fechar o modal ao salvar
+   */
+  saveAtividadeManutencao: async (recorrenciaId, atividade, closeModalAfter = true) => {
+    const { data, toast, closeModal } = get();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+
+    if (!atividade.descricao?.trim()) return toast('Descrição da atividade é obrigatória.', 'error');
+    const minutos = parseInt(atividade.minutos) || 0;
+    if (minutos <= 0) return toast('Informe o tempo gasto em minutos (mínimo 1 minuto).', 'error');
+    if (!atividade.data) return toast('Data da atividade é obrigatória.', 'error');
+
+    const atividades = Array.isArray(rec.atividades) ? [...rec.atividades] : [];
+    const now = new Date().toISOString();
+
+    let novasAtividades;
+    if (atividade.id) {
+      // Edição: preserva limiteHorasNaEpoca original
+      novasAtividades = atividades.map(a =>
+        a.id === atividade.id
+          ? { ...a, descricao: atividade.descricao.trim(), minutos, data: atividade.data, modificadoEm: now }
+          : a
+      );
+    } else {
+      // Criação: captura o limite atual como snapshot histórico
+      const novaAtividade = {
+        id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        descricao: atividade.descricao.trim(),
+        minutos,
+        data: atividade.data,
+        limiteHorasNaEpoca: rec.limiteHoras || null, // snapshot imutável do limite na época
+        criadoEm: now,
+        modificadoEm: now,
+      };
+      novasAtividades = [novaAtividade, ...atividades];
+    }
+
+    // Idem ao padrão do sistema: atualiza localmente e dispara sync assíncrono no Firebase
+    const isMock = rec.isMock;
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          recorrencia: s.mockData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+          )
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          recorrencia: s.realData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+          )
+        }
+      }));
+      updateDoc(uDoc('recorrencia', recorrenciaId), { atividades: novasAtividades, modificadoEm: serverTimestamp() })
+        .catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+    if (closeModalAfter) closeModal();
+    toast(atividade.id ? 'Atividade atualizada!' : 'Atividade registrada!');
+  },
+
+  /**
+   * Exclui uma atividade de manutenção de uma recorrência.
+   * @param {string} recorrenciaId - ID da recorrência
+   * @param {string} atividadeId - ID da atividade a excluir
+   */
+  deleteAtividadeManutencao: async (recorrenciaId, atividadeId) => {
+    const { data, toast, showConfirm } = get();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+
+    const confirmed = await showConfirm('Excluir atividade?', 'O tempo registrado será removido do controle do mês.', false);
+    if (!confirmed) return;
+
+    const novasAtividades = (rec.atividades || []).filter(a => a.id !== atividadeId);
+    const now = new Date().toISOString();
+
+    const isMock = rec.isMock;
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          recorrencia: s.mockData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+          )
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          recorrencia: s.realData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+          )
+        }
+      }));
+      updateDoc(uDoc('recorrencia', recorrenciaId), { atividades: novasAtividades, modificadoEm: serverTimestamp() })
+        .catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+    toast('Atividade excluída!');
+  },
 });

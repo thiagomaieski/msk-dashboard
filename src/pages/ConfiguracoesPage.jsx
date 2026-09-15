@@ -797,7 +797,7 @@ export default function ConfiguracoesPage() {
                         if (configData.pdfLogoPath) {
                           await useDash.getState().deleteFile(configData.pdfLogoPath).catch(() => {});
                         }
-                        saveEmpresaData({ pdfLogo: null, pdfLogoPath: null, logoUpdated: Date.now() });
+                        saveEmpresaData({ pdfLogo: null, pdfLogoBase64: null, pdfLogoPath: null, logoUpdated: Date.now() });
                       }}>Remover</button>
                     )}
                     <input 
@@ -813,14 +813,24 @@ export default function ConfiguracoesPage() {
                           const stableFilename = `logo_${currentUser?.uid || 'company'}.${ext}`;
                           const renamedFile = new File([file], stableFilename, { type: file.type });
 
-                          const result = await useDash.getState().uploadFile(renamedFile, 'logo');
+                          const base64Promise = new Promise(resolve => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = () => resolve(null);
+                            reader.readAsDataURL(file);
+                          });
+
+                          const [result, base64] = await Promise.all([
+                            useDash.getState().uploadFile(renamedFile, 'logo'),
+                            base64Promise
+                          ]);
                           
                           const oldPath = configData.pdfLogoPath;
                           if (oldPath && oldPath !== result.path) {
                             await useDash.getState().deleteFile(oldPath).catch(() => {});
                           }
                           
-                          await saveEmpresaData({ pdfLogo: result.url, pdfLogoPath: result.path, logoUpdated: Date.now() });
+                          await saveEmpresaData({ pdfLogo: result.url, pdfLogoBase64: base64, pdfLogoPath: result.path, logoUpdated: Date.now() });
                           toast('Logo atualizada!');
                         } catch (err) {
                           toast('Erro ao fazer upload da logo.', 'error');

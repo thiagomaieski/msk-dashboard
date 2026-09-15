@@ -16,7 +16,7 @@ export const createUISlice = (set, get) => ({
   configData: { nichos: [], categoriasPessoal: [], categoriasNegocioDespesa: [], categoriasReceita: [], cartaoNome: '', cartaoVenc: '', cartoes: [], modules: {}, notifEnabled: true, notifLeadTime: 24, lancarDespesasAuto: false, metaFaturamento: 0, tipoEmpresa: 'MEI', limiteAnual: 81000, pdfLogo: '', nomeEmpresa: '', cnpj: '', responsavel: '', emailEmpresa: '', telefoneEmpresa: '', cidade: '', estado: '', site: '' },
   isSyncingAutomations: false,
   maintenanceMode: false,
-  editingId: { leads: null, projetos: null, recorrencia: null, negocio: null, pessoal: null, clientes: null, lembretes: null, despesasFixas: null },
+  editingId: { leads: null, projetos: null, recorrencia: null, negocio: null, pessoal: null, clientes: null, lembretes: null, despesasFixas: null, atividadeManutencaoId: null },
   activePage: getPageFromUrl(),
   previousPage: 'dashboard',
   configActiveTab: 'cfg-conta',
@@ -241,7 +241,7 @@ export const createUISlice = (set, get) => ({
     set({ confirm: null });
   },
 
-  openModal: (type, id = null) => {
+  openModal: (type, id = null, extra = null) => {
     const map = {
       lead: 'leads', projeto: 'projetos', recorrencia: 'recorrencia',
       negocioReceita: 'negocio', negocioDespesa: 'negocio',
@@ -249,6 +249,7 @@ export const createUISlice = (set, get) => ({
       cliente: 'clientes', lembrete: 'lembretes', despesaFixa: 'despesasFixas',
       verNota: 'lembretes', parcela: 'negocio', interacao: 'leads',
       pagarRecorrencia: 'recorrencia',
+      atividadeManutencao: 'recorrencia',
     };
     const titles = {
       lead: id ? 'Editar Lead' : 'Novo Lead',
@@ -272,12 +273,14 @@ export const createUISlice = (set, get) => ({
       gerarOrcamento: 'Gerar Orçamento / Proposta',
       gerarRecibo: 'Gerar Recibo de Pagamento',
       importFinancas: 'Importação Inteligente de Finanças',
+      atividadeManutencao: extra?.atividadeId ? 'Editar Atividade' : 'Registrar Atividade',
     };
 
     const colName = map[type];
     const editId = id || null;
     // Lead modal usa size 'xl' para o layout de duas colunas da Pré-Qualificação
-    const modalSize = type === 'lead' ? 'xl' : null;
+    // Recorrência modal usa 'xl' também quando edita cliente existente (layout split)
+    const modalSize = (type === 'lead' || (type === 'recorrencia' && id)) ? 'xl' : null;
     set(s => ({
       modalOpen: true,
       modalType: type,
@@ -286,7 +289,8 @@ export const createUISlice = (set, get) => ({
       editingId: {
         ...s.editingId,
         ...(colName ? { [colName]: editId } : {}),
-        importType: type === 'importFinancas' ? id : s.editingId.importType
+        importType: type === 'importFinancas' ? id : s.editingId.importType,
+        atividadeManutencaoId: type === 'atividadeManutencao' ? (extra?.atividadeId || null) : s.editingId.atividadeManutencaoId,
       },
     }));
   },
