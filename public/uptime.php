@@ -168,6 +168,9 @@ if ($method === 'POST') {
             'domain' => $domain,
             'label' => $label,
             'status' => 'pending', 
+            'httpCode' => null,
+            'attempts' => null,
+            'errorDetail' => null,
             'lastChecked' => null,
             'responseTime' => null,
             'createdAt' => time()

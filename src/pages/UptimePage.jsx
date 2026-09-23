@@ -237,8 +237,51 @@ function MonitorCard({ monitor, onDelete }) {
             )}
           </div>
         </div>
-        <StatusBadge status={monitor.status} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          <StatusBadge status={monitor.status} />
+          {monitor.httpCode != null && monitor.httpCode > 0 && (
+            <span style={{
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: 'monospace',
+              padding: '2px 7px',
+              borderRadius: 5,
+              background: monitor.httpCode >= 200 && monitor.httpCode < 400 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.12)',
+              color: monitor.httpCode >= 200 && monitor.httpCode < 400 ? 'var(--green)' : 'var(--red)',
+              border: monitor.httpCode >= 200 && monitor.httpCode < 400 ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.25)',
+              letterSpacing: '.02em'
+            }}>
+              HTTP {monitor.httpCode}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Diagnostic Alert Box */}
+      {monitor.errorDetail && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.22)',
+          borderRadius: 8,
+          padding: '10px 12px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 9,
+          color: '#fca5a5',
+          fontSize: 11.5,
+          lineHeight: 1.45,
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, color: '#ef4444' }}>
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, color: '#f87171', marginBottom: 2 }}>Diagnóstico:</div>
+            <div style={{ color: 'var(--text2)' }}>{monitor.errorDetail}</div>
+          </div>
+        </div>
+      )}
 
       {/* Elegant Divider */}
       <div style={{
@@ -265,8 +308,25 @@ function MonitorCard({ monitor, onDelete }) {
           ) : (
             <div style={{ color: 'var(--text3)', fontSize: 15 }}>—</div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
-            Última verificação: {lastChecked || 'Aguardando verificação...'}
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>Última verificação: {lastChecked || 'Aguardando verificação...'}</span>
+            {monitor.attempts != null && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: monitor.status === 'offline' ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg3)',
+                color: monitor.status === 'offline' ? 'var(--red)' : 'var(--text3)',
+                border: monitor.status === 'offline' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--border)'
+              }}>
+                {monitor.status === 'offline' 
+                  ? `${monitor.attempts}/3 falharam` 
+                  : monitor.attempts > 1 
+                  ? `Recuperado na tentativa ${monitor.attempts}/3` 
+                  : '1/3 tentativa'}
+              </span>
+            )}
           </div>
         </div>
 
