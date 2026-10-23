@@ -253,37 +253,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       )
     },
     {
-      id: 'cfg-prefs',
-      label: 'Preferências',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <path d="M12 20V10M18 20V4M6 20v-4M4 16h4M16 4h4M10 10h4" />
-        </svg>
-      )
-    },
-    {
-      id: 'cfg-negocios',
-      label: 'Negócios',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      )
-    },
-    {
-      id: 'cfg-financas',
-      label: 'Finanças',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
-      )
-    },
-    {
       id: 'cfg-empresa',
-      label: 'Minha Empresa',
+      label: 'Empresa e Fiscal',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
           <path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
@@ -291,41 +262,21 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       )
     },
     {
-      id: 'cfg-notificacoes',
-      label: 'Notificações',
+      id: 'cfg-financas',
+      label: 'Categorias e Finanças',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       )
     },
     {
-      id: 'cfg-dados',
-      label: 'Sistema & Dados',
+      id: 'cfg-sistema',
+      label: 'Sistema',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-        </svg>
-      )
-    },
-    {
-      id: 'cfg-seguranca',
-      label: 'Segurança',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-      )
-    },
-    {
-      id: 'cfg-sobre',
-      label: 'Sobre',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4"/><path d="M12 8h.01" />
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       )
     },
@@ -439,7 +390,14 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
               )}
 
               {settingsNav.map(item => {
-                const isActive = configActiveTab === item.id;
+                const normalizedTab = (() => {
+                  if (['cfg-conta', 'cfg-seguranca'].includes(configActiveTab)) return 'cfg-conta';
+                  if (['cfg-empresa'].includes(configActiveTab)) return 'cfg-empresa';
+                  if (['cfg-financas', 'cfg-negocios'].includes(configActiveTab)) return 'cfg-financas';
+                  if (['cfg-sistema', 'cfg-dados', 'cfg-prefs', 'cfg-notificacoes', 'cfg-sobre'].includes(configActiveTab)) return 'cfg-sistema';
+                  return configActiveTab;
+                })();
+                const isActive = normalizedTab === item.id;
                 return (
                   <button
                     key={item.id}
