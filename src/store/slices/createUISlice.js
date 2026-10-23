@@ -37,12 +37,6 @@ export const createUISlice = (set, get) => ({
   loading: false,
   csvProgress: { pct: 0, text: "Iniciando importação..." },
   setCsvProgress: (progress) => set(s => ({ csvProgress: { ...s.csvProgress, ...progress } })),
-  csvProgress: { pct: 0, text: "Iniciando importação..." },
-  setCsvProgress: (progress) => set(s => ({ csvProgress: { ...s.csvProgress, ...progress } })),
-  csvProgress: { pct: 0, text: "Iniciando importação..." },
-  setCsvProgress: (progress) => set(s => ({ csvProgress: { ...s.csvProgress, ...progress } })),
-  csvProgress: { pct: 0, text: "Iniciando importação..." },
-  setCsvProgress: (progress) => set(s => ({ csvProgress: { ...s.csvProgress, ...progress } })),
   confirm: null,
 
   setLoading: (v) => set({ loading: v }),
