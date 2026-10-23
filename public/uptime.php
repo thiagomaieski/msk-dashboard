@@ -4,9 +4,9 @@
  * Lê e grava os domínios monitorados do usuário.
  */
 
-define('ALLOWED_ORIGIN', '*');
-define('STORAGE_API_KEY', 'msk_storage_6a2d9b4c1f8e'); 
-define('BASE_UPLOAD_DIR', 'uploads');
+require_once __DIR__ . '/auth-helper.php';
+
+if (!defined('ALLOWED_ORIGIN')) define('ALLOWED_ORIGIN', '*');
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
@@ -39,38 +39,10 @@ if (empty($userId)) {
     exit;
 }
 
-// 2. Validação JWT Firebase (Evita Spoofing)
-$authHeader = $headers['Authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-$jwt = '';
-if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-    $jwt = $matches[1];
-}
+// 2. Validação Criptográfica do Firebase ID Token (RS256)
+$auth = requireFirebaseToken($userId);
+$userId = $auth['userId'];
 
-function shallowVerifyToken($jwt, $expectedUserId) {
-    if (empty($jwt)) return ['valid' => false, 'error' => 'Token ausente'];
-    $parts = explode('.', $jwt);
-    if (count($parts) !== 3) return ['valid' => false, 'error' => 'Token malformado'];
-    
-    $payloadData = base64_decode(strtr($parts[1], '-_', '+/'));
-    if ($payloadData === false) return ['valid' => false, 'error' => 'Payload inválido'];
-    
-    $payload = json_decode($payloadData, true);
-    if (!$payload) return ['valid' => false, 'error' => 'JSON inválido no token'];
-    
-    $sub = $payload['sub'] ?? '';
-    if (empty($sub) || $sub !== $expectedUserId) {
-         return ['valid' => false, 'error' => 'Identidade forjada. UID divergente.'];
-    }
-    
-    return ['valid' => true];
-}
-
-$val = shallowVerifyToken($jwt, $userId);
-if (!$val['valid']) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Auth JWT Falhou: ' . $val['error']]);
-    exit;
-}
 
 // 3. Caminho do arquivo JSON
 $userDir = BASE_UPLOAD_DIR . '/' . $userId;

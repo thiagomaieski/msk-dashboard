@@ -33,3 +33,7 @@ dist-ssr
 firestore.rules
 firestore.indexes.json
 
+# Backend PHP secrets
+config.php
+public/config.php
+

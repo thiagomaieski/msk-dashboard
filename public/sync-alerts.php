@@ -4,9 +4,9 @@
  * Recebe o resumo das pendências do dashboard e salva num JSON.
  */
 
-define('ALLOWED_ORIGIN', '*');
-define('STORAGE_API_KEY', 'msk_storage_6a2d9b4c1f8e'); 
-define('BASE_UPLOAD_DIR', 'uploads/alerts');
+require_once __DIR__ . '/auth-helper.php';
+
+if (!defined('ALLOWED_ORIGIN')) define('ALLOWED_ORIGIN', '*');
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
@@ -17,8 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$headers = getallheaders();
-$clientKey = $headers['X-Storage-Api-Key'] ?? $_SERVER['HTTP_X_STORAGE_API_KEY'] ?? $_GET['apiKey'] ?? '';
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$clientKey = $headers['X-Storage-Api-Key'] ?? $headers['x-storage-api-key'] ?? $_SERVER['HTTP_X_STORAGE_API_KEY'] ?? $_GET['apiKey'] ?? '';
 if ($clientKey !== STORAGE_API_KEY) {
     http_response_code(403);
     echo json_encode(['error' => 'Acesso negado: Chave de API inválida']);
@@ -35,39 +35,16 @@ if (empty($userId)) {
     exit;
 }
 
-$authHeader = $headers['Authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-$jwt = '';
-if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-    $jwt = $matches[1];
+// Validação Criptográfica do Firebase ID Token (RS256)
+$auth = requireFirebaseToken($userId);
+$userId = $auth['userId'];
+
+$alertsDir = BASE_UPLOAD_DIR . '/alerts';
+if (!file_exists($alertsDir)) {
+    mkdir($alertsDir, 0755, true);
 }
 
-function shallowVerifyToken($jwt, $expectedUserId) {
-    if (empty($jwt)) return ['valid' => false, 'error' => 'Token ausente'];
-    $parts = explode('.', $jwt);
-    if (count($parts) !== 3) return ['valid' => false, 'error' => 'Token malformado'];
-    
-    $payloadData = base64_decode(strtr($parts[1], '-_', '+/'));
-    $payload = json_decode($payloadData, true);
-    
-    $sub = $payload['sub'] ?? '';
-    if (empty($sub) || $sub !== $expectedUserId) {
-         return ['valid' => false, 'error' => 'UID divergente.'];
-    }
-    return ['valid' => true];
-}
-
-$val = shallowVerifyToken($jwt, $userId);
-if (!$val['valid']) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Auth JWT Falhou: ' . $val['error']]);
-    exit;
-}
-
-if (!file_exists(BASE_UPLOAD_DIR)) {
-    mkdir(BASE_UPLOAD_DIR, 0755, true);
-}
-
-$jsonFile = BASE_UPLOAD_DIR . '/' . $userId . '.json';
+$jsonFile = $alertsDir . '/' . $userId . '.json';
 file_put_contents($jsonFile, json_encode($input, JSON_PRETTY_PRINT));
 
 echo json_encode(['success' => true]);
