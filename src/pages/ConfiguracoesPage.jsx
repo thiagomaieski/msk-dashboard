@@ -7,6 +7,7 @@ import LegalModals from '../components/LegalModals';
 import { generateOrcamentoPDF } from '../components/PDFGenerator';
 import AdminPanel from './AdminPanel';
 import CustomSelect from '../components/CustomSelect';
+import { FEATURES } from '../config/features';
 
 export default function ConfiguracoesPage() {
   const activeTab = useDash(s => s.configActiveTab);
@@ -134,6 +135,12 @@ export default function ConfiguracoesPage() {
     });
   }, [configData.nomeEmpresa, configData.cnpj, configData.responsavel, configData.emailEmpresa, configData.telefoneEmpresa, configData.cidade, configData.estado, configData.site]);
 
+  useEffect(() => {
+    if (!FEATURES.SAAS_ADMIN && activeTab === 'cfg-admin') {
+      setConfigTab('cfg-conta');
+    }
+  }, [activeTab, setConfigTab]);
+
   const hasChanges = useMemo(() => {
     const nameChanged = tempName !== (profile.name || '');
     const modulesChanged = JSON.stringify(tempModules) !== JSON.stringify(configData.modules || {});
@@ -222,7 +229,7 @@ export default function ConfiguracoesPage() {
 
       {/* Mobile horizontal tab scroller */}
       <div className="settings-tabs-mobile">
-        {[...TABS, ...(isAdmin ? [adminTab] : [])].map(t => (
+        {[...TABS, ...(FEATURES.SAAS_ADMIN && isAdmin ? [adminTab] : [])].map(t => (
           <button
             key={t.id}
             className={`settings-tab-mobile-btn ${activeTab === t.id ? 'active' : ''} ${t.id === adminTab.id ? 'admin' : ''}`}
@@ -250,7 +257,7 @@ export default function ConfiguracoesPage() {
             </button>
           ))}
           {/* Admin Tab — separador visual */}
-          {isAdmin && (
+          {FEATURES.SAAS_ADMIN && isAdmin && (
             <>
               <div style={{ height: 1, background: 'var(--border)', margin: '12px 14px' }} />
               <button
@@ -384,28 +391,30 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div style={{ marginTop: 32 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 16 }}>Assinatura & Plano</div>
-                <div className="plan-box">
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <div className="badge badge-novo" style={{ fontSize: 13, padding: '4px 12px' }}>Plano de Sistema</div>
-                    </div>
-                    <div style={{ fontSize: 24, fontWeight: 500, marginBottom: 8 }}>Membro Pro</div>
-                    <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24, maxWidth: 300 }}>Seu acesso é ilimitado até o momento. Todos os módulos desbloqueados.</div>
-                    
-                    <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text2)' }}>Uso de Espaço</span>
-                      <span style={{ fontWeight: 500 }}>100% Livre</span>
-                    </div>
-                    <div className="loader-bar-track" style={{ width: '100%', marginBottom: 24, background: 'var(--bg2)' }}>
-                      <div className="loader-bar-fill" style={{ width: '100%' }}></div>
-                    </div>
+              {FEATURES.PLAN_CARD && (
+                <div style={{ marginTop: 32 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 16 }}>Assinatura & Plano</div>
+                  <div className="plan-box">
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                        <div className="badge badge-novo" style={{ fontSize: 13, padding: '4px 12px' }}>Plano de Sistema</div>
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 500, marginBottom: 8 }}>Membro Pro</div>
+                      <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24, maxWidth: 300 }}>Seu acesso é ilimitado até o momento. Todos os módulos desbloqueados.</div>
+                      
+                      <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: 'var(--text2)' }}>Uso de Espaço</span>
+                        <span style={{ fontWeight: 500 }}>100% Livre</span>
+                      </div>
+                      <div className="loader-bar-track" style={{ width: '100%', marginBottom: 24, background: 'var(--bg2)' }}>
+                        <div className="loader-bar-fill" style={{ width: '100%' }}></div>
+                      </div>
 
-                    <button className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>Em breve: Fazer Upgrade</button>
+                      <button className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>Em breve: Fazer Upgrade</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -482,24 +491,26 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div className="settings-row">
-                <div className="settings-row-info">
-                  <div className="settings-row-title">Idioma</div>
-                  <div className="settings-row-desc">Linguagem utilizada na interface da aplicação.</div>
+              {FEATURES.LANGUAGE_SELECT && (
+                <div className="settings-row">
+                  <div className="settings-row-info">
+                    <div className="settings-row-title">Idioma</div>
+                    <div className="settings-row-desc">Linguagem utilizada na interface da aplicação.</div>
+                  </div>
+                  <div>
+                    <CustomSelect
+                      variant="form"
+                      value="pt-BR"
+                      style={{ width: 180 }}
+                      options={[
+                        { value: 'pt-BR', label: 'Português (Brasil)' },
+                        { value: 'en-US', label: 'English (US)' },
+                        { value: 'es', label: 'Español' }
+                      ]}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <CustomSelect
-                    variant="form"
-                    value="pt-BR"
-                    style={{ width: 180 }}
-                    options={[
-                      { value: 'pt-BR', label: 'Português (Brasil)' },
-                      { value: 'en-US', label: 'English (US)' },
-                      { value: 'es', label: 'Español' }
-                    ]}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -888,26 +899,28 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div className="settings-card" style={{ opacity: 0.6 }}>
-                <div className="settings-card-header" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="settings-card-title">Canais Externos</div>
-                  <div className="badge" style={{ background: 'var(--bg4)', color: 'var(--text3)' }}>EM BREVE</div>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-info">
-                    <div className="settings-row-title">Notificações por E-mail</div>
-                    <div className="settings-row-desc">Receba um resumo diário ou alertas de prazos no seu e-mail.</div>
+              {FEATURES.EXTERNAL_NOTIFS_SOON && (
+                <div className="settings-card" style={{ opacity: 0.6 }}>
+                  <div className="settings-card-header" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="settings-card-title">Canais Externos</div>
+                    <div className="badge" style={{ background: 'var(--bg4)', color: 'var(--text3)' }}>EM BREVE</div>
                   </div>
-                  <div style={{ color: 'var(--text3)', fontSize: 12 }}>Indisponível</div>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-info">
-                    <div className="settings-row-title">Alertas via WhatsApp</div>
-                    <div className="settings-row-desc">Receba lembretes diretamente no seu celular via API.</div>
+                  <div className="settings-row">
+                    <div className="settings-row-info">
+                      <div className="settings-row-title">Notificações por E-mail</div>
+                      <div className="settings-row-desc">Receba um resumo diário ou alertas de prazos no seu e-mail.</div>
+                    </div>
+                    <div style={{ color: 'var(--text3)', fontSize: 12 }}>Indisponível</div>
                   </div>
-                  <div style={{ color: 'var(--text3)', fontSize: 12 }}>Indisponível</div>
+                  <div className="settings-row">
+                    <div className="settings-row-info">
+                      <div className="settings-row-title">Alertas via WhatsApp</div>
+                      <div className="settings-row-desc">Receba lembretes diretamente no seu celular via API.</div>
+                    </div>
+                    <div style={{ color: 'var(--text3)', fontSize: 12 }}>Indisponível</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
@@ -919,33 +932,35 @@ export default function ConfiguracoesPage() {
                 <div className="settings-card-desc">Faça backup manual dos seus dados ou apague seus registros de banco de dados.</div>
               </div>
 
-              <div className="settings-row" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 24 }}>
-                <div className="settings-row-info">
-                  <div className="settings-row-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    Modo de Demonstração (Dados de Teste)
-                    {demoMode && <Badge status="Ativo">Demo On</Badge>}
+              {FEATURES.DEMO_MODE && (
+                <div className="settings-row" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 24 }}>
+                  <div className="settings-row-info">
+                    <div className="settings-row-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Modo de Demonstração (Dados de Teste)
+                      {demoMode && <Badge status="Ativo">Demo On</Badge>}
+                    </div>
+                    <div className="settings-row-desc">
+                      Injeta diversos registros fictícios em todos os módulos para você testar as funcionalidades. 
+                      <br/>
+                      <strong style={{ color: 'var(--amber)' }}>Obs:</strong> Interações em modo demo não são salvas no banco de dados.
+                    </div>
                   </div>
-                  <div className="settings-row-desc">
-                    Injeta diversos registros fictícios em todos os módulos para você testar as funcionalidades. 
-                    <br/>
-                    <strong style={{ color: 'var(--amber)' }}>Obs:</strong> Interações em modo demo não são salvas no banco de dados.
+                  <div>
+                    <button 
+                      className={`btn ${demoMode ? 'btn-danger' : 'btn-primary'}`} 
+                      onClick={async () => {
+                        const msg = demoMode ? 'Desativar modo de demonstração?' : 'Ativar modo de demonstração?';
+                        const sub = demoMode ? 'Os dados fictícios e suas edições neles serão removidos.' : 'Isso preencherá seu dashboard com dados fictícios para teste.';
+                        if (await showConfirm(msg, sub, demoMode)) {
+                          setDemoMode(!demoMode);
+                        }
+                      }}
+                    >
+                      {demoMode ? 'Desativar Demo' : 'Ativar Demo'}
+                    </button>
                   </div>
                 </div>
-                <div>
-                  <button 
-                    className={`btn ${demoMode ? 'btn-danger' : 'btn-primary'}`} 
-                    onClick={async () => {
-                      const msg = demoMode ? 'Desativar modo de demonstração?' : 'Ativar modo de demonstração?';
-                      const sub = demoMode ? 'Os dados fictícios e suas edições neles serão removidos.' : 'Isso preencherá seu dashboard com dados fictícios para teste.';
-                      if (await showConfirm(msg, sub, demoMode)) {
-                        setDemoMode(!demoMode);
-                      }
-                    }}
-                  >
-                    {demoMode ? 'Desativar Demo' : 'Ativar Demo'}
-                  </button>
-                </div>
-              </div>
+              )}
 
               <div className="settings-row">
                 <div className="settings-row-info">
@@ -1102,7 +1117,7 @@ export default function ConfiguracoesPage() {
           )}
 
           {/* === PAINEL ADMIN === */}
-          {activeTab === 'cfg-admin' && isAdmin && (
+          {FEATURES.SAAS_ADMIN && activeTab === 'cfg-admin' && isAdmin && (
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">🛡 Painel Administrativo</div>

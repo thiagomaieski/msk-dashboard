@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useDash } from '../store/useStore';
 import NotificationCenter from './NotificationCenter';
 import CommandPalette from './CommandPalette';
+import { FEATURES } from '../config/features';
 
 const PAGE_TITLES = {
   'dashboard': { title: 'Dashboard', sub: 'Visão Geral & Performance' },
@@ -20,6 +21,8 @@ export default function Topbar({ onOpenMobile }) {
   const activePage = useDash(s => s.activePage);
   const data = useDash(s => s.data);
   const openModal = useDash(s => s.openModal);
+  const demoMode = useDash(s => s.demoMode);
+  const toast = useDash(s => s.toast);
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -67,6 +70,32 @@ export default function Topbar({ onOpenMobile }) {
             </svg>
             <span className="topbar-breadcrumb-current">{pageMeta.title}</span>
           </div>
+
+          {/* Selo Demo Ativo (visível apenas se FEATURES.DEMO_MODE for true) */}
+          {FEATURES.DEMO_MODE && demoMode && (
+            <div
+              className="badge"
+              onClick={() => toast('Modo demonstração ativo: alterações não serão persistidas no Firestore.', 'info')}
+              title="Modo demonstração ativo"
+              style={{
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 600,
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: 'var(--amber)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                marginLeft: 10
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)', display: 'inline-block' }} />
+              Demo Ativo
+            </div>
+          )}
         </div>
 
         {/* Lado Direito: Busca Rápida + Ação Dinâmica + Notificações + Feedback */}
@@ -125,19 +154,21 @@ export default function Topbar({ onOpenMobile }) {
           {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} toggleRef={notifBtnRef} />}
         </div>
 
-        {/* Feedback & Suporte */}
-        <button
-          className="btn-icon"
-          onClick={() => openModal('feedback')}
-          title="Feedback & Suporte"
-          style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm, 10px)', border: '1px solid var(--border)', background: 'var(--bg3)' }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <line x1="12" y1="7" x2="12" y2="11" />
-            <line x1="12" y1="15" x2="12.01" y2="15" />
-          </svg>
-        </button>
+        {/* Feedback & Suporte (oculto via flag) */}
+        {FEATURES.FEEDBACK && (
+          <button
+            className="btn-icon"
+            onClick={() => openModal('feedback')}
+            title="Feedback & Suporte"
+            style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm, 10px)', border: '1px solid var(--border)', background: 'var(--bg3)' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <line x1="12" y1="7" x2="12" y2="11" />
+              <line x1="12" y1="15" x2="12.01" y2="15" />
+            </svg>
+          </button>
+        )}
       </div>
     </header>
 

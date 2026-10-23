@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDash } from '../store/useStore';
+import { FEATURES } from '../config/features';
 
 const PAGES = [
   {
@@ -111,8 +112,13 @@ const MAX_VISIBLE = 4; // how many pages to show directly (last slot is "more")
 function MobileNav({ filteredPages, activePage, goTo }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // All pages plus lixeira
-  const allPages = [...filteredPages, TRASH_PAGE];
+  // All pages plus lixeira (oculta qualquer item restrito por features)
+  const allPages = [...filteredPages, TRASH_PAGE].filter(p => {
+    if (p.id === 'admin' && !FEATURES.SAAS_ADMIN) return false;
+    if (p.id === 'feedback' && !FEATURES.FEEDBACK) return false;
+    if (p.id === 'demo' && !FEATURES.DEMO_MODE) return false;
+    return true;
+  });
 
   // Decide which pages go in bottom bar vs drawer
   const hasOverflow = allPages.length > MAX_VISIBLE;
@@ -211,6 +217,10 @@ export default function NavBar() {
   const modules = useDash(s => s.configData.modules || {});
 
   const filteredPages = PAGES.filter(p => {
+    if (p.id === 'admin' && !FEATURES.SAAS_ADMIN) return false;
+    if (p.id === 'feedback' && !FEATURES.FEEDBACK) return false;
+    if (p.id === 'demo' && !FEATURES.DEMO_MODE) return false;
+
     if (p.id === 'dashboard') return true;
     if (p.id === 'leads') return !!modules.leads;
     if (p.id === 'projetos') return !!modules.projetos;

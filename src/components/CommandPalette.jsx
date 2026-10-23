@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDash } from '../store/useStore';
 import { getHrefForPage } from '../utils/routes';
+import { FEATURES } from '../config/features';
 
 const ALL_PAGES = [
   { id: 'dashboard', label: 'Dashboard', group: 'Geral', icon: 'grid' },
@@ -59,6 +60,7 @@ export default function CommandPalette({ isOpen, onClose }) {
       { id: 'act-trans-rec', label: 'Nova Receita de Negócio', type: 'action', modal: 'negocioReceita', icon: 'plus' },
       { id: 'act-trans-desp', label: 'Nova Despesa de Negócio', type: 'action', modal: 'negocioDespesa', icon: 'plus' },
       { id: 'act-recorr', label: 'Nova Recorrência / Contrato', type: 'action', modal: 'recorrencia', icon: 'plus' },
+      ...(FEATURES.FEEDBACK ? [{ id: 'act-feedback', label: 'Enviar Feedback / Suporte', type: 'action', modal: 'feedback', icon: 'plus' }] : []),
     ];
 
     actions.forEach(a => {
@@ -68,11 +70,16 @@ export default function CommandPalette({ isOpen, onClose }) {
     });
 
     // Páginas do Sistema
-    ALL_PAGES.forEach(p => {
-      if (!q || p.label.toLowerCase().includes(q) || p.group.toLowerCase().includes(q)) {
-        items.push({ id: `page-${p.id}`, label: p.label, page: p.id, group: p.group, type: 'page', icon: p.icon });
-      }
-    });
+    ALL_PAGES
+      .filter(p => {
+        if (p.id === 'admin' && !FEATURES.SAAS_ADMIN) return false;
+        return true;
+      })
+      .forEach(p => {
+        if (!q || p.label.toLowerCase().includes(q) || p.group.toLowerCase().includes(q)) {
+          items.push({ id: `page-${p.id}`, label: p.label, page: p.id, group: p.group, type: 'page', icon: p.icon });
+        }
+      });
 
     // Registros reais de Leads
     if (q) {
@@ -127,7 +134,12 @@ export default function CommandPalette({ isOpen, onClose }) {
       });
     }
 
-    return items;
+    return items.filter(item => {
+      if (!FEATURES.SAAS_ADMIN && (item.id === 'admin' || item.page === 'admin' || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('admin')))) return false;
+      if (!FEATURES.FEEDBACK && (item.modal === 'feedback' || item.id === 'act-feedback')) return false;
+      if (!FEATURES.DEMO_MODE && (item.id?.includes('demo') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('demonstração')))) return false;
+      return true;
+    });
   }, [query, data]);
 
   // Teclado ArrowUp / ArrowDown / Enter

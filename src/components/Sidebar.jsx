@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDash } from '../store/useStore';
 import { getHrefForPage } from '../utils/routes';
+import { FEATURES } from '../config/features';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 import nonProfilePhoto from '../assets/non-profile-photo.png';
@@ -471,7 +472,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                 );
               })}
 
-              {userRole === 'admin' && (
+              {FEATURES.SAAS_ADMIN && userRole === 'admin' && (
                 <>
                   <div style={{ height: 1, background: 'var(--border)', margin: '10px 8px' }} />
                   <button

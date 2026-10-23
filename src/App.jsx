@@ -1,6 +1,7 @@
 import { useEffect, useState, Component } from 'react';
 import { useDash } from './store/useStore';
 import { initRouteSync } from './utils/routes';
+import { FEATURES } from './config/features';
 
 import LoadingScreen from './components/LoadingScreen';
 import AuthScreen from './components/AuthScreen';
@@ -116,8 +117,8 @@ function AppInner() {
   if (requiresSetup) return <SetupScreen />;
   if (!fullyReady) return <LoadingScreen completing={appReady} />;
 
-  // Tela de manutenção para usuários comuns
-  if (maintenanceMode && userRole !== 'admin') return (
+  // Tela de manutenção para usuários comuns (oculta via flag)
+  if (FEATURES.MAINTENANCE_GATE && maintenanceMode && userRole !== 'admin') return (
     <div style={{
       position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', gap: 20, padding: 32, textAlign: 'center'
