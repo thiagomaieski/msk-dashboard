@@ -13,6 +13,7 @@ export const PAGE_SLUGS = {
   'uptime': 'uptime',
   'configuracoes': 'configuracoes',
   'lixeira': 'lixeira',
+  'ui-kit': 'ui-kit',
 };
 
 export const SLUG_TO_PAGE = Object.entries(PAGE_SLUGS).reduce((acc, [page, slug]) => {

@@ -9,7 +9,8 @@
 }
 
 :root {
-  --sidebar-width: 250px;
+  --sidebar-width: 232px;
+  --topbar-height: 56px;
 
   /* Surfaces — Preto Fosco e Carvão Neutro (Deep Matte Black & Neutral Charcoal) */
   --bg: #121212;
@@ -68,6 +69,56 @@
   --tooltip-bg: rgba(18, 18, 18, 0.98);
   --tooltip-border: rgba(255, 255, 255, 0.08);
   --tooltip-text: #fcfcfa;
+
+  /* ── Design System Tokens (docs/plano/01-design-system.md) ── */
+  /* Espaçamento (base 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+
+  /* Raio */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Borda forte para foco/seleção */
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Sombras padronizadas */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-3: 0 12px 32px -4px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+
+  /* Tipografia */
+  --font-meta: 12px;
+  --font-table: 13px;
+  --font-body: 14px;
+  --font-sub: 16px;
+  --font-page: 20px;
+  --font-kpi: 28px;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Movimento */
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 240ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Camadas (z-index) */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 50;
+  --z-drawer: 60;
+  --z-modal: 70;
+  --z-toast: 90;
+
+  /* Foco */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
 body.light {
@@ -112,6 +163,13 @@ body.light {
   --tooltip-bg: rgba(15, 23, 42, 0.95);
   --tooltip-border: rgba(0, 0, 0, 0.08);
   --tooltip-text: #ffffff;
+
+  /* ── Design System Light Tokens ── */
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-3: 0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
 body.light thead th {
@@ -6391,7 +6449,7 @@ body.light {
 }
 
 .app-shell.sidebar-is-collapsed {
-  --sidebar-width: 68px;
+  --sidebar-width: 64px;
 }
 
 /* ── Sidebar Dock Lateral (Desktop: Fixo e sem rolar junto com a tela) ─── */
@@ -6400,7 +6458,7 @@ body.light {
   top: 0;
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width, 250px);
+  width: var(--sidebar-width, 232px);
   height: 100vh;
   background: var(--bg2);
   border: none;
@@ -6592,6 +6650,18 @@ body.light {
   color: var(--text);
   background: var(--accent-bg);
   font-weight: 600;
+  position: relative;
+}
+
+.sidebar-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
 }
 
 .sidebar-link.active .sidebar-icon {
@@ -6905,7 +6975,7 @@ body.light {
 .app-content {
   flex: 1;
   min-width: 0;
-  margin-left: var(--sidebar-width, 250px);
+  margin-left: var(--sidebar-width, 232px);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -6914,8 +6984,8 @@ body.light {
 }
 
 .topbar-utility {
-  height: 64px;
-  padding: 0 28px;
+  height: var(--topbar-height, 56px);
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8613,4 +8683,20 @@ body.light .manutencao-mes-nav {
   border-color: var(--border);
   background: var(--bg2);
 }
+
+/* ── Focus & Accessibility Tokens (docs/plano/01-design-system.md) ── */
+:focus-visible {
+  outline: none !important;
+  box-shadow: var(--focus-ring) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 

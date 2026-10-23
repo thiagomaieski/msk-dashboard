@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDash } from '../store/useStore';
+import { useDash, getRecorrenciaVencimento } from '../store/useStore';
 import { getHrefForPage } from '../utils/routes';
 import { FEATURES } from '../config/features';
+import { Icon } from './ui';
 import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 import nonProfilePhoto from '../assets/non-profile-photo.png';
@@ -31,6 +32,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
   const configData = useDash(s => s.configData);
   const sidebarCollapsed = useDash(s => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useDash(s => s.toggleSidebarCollapsed);
+  const uptimeMonitors = useDash(s => s.uptimeMonitors || []);
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [activeFlyout, setActiveFlyout] = useState(null);
@@ -45,10 +47,16 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
   const isLight = theme === 'light';
   const logo = isLight ? logoLight : logoDark;
 
-  // Contagens para os badges
-  const leadsCount = (data.leads || []).filter(l => l.status !== 'Perdido' && l.status !== 'Fechado').length;
-  const projetosCount = (data.projetos || []).filter(p => p.status === 'Em andamento').length;
-  const lixeiraCount = (data.lixeira || []).length;
+  // Badges para ações pendentes úteis (Recorrência vencendo, Uptime offline)
+  const recorrenciasVencendo = (data.recorrencia || []).filter(r => {
+    if (r.status !== 'Ativo') return false;
+    const prox = getRecorrenciaVencimento(r, data.negocio || []);
+    if (!prox) return false;
+    const diff = Math.ceil((prox.getTime() - new Date().getTime()) / 86400000);
+    return diff <= 5;
+  }).length;
+
+  const uptimeOffline = (uptimeMonitors || []).filter(m => m.status === 'offline').length;
 
   // Auto-expandir grupo se página ativa for uma das filhas
   useEffect(() => {
@@ -135,7 +143,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
         {
           id: 'leads',
           label: 'Leads & CRM',
-          badge: leadsCount > 0 ? leadsCount : null,
           icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -148,7 +155,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
         {
           id: 'projetos',
           label: 'Projetos',
-          badge: projetosCount > 0 ? projetosCount : null,
           icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
               <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -172,6 +178,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
         {
           id: 'recorrencia',
           label: 'Recorrência (MRR)',
+          badge: recorrenciasVencendo > 0 ? recorrenciasVencendo : null,
+          badgeVariant: 'warning',
           icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
               <path d="M17 1l4 4-4 4" />
@@ -220,6 +228,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       type: 'single',
       id: 'uptime',
       label: 'Monitor de Uptime',
+      badge: uptimeOffline > 0 ? uptimeOffline : null,
+      badgeVariant: 'danger',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 17, height: 17 }}>
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -484,7 +494,18 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                     >
                       <div className="sidebar-icon">{item.icon}</div>
                       {!sidebarCollapsed && <span className="sidebar-label">{item.label}</span>}
-                      {item.badge && <span className="sidebar-badge">{item.badge}</span>}
+                      {item.badge && (
+                        <span
+                          className="sidebar-badge"
+                          style={{
+                            background: item.badgeVariant === 'danger' ? 'var(--red-bg)' : (item.badgeVariant === 'warning' ? 'var(--amber-bg)' : undefined),
+                            color: item.badgeVariant === 'danger' ? 'var(--red)' : (item.badgeVariant === 'warning' ? 'var(--amber)' : undefined),
+                            border: item.badgeVariant ? '1px solid currentColor' : undefined,
+                          }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
                     </a>
                   );
                 }
@@ -547,7 +568,18 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                                   {child.icon}
                                 </div>
                                 <span className="sidebar-label">{child.label}</span>
-                                {child.badge && <span className="sidebar-badge">{child.badge}</span>}
+                                {child.badge && (
+                                  <span
+                                    className="sidebar-badge"
+                                    style={{
+                                      background: child.badgeVariant === 'danger' ? 'var(--red-bg)' : (child.badgeVariant === 'warning' ? 'var(--amber-bg)' : undefined),
+                                      color: child.badgeVariant === 'danger' ? 'var(--red)' : (child.badgeVariant === 'warning' ? 'var(--amber)' : undefined),
+                                      border: child.badgeVariant ? '1px solid currentColor' : undefined,
+                                    }}
+                                  >
+                                    {child.badge}
+                                  </span>
+                                )}
                               </a>
                             );
                           })}
@@ -569,7 +601,18 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                                 {child.icon}
                               </div>
                               <span>{child.label}</span>
-                              {child.badge && <span className="sidebar-badge">{child.badge}</span>}
+                              {child.badge && (
+                                <span
+                                  className="sidebar-badge"
+                                  style={{
+                                    background: child.badgeVariant === 'danger' ? 'var(--red-bg)' : (child.badgeVariant === 'warning' ? 'var(--amber-bg)' : undefined),
+                                    color: child.badgeVariant === 'danger' ? 'var(--red)' : (child.badgeVariant === 'warning' ? 'var(--amber)' : undefined),
+                                    border: child.badgeVariant ? '1px solid currentColor' : undefined,
+                                  }}
+                                >
+                                  {child.badge}
+                                </span>
+                              )}
                             </a>
                           ))}
                         </div>

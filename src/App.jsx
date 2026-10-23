@@ -27,6 +27,7 @@ const LixeiraPage = lazy(() => import('./pages/LixeiraPage'));
 const ClientesPage = lazy(() => import('./pages/ClientesPage'));
 const ConfiguracoesPage = lazy(() => import('./pages/ConfiguracoesPage'));
 const UptimePage = lazy(() => import('./pages/UptimePage'));
+const UiKitPage = import.meta.env.DEV ? lazy(() => import('./pages/UiKitPage')) : null;
 
 // Error boundary to catch render crashes
 class ErrorBoundary extends Component {
@@ -162,6 +163,7 @@ function AppInner() {
             {activePage === 'clientes' && <ClientesPage />}
             {activePage === 'configuracoes' && <ConfiguracoesPage />}
             {activePage === 'uptime' && <UptimePage />}
+            {activePage === 'ui-kit' && !!UiKitPage && <UiKitPage />}
           </main>
         </Suspense>
       </div>
