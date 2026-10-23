@@ -12,6 +12,7 @@ import { FEATURES } from '../config/features';
 export default function ConfiguracoesPage() {
   const activeTab = useDash(s => s.configActiveTab);
   const setConfigTab = useDash(s => s.setConfigTab);
+  const goTo = useDash(s => s.goTo);
   
   const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
@@ -961,6 +962,23 @@ export default function ConfiguracoesPage() {
                   </div>
                 </div>
               )}
+
+              <div className="settings-row">
+                <div className="settings-row-info">
+                  <div className="settings-row-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    Lixeira do Sistema
+                    {(data?.lixeira || []).length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'rgba(239, 68, 68, 0.15)', color: 'var(--red)' }}>
+                        {(data?.lixeira || []).length} {(data?.lixeira || []).length === 1 ? 'item' : 'itens'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="settings-row-desc">Visualize e restaure registros excluídos (leads, projetos, clientes, etc.).</div>
+                </div>
+                <div>
+                  <button className="btn btn-secondary" onClick={() => goTo('lixeira')}>Abrir Lixeira</button>
+                </div>
+              </div>
 
               <div className="settings-row">
                 <div className="settings-row-info">

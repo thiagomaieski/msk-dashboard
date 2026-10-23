@@ -239,20 +239,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
         </svg>
       ),
     },
-    {
-      id: 'lixeira',
-      label: 'Lixeira',
-      badge: lixeiraCount > 0 ? lixeiraCount : null,
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 17, height: 17 }}>
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M10 11v6" />
-          <path d="M14 11v6" />
-          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-        </svg>
-      ),
-    },
   ];
 
   const settingsNav = [
@@ -493,6 +479,27 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                   </button>
                 </>
               )}
+
+              <div style={{ height: 1, background: 'var(--border)', margin: '10px 8px' }} />
+              <a
+                href={getHrefForPage('lixeira')}
+                className={`sidebar-link ${activePage === 'lixeira' ? 'active' : ''}`}
+                onClick={(e) => handleNav(e, 'lixeira')}
+                data-tooltip="Lixeira"
+                title={sidebarCollapsed ? "Lixeira" : undefined}
+              >
+                <div className="sidebar-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                  </svg>
+                </div>
+                {!sidebarCollapsed && <span className="sidebar-label">Lixeira</span>}
+                {lixeiraCount > 0 && <span className="sidebar-badge">{lixeiraCount}</span>}
+              </a>
             </motion.div>
             ) : (
               <motion.div
