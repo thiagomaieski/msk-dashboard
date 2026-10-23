@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, fmtDate } from '../store/useStore';
 import { EmptyDiv } from '../components/shared';
 import CustomSelect from '../components/CustomSelect';
+import { FEATURES } from '../config/features';
 
 export default function ProjetosPage() {
   const data = useDash(s => s.data);
@@ -194,7 +195,7 @@ export default function ProjetosPage() {
                       {isAtrasado ? `Atrasado ${diasAtraso} dia(s)` : `Prazo: ${fmtDate(p.prazo)}`}
                     </span>
                   </div>
-                  {total > 0 && (
+                  {FEATURES.PROJECT_TASKS && total > 0 && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: 'var(--text3)' }}>
                         <span>Tarefas concluídas</span><span>{feito}/{total} ({pct}%)</span>

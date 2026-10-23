@@ -7,6 +7,7 @@ import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
 import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
 import { computePendingResponseLeads, computeTodayAbordagens } from '../utils/crmAnalyticsUtils';
 import CustomSelect from '../components/CustomSelect';
+import { FEATURES } from '../config/features';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
 
@@ -292,6 +293,12 @@ export default function LeadsPage() {
   const isPrequaling = prequalModal !== null && !prequalModal.done;
 
   const [viewMode, setViewMode] = useState('list');
+  const effectiveViewMode = (
+    (viewMode === 'kanban' && !FEATURES.LEADS_KANBAN) ||
+    (viewMode === 'fila' && !FEATURES.LEADS_FILA) ||
+    (viewMode === 'analytics' && !FEATURES.LEADS_ANALYTICS)
+  ) ? 'list' : viewMode;
+  const hasAlternativeViews = FEATURES.LEADS_KANBAN || FEATURES.LEADS_FILA || FEATURES.LEADS_ANALYTICS;
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [nicho, setNicho] = useState('');
@@ -527,24 +534,32 @@ export default function LeadsPage() {
 
         <div className="leads-page-header-right">
           {/* Alternador de Visualização em Segmented Pill */}
-          <div className="pill-tab-group">
-            <button className={`pill-tab-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} title="Visualização em Lista">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              <span>Lista</span>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-              <span>Kanban</span>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'fila' ? 'active' : ''}`} onClick={() => setViewMode('fila')} title="Fila do Dia">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              <span>Fila do Dia</span>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'analytics' ? 'active' : ''}`} onClick={() => setViewMode('analytics')} title="Dashboard Analytics">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span>Analytics</span>
-            </button>
-          </div>
+          {hasAlternativeViews && (
+            <div className="pill-tab-group">
+              <button className={`pill-tab-btn ${effectiveViewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} title="Visualização em Lista">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span>Lista</span>
+              </button>
+              {FEATURES.LEADS_KANBAN && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')} title="Visualização em Kanban">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  <span>Kanban</span>
+                </button>
+              )}
+              {FEATURES.LEADS_FILA && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'fila' ? 'active' : ''}`} onClick={() => setViewMode('fila')} title="Fila do Dia">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span>Fila do Dia</span>
+                </button>
+              )}
+              {FEATURES.LEADS_ANALYTICS && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'analytics' ? 'active' : ''}`} onClick={() => setViewMode('analytics')} title="Dashboard Analytics">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  <span>Analytics</span>
+                </button>
+              )}
+            </div>
+          )}
 
           <button className="btn btn-secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -559,7 +574,7 @@ export default function LeadsPage() {
       </div>
 
       {/* ─── STATUS METRICS ROW (Only in List View) ────────────── */}
-      {viewMode === 'list' && (
+      {effectiveViewMode === 'list' && (
         <div className="leads-status-grid desktop-only">
           {[
             { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: '#94a3b8' },
@@ -606,7 +621,7 @@ export default function LeadsPage() {
       )}
 
       {/* ─── FILTERS & SEARCH TOOLBAR (LIST VIEW ONLY) ────────── */}
-      {viewMode === 'list' && (
+      {effectiveViewMode === 'list' && (
         <div className="leads-toolbar desktop-only">
           {/* Linha 1: Busca Ampla + Filtros Rápidos + Paginação */}
           <div className="leads-toolbar-row leads-toolbar-row-top">
@@ -856,7 +871,7 @@ export default function LeadsPage() {
       )}
 
       {/* ─── KANBAN TOOLBAR (Coherent Pipeline Filters) ────────── */}
-      {viewMode === 'kanban' && (
+      {FEATURES.LEADS_KANBAN && effectiveViewMode === 'kanban' && (
         <div className="leads-toolbar desktop-only leads-toolbar-kanban">
           <div className="leads-toolbar-row leads-toolbar-row-top">
             <div className="leads-search-box">
@@ -1020,20 +1035,28 @@ export default function LeadsPage() {
       <div className="page-header mobile-only">
         <div className="page-title">Leads</div>
         <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="pill-tab-group">
-            <button className={`pill-tab-btn ${viewMode === 'list' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('list')} title="Lista">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'kanban' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('kanban')} title="Kanban">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'fila' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            </button>
-            <button className={`pill-tab-btn ${viewMode === 'analytics' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('analytics')} title="Analytics">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </button>
-          </div>
+          {hasAlternativeViews && (
+            <div className="pill-tab-group">
+              <button className={`pill-tab-btn ${effectiveViewMode === 'list' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('list')} title="Lista">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              </button>
+              {FEATURES.LEADS_KANBAN && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'kanban' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('kanban')} title="Kanban">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+              )}
+              {FEATURES.LEADS_FILA && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'fila' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('fila')} title="Fila do Dia">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </button>
+              )}
+              {FEATURES.LEADS_ANALYTICS && (
+                <button className={`pill-tab-btn ${effectiveViewMode === 'analytics' ? 'active' : ''}`} style={{ padding: '5px 8px' }} onClick={() => setViewMode('analytics')} title="Analytics">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </button>
+              )}
+            </div>
+          )}
           <button className="btn-icon" onClick={() => openModal('csvInfo')} title="Importar CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
@@ -1044,7 +1067,7 @@ export default function LeadsPage() {
       </div>
 
       {/* MOBILE STATS CHIPS (7 statuses - List only) ───────────── */}
-      {viewMode === 'list' && (
+      {effectiveViewMode === 'list' && (
         <div className="leads-stats-row mobile-only">
           {[
             { label: 'Total', status: '', value: totalLeads, color: 'var(--text3)', dot: '#94a3b8' },
@@ -1082,11 +1105,11 @@ export default function LeadsPage() {
       )}
 
       {/* MOBILE FILTERS (Optimized) ─────────────────────────────── */}
-      {(viewMode === 'list' || viewMode === 'kanban') && (
+      {(effectiveViewMode === 'list' || (FEATURES.LEADS_KANBAN && effectiveViewMode === 'kanban')) && (
         <div className="filters mobile-only">
           <div className="search-wrap" style={{ flex: 1 }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input className="filter-input" placeholder={viewMode === 'kanban' ? "Filtrar cards no Kanban..." : "Buscar lead..."} value={search} onChange={updateFilter(setSearch)} />
+            <input className="filter-input" placeholder={effectiveViewMode === 'kanban' ? "Filtrar cards no Kanban..." : "Buscar lead..."} value={search} onChange={updateFilter(setSearch)} />
           </div>
           <button
             className={`btn-filter-toggle ${hasActiveFilters ? 'has-filters' : ''}`}
@@ -1111,7 +1134,7 @@ export default function LeadsPage() {
             <input className="filter-input" placeholder="Ex: 47" value={ddd} onChange={updateFilter(setDdd)} />
           </div>
         </div>
-        {viewMode === 'list' && (
+        {effectiveViewMode === 'list' && (
           <div className="mobile-filter-group">
             <label className="mobile-filter-label">Status</label>
             <CustomSelect
@@ -1181,7 +1204,7 @@ export default function LeadsPage() {
             ]}
           />
         </div>
-        {viewMode === 'list' && (
+        {effectiveViewMode === 'list' && (
           <div className="mobile-filter-group">
             <label className="mobile-filter-label">Leads por página</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1222,13 +1245,13 @@ export default function LeadsPage() {
       </MobileFilterSheet>
 
       {/* ─── FILA DO DIA ──────────────────────────────── */}
-      {viewMode === 'fila' && <LeadsFollowUpQueue />}
+      {FEATURES.LEADS_FILA && effectiveViewMode === 'fila' && <LeadsFollowUpQueue />}
 
       {/* ─── ANALYTICS ──────────────────────────────────── */}
-      {viewMode === 'analytics' && <LeadsCRMAnalytics />}
+      {FEATURES.LEADS_ANALYTICS && effectiveViewMode === 'analytics' && <LeadsCRMAnalytics />}
 
       {/* ─── KANBAN BOARD ───────────────────────────────── */}
-      {viewMode === 'kanban' && (
+      {FEATURES.LEADS_KANBAN && effectiveViewMode === 'kanban' && (
         <div 
           className="kanban-board" 
           onMouseDown={(e) => {
@@ -1335,7 +1358,7 @@ export default function LeadsPage() {
       )}
 
       {/* ─── LISTA (TABELA) ─────────────────────────────── */}
-      {viewMode === 'list' && (
+      {effectiveViewMode === 'list' && (
       <div className="table-wrap">
         <table>
           <colgroup>
@@ -1487,7 +1510,7 @@ export default function LeadsPage() {
       </div>
       )}
 
-      {viewMode === 'list' && (
+      {effectiveViewMode === 'list' && (
         <div className="leads-pagination-bar">
           <div className="leads-pagination-info-group">
             <span className="leads-pagination-count">

@@ -138,6 +138,11 @@ export default function CommandPalette({ isOpen, onClose }) {
       if (!FEATURES.SAAS_ADMIN && (item.id === 'admin' || item.page === 'admin' || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('admin')))) return false;
       if (!FEATURES.FEEDBACK && (item.modal === 'feedback' || item.id === 'act-feedback')) return false;
       if (!FEATURES.DEMO_MODE && (item.id?.includes('demo') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('demonstração')))) return false;
+      if (!FEATURES.LEADS_KANBAN && (item.id?.includes('kanban') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('kanban')))) return false;
+      if (!FEATURES.LEADS_FILA && (item.id?.includes('fila') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('fila')))) return false;
+      if (!FEATURES.LEADS_ANALYTICS && (item.id?.includes('analytics') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('analytics')))) return false;
+      if (!FEATURES.PROJECT_TASKS && (item.id?.includes('tarefa') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('tarefa')))) return false;
+      if (!FEATURES.PROJECT_FILES && (item.id?.includes('arquivo') || (item.type !== 'lead' && item.type !== 'cliente' && item.type !== 'projeto' && item.label?.toLowerCase().includes('arquivo')))) return false;
       return true;
     });
   }, [query, data]);

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 import { Badge } from '../components/shared';
+import { FEATURES } from '../config/features';
 
 export default function ProjectView() {
   const data = useDash(s => s.data);
@@ -14,6 +15,13 @@ export default function ProjectView() {
 
   const [activeTab, setActiveTab] = useState('detalhes');
   const overlayClickRef = useRef(false);
+
+  const availableTabs = [
+    'detalhes',
+    ...(FEATURES.PROJECT_FILES ? ['arquivos'] : []),
+    ...(FEATURES.PROJECT_TASKS ? ['tarefas'] : []),
+  ];
+  const currentTab = availableTabs.includes(activeTab) ? activeTab : 'detalhes';
 
   if (!activeProjectView) return null;
   const p = data.projetos.find(x => x.id === activeProjectView);
@@ -44,21 +52,23 @@ export default function ProjectView() {
             <div className="pv-title">{p.descricao || 'Projeto'}</div>
             <div className="pv-subtitle">{p.cliente || ''}</div>
           </div>
-          <div className="pv-tabs">
-            {['detalhes', 'arquivos', 'tarefas'].map(tab => (
-              <button key={tab} className={`pv-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+          {availableTabs.length > 1 && (
+            <div className="pv-tabs">
+              {availableTabs.map(tab => (
+                <button key={tab} className={`pv-tab ${currentTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
           <button className="pv-close-btn" onClick={handleClose}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <div className="pv-body">
-          {activeTab === 'detalhes' && <PVDetalhes p={p} onEdit={() => { openModal('projeto', p.id); handleClose(); }} updateField={updateProjectField} />}
-          {activeTab === 'tarefas' && <PVTarefas p={p} onUpdate={updateProjectTarefas} />}
-          {activeTab === 'arquivos' && <PVArquivos p={p} onAdd={addArquivo} onDel={delArquivo} />}
+          {currentTab === 'detalhes' && <PVDetalhes p={p} onEdit={() => { openModal('projeto', p.id); handleClose(); }} updateField={updateProjectField} />}
+          {FEATURES.PROJECT_TASKS && currentTab === 'tarefas' && <PVTarefas p={p} onUpdate={updateProjectTarefas} />}
+          {FEATURES.PROJECT_FILES && currentTab === 'arquivos' && <PVArquivos p={p} onAdd={addArquivo} onDel={delArquivo} />}
         </div>
       </div>
     </div>

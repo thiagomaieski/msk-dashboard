@@ -7,6 +7,7 @@ import {
 import { useDash, fmtBRL, fmtDate, getRecorrenciaVencimento, fmtDateISO } from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
 import LembretesCalendar from '../components/LembretesCalendar';
+import { FEATURES } from '../config/features';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 const fadeUp = {
@@ -1075,17 +1076,19 @@ export default function DashboardPage() {
                         <div className="dash-project-item-val">{fmtBRL(p.valor)}</div>
                       </div>
                       {p.descricao && <div className="dash-project-item-desc">{p.descricao}</div>}
-                      <div className="dash-project-progress-row">
-                        <div className="dash-project-progress-bar">
-                          <motion.div
-                            className="dash-project-progress-fill"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ delay: 0.5 + i * 0.1, duration: 0.7, ease: 'easeOut' }}
-                          />
+                      {FEATURES.PROJECT_TASKS && (
+                        <div className="dash-project-progress-row">
+                          <div className="dash-project-progress-bar">
+                            <motion.div
+                              className="dash-project-progress-fill"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ delay: 0.5 + i * 0.1, duration: 0.7, ease: 'easeOut' }}
+                            />
+                          </div>
+                          <span className="dash-project-progress-label">{feito}/{ts.length} tarefas</span>
                         </div>
-                        <span className="dash-project-progress-label">{feito}/{ts.length} tarefas</span>
-                      </div>
+                      )}
                     </motion.div>
                   );
                 })}
