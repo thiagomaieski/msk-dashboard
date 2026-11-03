@@ -10,8 +10,47 @@ const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const PIE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899'];
 
+export function getReceitaTipo(m) {
+  if (!m || m.tipo !== 'Receita') return null;
+  if (m.recorrenciaId || m.origemAutomatica === 'recorrencia') return 'Recorrência';
+  if (m.projetoId) return 'Projeto';
+  return 'Avulso';
+}
+
+export function isReceitaRecebida(m, todayISO = new Date().toISOString().split('T')[0]) {
+  if (m.pago !== undefined && m.pago !== null) return !!m.pago;
+  return String(m.data || '') <= todayISO;
+}
+
+function ReceitaTipoChip({ tipo }) {
+  if (!tipo) return null;
+  const styles = {
+    'Projeto': { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: 'rgba(59,130,246,0.28)' },
+    'Recorrência': { bg: 'var(--accent-bg)', color: 'var(--accent)', border: 'var(--accent)' },
+    'Avulso': { bg: 'var(--bg3)', color: 'var(--text2)', border: 'var(--border)' },
+  }[tipo] || { bg: 'var(--bg3)', color: 'var(--text2)', border: 'var(--border)' };
+
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '2px 7px',
+        borderRadius: 99,
+        background: styles.bg,
+        color: styles.color,
+        border: `1px solid ${styles.border}`,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
+      {tipo}
+    </span>
+  );
+}
+
 // ─── Pill de status de pagamento ───
-function PayStatusPill({ id, pago, colPrefix }) {
+function PayStatusPill({ id, pago, colPrefix, isRec = false }) {
   const togglePessoalPago = useDash(s => s.togglePessoalPago);
   const toggleNegocioPago = useDash(s => s.toggleNegocioPago);
   const [loading, setLoading] = useState(false);
@@ -31,7 +70,7 @@ function PayStatusPill({ id, pago, colPrefix }) {
     <button
       onClick={handleClick}
       disabled={loading}
-      title={pago ? 'Clique para marcar como Pendente' : 'Clique para marcar como Pago'}
+      title={pago ? (isRec ? 'Clique para marcar como A receber' : 'Clique para marcar como Pendente') : (isRec ? 'Clique para marcar como Recebido' : 'Clique para marcar como Pago')}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -55,7 +94,7 @@ function PayStatusPill({ id, pago, colPrefix }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          Pago
+          {isRec ? 'Recebido' : 'Pago'}
         </>
       ) : (
         <>
@@ -64,7 +103,7 @@ function PayStatusPill({ id, pago, colPrefix }) {
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          Pendente
+          {isRec ? 'A receber' : 'Pendente'}
         </>
       )}
     </button>
@@ -74,6 +113,7 @@ function PayStatusPill({ id, pago, colPrefix }) {
 function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSelect, colPrefix, showNf = false, showPayStatus = false }) {
   const bulkDeleteParcelamento = useDash(s => s.bulkDeleteParcelamento);
   if (!list.length) return <div className="finance-col-empty">Nenhuma {isRec ? 'receita' : 'despesa'}</div>;
+  const todayISO = new Date().toISOString().split('T')[0];
   const CARD_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3 }} title="Cartão de crédito"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
   const INVEST_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3, color: 'var(--amber)' }} title="Investimento"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
   return list.map(m => {
@@ -81,6 +121,9 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
     const parc = m.parcelamento;
     const isCartao = !!m.cartao;
     const showPill = showPayStatus && !isRec && !isCartao && !m.investimento;
+    const showRecPill = isRec && colPrefix === 'negocio';
+    const recPago = isRec ? isReceitaRecebida(m, todayISO) : !!m.pago;
+    const recTipo = isRec && colPrefix === 'negocio' ? getReceitaTipo(m) : null;
     return (
       <div key={m.id} className={`finance-card card-in${m.pago && showPill ? ' finance-card--paid' : ''}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <input type="checkbox" style={{ marginTop: 4 }} checked={selectedItems.includes(m.id)} onChange={() => toggleSelect(colPrefix, m.id)} />
@@ -95,6 +138,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
               {m.cartao && !isRec ? CARD_ICON : m.investimento ? INVEST_ICON : null}{displayTitle}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {recTipo && <ReceitaTipoChip tipo={recTipo} />}
               {parc && (
                 <span style={{ fontSize: 10, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 7px', borderRadius: 99, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {parc.parcela}/{parc.total}
@@ -122,6 +166,7 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
           </div>
           <div className="finance-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {showPill && <PayStatusPill id={m.id} pago={!!m.pago} colPrefix={colPrefix} />}
+            {showRecPill && <PayStatusPill id={m.id} pago={recPago} colPrefix={colPrefix} isRec={true} />}
             <button className="row-btn" onClick={() => useDash.getState().duplicateItem(colPrefix, m)} title="Duplicar Lançamento">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
@@ -165,9 +210,12 @@ export function FinancasNegocioPage() {
   const exportFinancasCSV = useDash(s => s.exportFinancasCSV);
   
   const now = new Date();
+  const todayISO = now.toISOString().split('T')[0];
   const [ano, setAno] = useState(String(CURRENT_YEAR));
   const [mes, setMes] = useState(String(now.getMonth()));
   const [catRec, setCatRec] = useState('');
+  const [tipoRec, setTipoRec] = useState('');
+  const [statusRec, setStatusRec] = useState('');
   const [catDesp, setCatDesp] = useState('');
   const [searchRec, setSearchRec] = useState('');
   const [searchDesp, setSearchDesp] = useState('');
@@ -189,21 +237,43 @@ export function FinancasNegocioPage() {
     }
   };
 
-  const { filtered, receitas, despesas, rec, desp, saldo, recLiq, nfCount, totalRecAnual, chartData, pieData } = useMemo(() => {
+  const { filtered, receitas, despesas, rec, recRecebido, recAReceber, countRecebido, countAReceber, desp, saldo, recLiq, nfCount, totalRecAnual, chartData, pieData } = useMemo(() => {
     const list = data.negocio.filter(f => {
       if (!f.data) return false;
       const d = new Date(f.data + 'T12:00:00');
       if (ano && d.getFullYear() !== parseInt(ano)) return false;
       if (mes !== '' && d.getMonth() !== parseInt(mes)) return false;
       if (clienteFilter && !((f.entidade || '') + (f.descricao || '')).toLowerCase().includes(clienteFilter.toLowerCase())) return false;
+      if (tipoRec && f.tipo === 'Receita' && getReceitaTipo(f) !== tipoRec) return false;
+      if (statusRec && f.tipo === 'Receita') {
+        const recebida = isReceitaRecebida(f, todayISO);
+        if (statusRec === 'recebido' && !recebida) return false;
+        if (statusRec === 'areceber' && recebida) return false;
+      }
       return true;
     }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 
-    const recList = list.filter(m => m.tipo === 'Receita').filter(m => {
+    const allRecInPeriod = list.filter(m => m.tipo === 'Receita').filter(m => {
       if (catRec && m.categoria !== catRec) return false;
       if (searchRec && !((m.descricao || '') + (m.entidade || '')).toLowerCase().includes(searchRec.toLowerCase())) return false;
       return true;
     });
+
+    const recList = allRecInPeriod;
+    let recRecebido = 0;
+    let recAReceber = 0;
+    let countRecebido = 0;
+    let countAReceber = 0;
+    for (const m of recList) {
+      const val = Number(m.valor || 0);
+      if (isReceitaRecebida(m, todayISO)) {
+        recRecebido += val;
+        countRecebido++;
+      } else {
+        recAReceber += val;
+        countAReceber++;
+      }
+    }
     
     const despList = list.filter(m => m.tipo === 'Despesa').filter(m => {
       if (catDesp && m.categoria !== catDesp) return false;
@@ -249,6 +319,10 @@ export function FinancasNegocioPage() {
       receitas: recList,
       despesas: despList,
       rec: totalRec,
+      recRecebido,
+      recAReceber,
+      countRecebido,
+      countAReceber,
       recLiq,
       desp: totalDesp,
       saldo: totalRec - totalDesp,
@@ -257,7 +331,7 @@ export function FinancasNegocioPage() {
       chartData: chartArr,
       pieData
     };
-  }, [data.negocio, ano, mes, catRec, catDesp, searchRec, searchDesp, clienteFilter, configData.aliquotaImposto]);
+  }, [data.negocio, ano, mes, catRec, tipoRec, statusRec, todayISO, catDesp, searchRec, searchDesp, clienteFilter, configData.aliquotaImposto]);
 
   const usadoLimite = useMemo(() => {
     const currYear = parseInt(ano || CURRENT_YEAR);
@@ -424,24 +498,47 @@ export function FinancasNegocioPage() {
       {viewMode === 'cols' ? (
         <div className="finance-cols">
           <div className="finance-col">
-            <div className="finance-col-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="finance-col-title green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m18 15-6-6-6 6"/></svg>
-                  Receitas
-                </span>
-                <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')} title="Nova Receita">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
-                </button>
+            <div className="finance-col-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="finance-col-title green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="m18 15-6-6-6 6"/></svg>
+                    Receitas
+                  </span>
+                  <button className="btn btn-sm btn-primary" onClick={() => openModal('negocioReceita')} title="Nova Receita">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 5v14M5 12h14" /></svg>
+                  </button>
+                </div>
+                <span className="finance-col-total green">{fmtBRL(rec)}</span>
               </div>
-              <span className="finance-col-total green">{fmtBRL(rec)}</span>
+              <div style={{ display: 'flex', gap: 8, borderTop: '1px dashed var(--border)', paddingTop: 10, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--green)', background: 'rgba(0,197,115,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(0,197,115,0.15)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>
+                  {countRecebido} recebida(s) • {fmtBRL(recRecebido)}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'rgba(245,158,11,0.08)', padding: '3px 8px', borderRadius: 99, border: '1px solid rgba(245,158,11,0.15)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  {countAReceber} a receber • {fmtBRL(recAReceber)}
+                </span>
+              </div>
             </div>
-            <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-              <select className="filter-select" style={{ flex: 1 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={tipoRec} onChange={e => setTipoRec(e.target.value)}>
+                <option value="">Todos os tipos</option>
+                <option value="Projeto">Projeto</option>
+                <option value="Recorrência">Recorrência</option>
+                <option value="Avulso">Avulso</option>
+              </select>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={statusRec} onChange={e => setStatusRec(e.target.value)}>
+                <option value="">Recebido + A receber</option>
+                <option value="recebido">Recebido</option>
+                <option value="areceber">A receber</option>
+              </select>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
                 <option value="">Todas categorias</option>
                 {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
               </select>
-              <div className="search-wrap" style={{ flex: 1 }}>
+              <div className="search-wrap" style={{ flex: 1, minWidth: 130 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value)} />
               </div>
@@ -512,20 +609,33 @@ export function FinancasNegocioPage() {
                   <td><input type="checkbox" checked={selectedItems.includes(m.id)} onChange={() => toggleSelect('negocio', m.id)} /></td>
                   <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
                   <td>
-                    <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
-                        {m.tipo === 'Receita' ? <path d="m18 15-6-6-6 6"/> : <path d="m6 9 6 6 6-6"/>}
-                      </svg>
-                      {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
-                    </span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
+                          {m.tipo === 'Receita' ? <path d="m18 15-6-6-6 6"/> : <path d="m6 9 6 6 6-6"/>}
+                        </svg>
+                        {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
+                      </span>
+                      {m.tipo === 'Receita' && <ReceitaTipoChip tipo={getReceitaTipo(m)} />}
+                    </div>
                   </td>
                   <td>
                     <div style={{ fontWeight: 500 }}>{m.descricao || '-'}</div>
                     {m.entidade && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{m.entidade}</div>}
                   </td>
                   <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
-                  <td style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
-                    {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
+                  <td>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
+                        {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
+                      </span>
+                      {m.tipo === 'Receita' && (
+                        <PayStatusPill id={m.id} pago={isReceitaRecebida(m, todayISO)} colPrefix="negocio" isRec={true} />
+                      )}
+                      {m.tipo === 'Despesa' && !m.cartao && (
+                        <PayStatusPill id={m.id} pago={!!m.pago} colPrefix="negocio" />
+                      )}
+                    </div>
                   </td>
                   <td>
                     {m.tipo === 'Receita' && m.nf ? (
