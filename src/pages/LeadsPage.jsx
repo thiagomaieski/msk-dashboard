@@ -289,6 +289,8 @@ export default function LeadsPage() {
   const saveLead = useDash(s => s.saveLead);
   const addLeadInteracao = useDash(s => s.addLeadInteracao);
   const toggleLeadBotBarreira = useDash(s => s.toggleLeadBotBarreira);
+  const saveLeadFilter = useDash(s => s.saveLeadFilter);
+  const deleteLeadFilter = useDash(s => s.deleteLeadFilter);
 
   const prequalModal = useDash(s => s.prequalModal);
   const setPrequalModal = useDash(s => s.setPrequalModal);
@@ -305,9 +307,10 @@ export default function LeadsPage() {
   const [status, setStatus] = useState('');
   const [nicho, setNicho] = useState('');
   const [cidade, setCidade] = useState('');
+  const [loteFilter, setLoteFilter] = useState('');
   const [ddd, setDdd] = useState('');
   const [prequalFilter, setPrequalFilter] = useState('');
-  const [quickFilter, setQuickFilter] = useState(''); // 'abordadosHoje' | 'aguardandoRetorno'
+  const [quickFilter, setQuickFilter] = useState(''); // 'abordadosHoje' | 'aguardandoRetorno' | 'botBarreira'
   const [sort, setSort] = useState('criadoDesc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
@@ -315,6 +318,8 @@ export default function LeadsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusMenuLeadId, setStatusMenuLeadId] = useState(null);
   const [undoAction, setUndoAction] = useState(null);
+  const [savingFilterOpen, setSavingFilterOpen] = useState(false);
+  const [savingFilterName, setSavingFilterName] = useState('');
 
   useEffect(() => {
     if (!undoAction) return;
@@ -329,7 +334,7 @@ export default function LeadsPage() {
     return () => window.removeEventListener('click', closeMenu);
   }, [statusMenuLeadId]);
 
-  const hasActiveFilters = !!(search || status || nicho || cidade || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
+  const hasActiveFilters = !!(search || status || nicho || cidade || loteFilter || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -337,12 +342,13 @@ export default function LeadsPage() {
     if (status) count++;
     if (nicho) count++;
     if (cidade) count++;
+    if (loteFilter) count++;
     if (ddd) count++;
     if (prequalFilter) count++;
     if (quickFilter) count++;
     if (sort !== 'criadoDesc') count++;
     return count;
-  }, [search, status, nicho, cidade, ddd, prequalFilter, quickFilter, sort]);
+  }, [search, status, nicho, cidade, loteFilter, ddd, prequalFilter, quickFilter, sort]);
 
   // Métricas para os filtros rápidos e meta do dia
   const abordadosHoje = useMemo(() => computeTodayAbordagens(data.leads), [data.leads]);
@@ -358,11 +364,20 @@ export default function LeadsPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [data.leads]);
 
+  const lotesDisponiveis = useMemo(() => {
+    const set = new Set();
+    (data.leads || []).forEach(l => {
+      if (l.lote && l.lote.trim()) set.add(l.lote.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data.leads]);
+
   const handleClearFilters = () => {
     setSearch('');
     setStatus('');
     setNicho('');
     setCidade('');
+    setLoteFilter('');
     setDdd('');
     setPrequalFilter('');
     setQuickFilter('');
@@ -385,10 +400,12 @@ export default function LeadsPage() {
     };
 
     let filtered = leads.filter((l) => {
-      if (search && !((l.nome || '').toLowerCase().includes(search) || (l.nicho || '').toLowerCase().includes(search) || (l.cidade || '').toLowerCase().includes(search) || (l.site || '').toLowerCase().includes(search))) return false;
+      if (search && !((l.nome || '').toLowerCase().includes(search.toLowerCase()) || (l.nicho || '').toLowerCase().includes(search.toLowerCase()) || (l.cidade || '').toLowerCase().includes(search.toLowerCase()) || (l.lote || '').toLowerCase().includes(search.toLowerCase()) || (l.site || '').toLowerCase().includes(search.toLowerCase()))) return false;
       if (status && l.status !== status) return false;
       if (nicho && l.nicho !== nicho) return false;
       if (cidade && (l.cidade || '').trim().toLowerCase() !== cidade.trim().toLowerCase()) return false;
+      if (loteFilter === '__SEM_LOTE__' && (l.lote || '').trim() !== '') return false;
+      if (loteFilter && loteFilter !== '__SEM_LOTE__' && (l.lote || '').trim().toLowerCase() !== loteFilter.trim().toLowerCase()) return false;
       if (ddd) {
         const phone = (l.telefone || '').replace(/\D/g, '');
         if (!phone.startsWith(ddd.replace(/\D/g, ''))) return false;
@@ -432,7 +449,7 @@ export default function LeadsPage() {
     const pag = filtered.slice((sPage - 1) * resolvedPageSize, sPage * resolvedPageSize);
 
     return { ...totals, list: filtered, paginated: pag, totalItems: tItems, totalPages: tPages, safePage: sPage };
-  }, [data.leads, search, status, nicho, cidade, ddd, prequalFilter, quickFilter, sort, columnSort, page, resolvedPageSize]);
+  }, [data.leads, search, status, nicho, cidade, loteFilter, ddd, prequalFilter, quickFilter, sort, columnSort, page, resolvedPageSize]);
 
   const kanbanFilteredLeads = useMemo(() => {
     let filtered = (data.leads || []).filter((l) => {
@@ -812,6 +829,28 @@ export default function LeadsPage() {
           {/* Linha 2: Barra de Chips de Filtro e Ordenação */}
           <div className="leads-toolbar-row leads-toolbar-row-bottom">
             <div className="leads-chips-group">
+              {/* Lote */}
+              <CustomSelect
+                variant="chip"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                }
+                label="Lote:"
+                value={loteFilter}
+                onChange={updateFilter(setLoteFilter)}
+                title="Filtrar por Lote"
+                placeholder="Todos"
+                options={[
+                  { value: '', label: 'Todos' },
+                  ...lotesDisponiveis.map(item => ({ value: item, label: item })),
+                  { value: '__SEM_LOTE__', label: 'Sem lote' },
+                ]}
+              />
+
               {/* Cidade */}
               <CustomSelect
                 variant="chip"
@@ -937,21 +976,140 @@ export default function LeadsPage() {
 
               {/* Limpar Filtros */}
               {hasActiveFilters && (
-                <button
-                  type="button"
-                  className="filter-chip filter-chip-clear"
-                  onClick={handleClearFilters}
-                  title="Limpar todos os filtros ativos"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                  <span>Limpar</span>
-                  <span className="filter-chip-clear-badge">{activeFiltersCount}</span>
-                </button>
+                <>
+                  {!savingFilterOpen ? (
+                    <button
+                      type="button"
+                      className="filter-chip"
+                      onClick={() => {
+                        const parts = [loteFilter && loteFilter !== '__SEM_LOTE__' ? loteFilter : '', cidade, nicho, status].filter(Boolean);
+                        setSavingFilterName(parts.join(' • ') || 'Meu filtro');
+                        setSavingFilterOpen(true);
+                      }}
+                      title="Salvar combinação de filtros atual"
+                      style={{ cursor: 'pointer', color: 'var(--accent)', borderColor: 'rgba(99,102,241,0.35)' }}
+                    >
+                      <span>+ Salvar filtro</span>
+                    </button>
+                  ) : (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <input
+                        className="form-input"
+                        style={{ height: 28, fontSize: 11, padding: '2px 8px', width: 140 }}
+                        placeholder="Nome do filtro..."
+                        value={savingFilterName}
+                        onChange={e => setSavingFilterName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveLeadFilter(savingFilterName, { status, nicho, cidade, lote: loteFilter, ddd, prequalFilter, quickFilter, search });
+                            setSavingFilterOpen(false);
+                          }
+                          if (e.key === 'Escape') setSavingFilterOpen(false);
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        style={{ padding: '4px 8px', fontSize: 11 }}
+                        onClick={() => {
+                          saveLeadFilter(savingFilterName, { status, nicho, cidade, lote: loteFilter, ddd, prequalFilter, quickFilter, search });
+                          setSavingFilterOpen(false);
+                        }}
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        style={{ padding: '4px 6px', fontSize: 11 }}
+                        onClick={() => setSavingFilterOpen(false)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="filter-chip filter-chip-clear"
+                    onClick={handleClearFilters}
+                    title="Limpar todos os filtros ativos"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                    <span>Limpar</span>
+                    <span className="filter-chip-clear-badge">{activeFiltersCount}</span>
+                  </button>
+                </>
               )}
             </div>
           </div>
+
+          {/* Linha 3: Filtros Salvos (chips acima da tabela) */}
+          {Array.isArray(configData.leadFilters) && configData.leadFilters.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--border2)', marginTop: 8 }}>
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>Filtros salvos:</span>
+              {configData.leadFilters.map(sf => {
+                const isActive =
+                  (sf.status || '') === status &&
+                  (sf.nicho || '') === nicho &&
+                  (sf.cidade || '') === cidade &&
+                  (sf.lote || '') === loteFilter &&
+                  (sf.ddd || '') === ddd &&
+                  (sf.prequalFilter || '') === prequalFilter &&
+                  (sf.quickFilter || '') === quickFilter &&
+                  (sf.search || '') === search;
+                return (
+                  <div
+                    key={sf.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '3px 8px 3px 10px',
+                      borderRadius: 99,
+                      fontSize: 11,
+                      fontWeight: isActive ? 600 : 500,
+                      background: isActive ? 'rgba(99,102,241,0.18)' : 'var(--bg3)',
+                      border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                      color: isActive ? 'var(--accent)' : 'var(--text2)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      if (isActive) {
+                        handleClearFilters();
+                      } else {
+                        setStatus(sf.status || '');
+                        setNicho(sf.nicho || '');
+                        setCidade(sf.cidade || '');
+                        setLoteFilter(sf.lote || '');
+                        setDdd(sf.ddd || '');
+                        setPrequalFilter(sf.prequalFilter || '');
+                        setQuickFilter(sf.quickFilter || '');
+                        setSearch(sf.search || '');
+                        setPage(1);
+                      }
+                    }}
+                  >
+                    <span>{sf.nome}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteLeadFilter(sf.id);
+                      }}
+                      title="Excluir filtro salvo"
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1264,6 +1422,20 @@ export default function LeadsPage() {
           />
         </div>
         <div className="mobile-filter-group">
+          <label className="mobile-filter-label">Lote</label>
+          <CustomSelect
+            variant="form"
+            value={loteFilter}
+            onChange={updateFilter(setLoteFilter)}
+            placeholder="Todos os lotes"
+            options={[
+              { value: '', label: 'Todos os lotes' },
+              ...lotesDisponiveis.map(item => ({ value: item, label: item })),
+              { value: '__SEM_LOTE__', label: 'Sem lote' },
+            ]}
+          />
+        </div>
+        <div className="mobile-filter-group">
           <label className="mobile-filter-label">Cidade</label>
           <CustomSelect
             variant="form"
@@ -1524,11 +1696,24 @@ export default function LeadsPage() {
                           </span>
                         )}
                       </div>
-                      {l.cidade && (
-                        <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                          {l.cidade}
-                        </span>
+                      {(l.cidade || l.lote) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {l.cidade && (
+                            <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                              {l.cidade}
+                            </span>
+                          )}
+                          {l.lote && (
+                            <span
+                              onClick={(e) => { e.stopPropagation(); setLoteFilter(curr => curr === l.lote ? '' : l.lote); setPage(1); }}
+                              title="Filtrar por este lote"
+                              style={{ fontSize: 10, padding: '0 5px', borderRadius: 4, background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            >
+                              {l.lote}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>

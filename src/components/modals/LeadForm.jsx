@@ -41,11 +41,20 @@ export default function LeadForm({ item }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [data?.leads]);
 
+  const existingLotes = useMemo(() => {
+    const set = new Set();
+    (data?.leads || []).forEach(l => {
+      if (l.lote && l.lote.trim()) set.add(l.lote.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data?.leads]);
+
   const [intText, setIntText] = useState('');
   const [intTipo, setIntTipo] = useState('outro');
   const [f, setF] = useState({
     nome: item?.nome || '', telefone: item?.telefone || '',
     cidade: item?.cidade || '',
+    lote: item?.lote || '',
     email: item?.email || '', origem: item?.origem || '',
     valorEstimado: item?.valorEstimado || '', proximoContato: item?.proximoContato || '',
     nicho: item?.nicho || configData.nichos[0] || '',
@@ -160,6 +169,19 @@ export default function LeadForm({ item }) {
                 {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
               </CustomSelect>
             </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Lote</label>
+            <input
+              className="form-input"
+              value={f.lote}
+              onChange={u('lote')}
+              list="existing-lotes-lead"
+              placeholder="Ex: Curitiba 11/2026"
+            />
+            <datalist id="existing-lotes-lead">
+              {existingLotes.map(l => <option key={l} value={l} />)}
+            </datalist>
           </div>
           <div className="form-grid form-grid-2">
             <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" type="email" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" /></div>

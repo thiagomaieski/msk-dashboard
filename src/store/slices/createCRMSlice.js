@@ -192,6 +192,41 @@ export const createCRMSlice = (set, get) => ({
     toast('Meta diária atualizada!');
   },
 
+  // ── T3.6: Filtros salvos nomeados em settings/main.leadFilters ────────────
+  saveLeadFilter: async (nome, filtros) => {
+    const { configData, toast } = get();
+    const trimmed = (nome || '').trim();
+    if (!trimmed) return toast('Informe um nome para o filtro', 'error');
+    const current = Array.isArray(configData.leadFilters) ? configData.leadFilters : [];
+    const novo = {
+      id: 'lf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      nome: trimmed,
+      status: filtros.status || '',
+      nicho: filtros.nicho || '',
+      cidade: filtros.cidade || '',
+      lote: filtros.lote || '',
+      ddd: filtros.ddd || '',
+      prequalFilter: filtros.prequalFilter || '',
+      quickFilter: filtros.quickFilter || '',
+      search: filtros.search || '',
+    };
+    const next = [...current, novo];
+    set(s => ({ configData: { ...s.configData, leadFilters: next } }));
+    setDoc(uDoc('settings', 'main'), { leadFilters: next }, { merge: true })
+      .catch(e => toast('Erro ao salvar filtro: ' + e.message, 'error'));
+    toast(`Filtro "${trimmed}" salvo!`);
+  },
+
+  deleteLeadFilter: async (filterId) => {
+    const { configData, toast } = get();
+    const current = Array.isArray(configData.leadFilters) ? configData.leadFilters : [];
+    const next = current.filter(f => f.id !== filterId);
+    set(s => ({ configData: { ...s.configData, leadFilters: next } }));
+    setDoc(uDoc('settings', 'main'), { leadFilters: next }, { merge: true })
+      .catch(e => toast('Erro ao remover filtro: ' + e.message, 'error'));
+    toast('Filtro removido.');
+  },
+
   saveLead: async (fields) => {
     const { data, deleteFile } = get();
 

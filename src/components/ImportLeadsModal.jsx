@@ -30,9 +30,11 @@ export default function ImportLeadsModal() {
   const [defaultNicho, setDefaultNicho] = useState('');
   const [defaultStatus, setDefaultStatus] = useState('Novo');
   const [defaultCidade, setDefaultCidade] = useState('');
+  const [lote, setLote] = useState('');
+  const [loteTouched, setLoteTouched] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Lista de cidades já cadastradas em leads anteriores
+  // Lista de cidades e lotes já cadastrados em leads anteriores
   const existingCidades = useMemo(() => {
     const set = new Set();
     (data?.leads || []).forEach(l => {
@@ -40,6 +42,38 @@ export default function ImportLeadsModal() {
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [data?.leads]);
+
+  const existingLotes = useMemo(() => {
+    const set = new Set();
+    (data?.leads || []).forEach(l => {
+      if (l.lote && l.lote.trim()) set.add(l.lote.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [data?.leads]);
+
+  // Sugestão automática de Lote: cidade mais comum + mês/ano
+  useEffect(() => {
+    if (loteTouched || !dataRows.length) return;
+    const now = new Date();
+    const mmYyyy = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    let topCity = '';
+    if (mapping.cidade) {
+      const idx = headers.indexOf(mapping.cidade);
+      if (idx !== -1) {
+        const counts = {};
+        dataRows.forEach(r => {
+          const val = r[idx] != null ? cleanMojibake(String(r[idx]).trim()) : '';
+          if (val) counts[val] = (counts[val] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        if (sorted.length > 0) topCity = sorted[0][0];
+      }
+    }
+    if (!topCity && defaultCidade.trim()) {
+      topCity = defaultCidade.trim();
+    }
+    setLote(topCity ? `${topCity} ${mmYyyy}` : `Lote ${mmYyyy}`);
+  }, [dataRows, mapping.cidade, defaultCidade, headers, loteTouched]);
 
   const fileInputRef = useRef(null);
 
@@ -169,12 +203,13 @@ export default function ImportLeadsModal() {
       observacoes: cleanMojibake(observacoesVal),
       nicho: cleanMojibake(nichoVal),
       status: statusVal,
-      cidade: cleanMojibake(cidadeVal)
+      cidade: cleanMojibake(cidadeVal),
+      lote: cleanMojibake((lote || '').trim())
     };
   };
 
-  const processedPreview = useMemo(() => dataRows.slice(0, 10).map(normalizeRow), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, headers]);
-  const validRows = useMemo(() => dataRows.map(normalizeRow).filter(it => it.nome), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, headers]);
+  const processedPreview = useMemo(() => dataRows.slice(0, 10).map(normalizeRow), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, lote, headers]);
+  const validRows = useMemo(() => dataRows.map(normalizeRow).filter(it => it.nome), [dataRows, mapping, defaultNicho, defaultStatus, defaultCidade, lote, headers]);
 
   const processImport = async () => {
     if (!mapping.nome) return toast('Mapeie pelo menos o campo Nome / Empresa', 'error');
@@ -310,6 +345,20 @@ export default function ImportLeadsModal() {
                     </datalist>
                   </div>
                 )}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label className="form-label" style={{ fontSize: 11 }}>Lote de Importação (Sugestão automática)</label>
+                <input
+                  className="form-input"
+                  list="existing-lotes-list"
+                  placeholder="Ex: Curitiba 11/2026"
+                  value={lote}
+                  onChange={e => { setLoteTouched(true); setLote(e.target.value); }}
+                />
+                <datalist id="existing-lotes-list">
+                  {existingLotes.map(l => <option key={l} value={l} />)}
+                </datalist>
               </div>
             </div>
           </div>
