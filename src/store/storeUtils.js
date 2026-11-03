@@ -195,6 +195,27 @@ export const clampDayToMonth = (day, date = new Date()) => {
 };
 export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDayToMonth(day, date)).padStart(2, '0')}`;
 
+export function isRecorrenciaPaidInCompetencia(r, competenciaKey, negocioList) {
+  if (!r || !competenciaKey) return false;
+  const list = negocioList || [];
+  return list.some(n => {
+    if (n.tipo && n.tipo !== 'Receita') return false;
+    const comp = n.competencia || n.referenciaMes || '';
+    if (n.recorrenciaId === r.id) {
+      if (comp) return comp === competenciaKey;
+      return String(n.data || '').startsWith(competenciaKey);
+    }
+    // Fallback para receitas antigas sem recorrenciaId
+    if (!n.recorrenciaId && String(n.data || '').startsWith(competenciaKey)) {
+      const isRecRevenue = n.origemAutomatica === 'recorrencia' || n.categoria === 'Receita Recorrente';
+      if (!isRecRevenue) return false;
+      if (r.clienteId && n.clienteId && r.clienteId === n.clienteId) return true;
+      if (r.cliente && (n.entidade || '').trim().toLowerCase() === r.cliente.trim().toLowerCase()) return true;
+    }
+    return false;
+  });
+}
+
 export function getRecorrenciaVencimento(r, negocioList) {
   const today = new Date();
   if (r.status !== 'Ativo') return null;
@@ -202,7 +223,7 @@ export function getRecorrenciaVencimento(r, negocioList) {
   if ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') && r.renovacao) {
     const renDate = new Date(r.renovacao + 'T12:00:00');
     const renMonthKey = `${renDate.getFullYear()}-${String(renDate.getMonth() + 1).padStart(2, '0')}`;
-    const isPaid = (negocioList || []).some(n => n.recorrenciaId === r.id && n.referenciaMes === renMonthKey);
+    const isPaid = isRecorrenciaPaidInCompetencia(r, renMonthKey, negocioList);
     if (isPaid) {
       const nextDate = new Date(renDate);
       if (r.periodicidade === 'Semestral') {
@@ -218,8 +239,8 @@ export function getRecorrenciaVencimento(r, negocioList) {
   if (r.periodicidade === 'Mensal' && r.vencimento) {
     const day = parseInt(r.vencimento, 10) || 1;
     const paidMonths = (negocioList || [])
-      .filter(n => n.recorrenciaId === r.id && n.referenciaMes)
-      .map(n => n.referenciaMes);
+      .filter(n => n.recorrenciaId === r.id && (n.competencia || n.referenciaMes))
+      .map(n => n.competencia || n.referenciaMes);
 
     let checkDate;
     if (r.dataInicio) {
@@ -230,10 +251,10 @@ export function getRecorrenciaVencimento(r, negocioList) {
         : (r.criadoEm.seconds ? new Date(r.criadoEm.seconds * 1000) : new Date());
       checkDate = ts;
     } else {
-      const payments = (negocioList || []).filter(n => n.recorrenciaId === r.id && n.referenciaMes);
+      const payments = (negocioList || []).filter(n => n.recorrenciaId === r.id && (n.competencia || n.referenciaMes));
       if (payments.length > 0) {
-        payments.sort((a, b) => a.referenciaMes.localeCompare(b.referenciaMes));
-        checkDate = new Date(payments[0].referenciaMes + '-01T12:00:00');
+        payments.sort((a, b) => (a.competencia || a.referenciaMes).localeCompare(b.competencia || b.referenciaMes));
+        checkDate = new Date((payments[0].competencia || payments[0].referenciaMes) + '-01T12:00:00');
       } else {
         checkDate = new Date(today.getFullYear(), today.getMonth(), 1);
       }
@@ -255,7 +276,7 @@ export function getRecorrenciaVencimento(r, negocioList) {
       const monthStr = String(month + 1).padStart(2, '0');
       const monthKey = `${year}-${monthStr}`;
       
-      if (!paidMonths.includes(monthKey)) {
+      if (!paidMonths.includes(monthKey) && !isRecorrenciaPaidInCompetencia(r, monthKey, negocioList)) {
         return new Date(year, month, day);
       }
       

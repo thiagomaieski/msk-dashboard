@@ -93,7 +93,8 @@ export default function ConfiguracoesPage() {
     telefoneEmpresa: configData.telefoneEmpresa || '',
     cidade: configData.cidade || '',
     estado: configData.estado || '',
-    site: configData.site || ''
+    site: configData.site || '',
+    codigoServicoNfPadrao: configData.codigoServicoNfPadrao || ''
   });
   const [showPropostaModal, setShowPropostaModal] = useState(false);
   const [propostaData, setPropostaData] = useState({ cliente: '', clienteDoc: '', descricao: '', tipoProjeto: '', prazo: '', valor: '', observacoes: '' });
@@ -132,9 +133,10 @@ export default function ConfiguracoesPage() {
       telefoneEmpresa: configData.telefoneEmpresa || '',
       cidade: configData.cidade || '',
       estado: configData.estado || '',
-      site: configData.site || ''
+      site: configData.site || '',
+      codigoServicoNfPadrao: configData.codigoServicoNfPadrao || ''
     });
-  }, [configData.nomeEmpresa, configData.cnpj, configData.responsavel, configData.emailEmpresa, configData.telefoneEmpresa, configData.cidade, configData.estado, configData.site]);
+  }, [configData.nomeEmpresa, configData.cnpj, configData.responsavel, configData.emailEmpresa, configData.telefoneEmpresa, configData.cidade, configData.estado, configData.site, configData.codigoServicoNfPadrao]);
 
   useEffect(() => {
     if (!FEATURES.SAAS_ADMIN && activeTab === 'cfg-admin') {
@@ -198,7 +200,8 @@ export default function ConfiguracoesPage() {
       telefoneEmpresa: configData.telefoneEmpresa || '',
       cidade: configData.cidade || '',
       estado: configData.estado || '',
-      site: configData.site || ''
+      site: configData.site || '',
+      codigoServicoNfPadrao: configData.codigoServicoNfPadrao || ''
     });
   };
 
@@ -643,7 +646,7 @@ export default function ConfiguracoesPage() {
               {/* Parâmetros Tributários & Fiscais */}
               <div style={{ paddingBottom: 24, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
                 <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 16 }}>Parâmetros Tributários & Fiscais</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, maxWidth: 650 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, maxWidth: 850 }}>
                   <div className="form-group">
                     <label className="form-label">Tipo de Empresa</label>
                     <CustomSelect
@@ -678,6 +681,23 @@ export default function ConfiguracoesPage() {
                       onChange={e => useDash.setState(s => ({ configData: { ...s.configData, aliquotaImposto: parseFloat(e.target.value) || 0 } }))}
                     />
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Para cálc. Receita Líquida</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Código do serviço padrão (NFS-e)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ex: 01.03.01"
+                      value={tempEmpresa.codigoServicoNfPadrao || ''}
+                      onChange={e => setTempEmpresa({ ...tempEmpresa, codigoServicoNfPadrao: e.target.value })}
+                      onBlur={async e => {
+                        const val = e.target.value.trim();
+                        if (val !== (configData.codigoServicoNfPadrao || '')) {
+                          await useDash.getState().saveBusinessConfig({ codigoServicoNfPadrao: val });
+                        }
+                      }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Usado no Fechamento do mês</div>
                   </div>
                 </div>
               </div>

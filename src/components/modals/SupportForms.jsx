@@ -189,24 +189,34 @@ export function ChangePasswordForm() {
 export function PagarRecorrenciaForm({ recorrenciaId }) {
   const configData = useDash(s => s.configData);
   const data = useDash(s => s.data);
+  const editingId = useDash(s => s.editingId);
   const registrarPagamentoRecorrencia = useDash(s => s.registrarPagamentoRecorrencia);
   const closeModal = useDash(s => s.closeModal);
   const rec = data.recorrencia.find(r => r.id === recorrenciaId);
   const today = new Date().toISOString().split('T')[0];
+  const initialComp = editingId?.pagarCompetencia || today.substring(0, 7);
 
   const [f, setF] = useState({
     descricao: rec ? (rec.plano || `Recorrência ${rec.cliente}`) : '',
     valor: rec?.valor || '',
     valorLiquido: rec?.valor || '',
     data: today,
-    nf: 'pendente',
-    formaPagamento: 'PIX',
+    nf: rec?.competencias?.[initialComp]?.nfEmitida ? 'sim' : 'pendente',
+    formaPagamento: rec?.metodoPagamento === 'Cartão' ? 'Cartão de Crédito' : (rec?.metodoPagamento || 'PIX'),
     observacoes: '',
-    referenciaMes: today.substring(0, 7),
+    referenciaMes: initialComp,
+    competencia: initialComp,
     categoria: (configData.categoriasReceita || [])[0] || 'Receita Recorrente',
   });
 
-  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  const u = (k) => (e) => {
+    const val = e.target.value;
+    if (k === 'referenciaMes') {
+      setF(p => ({ ...p, referenciaMes: val, competencia: val }));
+    } else {
+      setF(p => ({ ...p, [k]: val }));
+    }
+  };
 
   const handleValorChange = (val) => {
     setF(p => {

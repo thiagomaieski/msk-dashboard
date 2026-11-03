@@ -22,6 +22,7 @@ export default function RecorrenciaForm({ item }) {
   const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
+  const configData = useDash(s => s.configData);
   const [f, setF] = useState({
     cliente: item?.cliente || '', valor: item?.valor || '',
     plano: item?.plano || '', periodicidade: item?.periodicidade || 'Mensal',
@@ -29,6 +30,8 @@ export default function RecorrenciaForm({ item }) {
     renovacao: item?.renovacao || '', dataInicio: item?.dataInicio || '',
     metodoPagamento: item?.metodoPagamento || 'PIX', observacoes: item?.observacoes || '',
     limiteHoras: item?.limiteHoras || '',
+    codigoServicoNf: item?.codigoServicoNf || '',
+    descricaoNf: item?.descricaoNf || '',
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const isFixedDate = f.periodicidade === 'Anual' || f.periodicidade === 'Semestral';
@@ -156,18 +159,46 @@ export default function RecorrenciaForm({ item }) {
             />
           </div>
         </div>
+        <div className="form-grid form-grid-2">
+          <div className="form-group">
+            <label className="form-label">Código do serviço (NFS-e)</label>
+            <input
+              className="form-input"
+              placeholder={configData?.codigoServicoNfPadrao ? `Padrão: ${configData.codigoServicoNfPadrao}` : 'Ex: 01.03.01'}
+              value={f.codigoServicoNf}
+              onChange={u('codigoServicoNf')}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Descrição padrão da NF</label>
+            <input
+              className="form-input"
+              placeholder={f.plano ? `${f.plano} — {competencia}` : '{plano} — {competencia}'}
+              value={f.descricaoNf}
+              onChange={u('descricaoNf')}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+              Variáveis: <code>{'{mes}'}</code>, <code>{'{ano}'}</code>, <code>{'{competencia}'}</code>, <code>{'{plano}'}</code>
+            </div>
+          </div>
+        </div>
         <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 50 }} value={f.observacoes} onChange={u('observacoes')} /></div>
         <div className="form-actions">
           <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
           <button className="btn btn-primary" onClick={() => {
             if (!f.cliente || !f.plano) return useDash.getState().toast('Cliente e Plano/Descrição são obrigatórios.', 'error');
             const limiteHorasNum = f.limiteHoras !== '' && f.limiteHoras !== null ? parseFloat(f.limiteHoras) || null : null;
+            const matchedCli = data.clientes.find(c => c.nome === f.cliente);
             saveRecorrencia({
               ...f,
+              clienteId: item?.clienteId || matchedCli?.id || '',
               valor: parseFloat(f.valor) || 0,
               limiteHoras: limiteHorasNum,
               vencimento: !isFixedDate ? (parseInt(f.vencimento) || 1) : null,
               renovacao: isFixedDate ? f.renovacao : null,
+              codigoServicoNf: (f.codigoServicoNf || '').trim(),
+              descricaoNf: (f.descricaoNf || '').trim(),
+              competencias: item?.competencias || {},
               // Preserva o array de atividades existente intacto (não sobrescreve)
               atividades: item?.atividades || [],
             });

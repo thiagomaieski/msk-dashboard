@@ -147,6 +147,7 @@ export const createFinanceSlice = (set, get) => ({
     const valorBruto = parseFloat(fields.valor) || 0;
     const valorNet = parseFloat(fields.valorLiquido) || valorBruto;
     const taxaGateway = Math.max(0, valorBruto - valorNet);
+    const competenciaVal = fields.competencia || fields.referenciaMes || getCurrentMonthKey();
 
     const payload = {
       tipo: 'Receita',
@@ -157,12 +158,14 @@ export const createFinanceSlice = (set, get) => ({
       data: fields.data || fmtDateISO(),
       categoria: fields.categoria || 'Receita Recorrente',
       entidade: rec.cliente || '',
+      clienteId: rec.clienteId || '',
       nf: fields.nf || 'pendente',
       formaPagamento: fields.formaPagamento || 'PIX',
       observacoes: fields.observacoes || '',
       origemAutomatica: 'recorrencia',
       recorrenciaId,
-      referenciaMes: fields.referenciaMes || getCurrentMonthKey(),
+      competencia: competenciaVal,
+      referenciaMes: competenciaVal,
       modificadoEm: serverTimestamp(),
       criadoEm: serverTimestamp(),
     };
@@ -203,6 +206,49 @@ export const createFinanceSlice = (set, get) => ({
         }));
       }
     }
+  },
+
+  updateRecorrenciaCompetenciaNf: async (recorrenciaId, competenciaKey, patch) => {
+    const { data, toast } = get();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec || !competenciaKey) return;
+    const prevMap = rec.competencias || {};
+    const prevComp = prevMap[competenciaKey] || { nfEmitida: false, nfNumero: '', nfEmitidaEm: null };
+    const nextEmitida = patch.nfEmitida !== undefined ? !!patch.nfEmitida : !!prevComp.nfEmitida;
+    const nextComp = {
+      ...prevComp,
+      ...patch,
+      nfEmitida: nextEmitida,
+      nfNumero: patch.nfNumero !== undefined ? String(patch.nfNumero) : (prevComp.nfNumero || ''),
+      nfEmitidaEm: nextEmitida ? (prevComp.nfEmitidaEm || new Date().toISOString()) : null,
+    };
+    const nextCompetencias = { ...prevMap, [competenciaKey]: nextComp };
+    const now = new Date().toISOString();
+
+    if (rec.isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          recorrencia: s.mockData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, competencias: nextCompetencias, modificadoEm: now } : r
+          )
+        }
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          recorrencia: s.realData.recorrencia.map(r =>
+            r.id === recorrenciaId ? { ...r, competencias: nextCompetencias, modificadoEm: now } : r
+          )
+        }
+      }));
+      updateDoc(uDoc('recorrencia', recorrenciaId), {
+        competencias: nextCompetencias,
+        modificadoEm: serverTimestamp()
+      }).catch(e => toast('Sync Error: ' + e.message, 'error'));
+    }
+    get()._refreshData();
   },
 
   bulkAddFinancas: async (colName, items) => {

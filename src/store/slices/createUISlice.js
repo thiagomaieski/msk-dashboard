@@ -285,6 +285,7 @@ export const createUISlice = (set, get) => ({
         ...(colName ? { [colName]: editId } : {}),
         importType: type === 'importFinancas' ? id : s.editingId.importType,
         atividadeManutencaoId: type === 'atividadeManutencao' ? (extra?.atividadeId || null) : s.editingId.atividadeManutencaoId,
+        pagarCompetencia: type === 'pagarRecorrencia' ? (extra?.competencia || null) : s.editingId.pagarCompetencia,
       },
     }));
   },
