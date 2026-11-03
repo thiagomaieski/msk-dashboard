@@ -1,7 +1,7 @@
 <?php
 /**
  * proxy.php — Proxy seguro de APIs de terceiros com limites de uso por ação e por dia.
- * Suporta: pagespeed, instagram, screenshot.
+ * Suporta: pagespeed, instagram, screenshot, cnpj.
  * As chaves de API ficam no servidor (config.php), nunca expostas no front-end.
  */
 
@@ -28,7 +28,7 @@ if (empty($action)) {
     exit;
 }
 
-$validActions = ['pagespeed', 'instagram', 'screenshot'];
+$validActions = ['pagespeed', 'instagram', 'screenshot', 'cnpj'];
 if (!in_array($action, $validActions, true)) {
     http_response_code(400);
     echo json_encode(['error' => "Ação inválida: '{$action}'"]);
@@ -41,6 +41,7 @@ function enforceUserRateLimit($userId, $action) {
         'pagespeed'  => 300,
         'instagram'  => 150,
         'screenshot' => 150,
+        'cnpj'       => 200,
     ];
 
     $maxDaily = $limits[$action] ?? 150;
@@ -406,5 +407,33 @@ if ($action === 'screenshot') {
         'url'  => $fullUrl,
         'path' => $targetPath
     ]);
+    exit;
+}
+
+// ── Ação 4: Consulta de CNPJ (BrasilAPI) ──────────────────────────────────────
+if ($action === 'cnpj') {
+    $cnpj = preg_replace('/\D/', '', $_REQUEST['cnpj'] ?? $jsonBody['cnpj'] ?? '');
+    if (strlen($cnpj) !== 14) {
+        http_response_code(400);
+        echo json_encode(['error' => 'CNPJ deve conter 14 dígitos']);
+        exit;
+    }
+
+    $endpoint = 'https://brasilapi.com.br/api/cnpj/v1/' . $cnpj;
+    $raw = httpGet($endpoint, ["User-Agent: MSK-Dashboard/1.0", "Accept: application/json"], 15);
+    if (!$raw) {
+        http_response_code(404);
+        echo json_encode(['error' => 'CNPJ não encontrado ou serviço temporariamente indisponível']);
+        exit;
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data) || isset($data['message'])) {
+        http_response_code(404);
+        echo json_encode(['error' => $data['message'] ?? 'CNPJ não encontrado']);
+        exit;
+    }
+
+    echo json_encode($data);
     exit;
 }
