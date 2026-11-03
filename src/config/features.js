@@ -16,6 +16,7 @@ export const FEATURES = {
   EXTERNAL_NOTIFS_SOON: false,
 
   // Módulos e visualizações secundárias (para próximas tarefas)
+  LEADS_DRAWER: true,
   LEADS_KANBAN: false,
   LEADS_FILA: false,
   LEADS_ANALYTICS: false,

@@ -51,6 +51,8 @@ function addDaysISO(days) {
 }
 
 export const createCRMSlice = (set, get) => ({
+  filteredLeadIds: [],
+  setFilteredLeadIds: (ids) => set({ filteredLeadIds: ids }),
   prequalModal: null,
   setPrequalModal: (prequalModal) => set((state) => ({
     prequalModal: typeof prequalModal === 'function' ? prequalModal(state.prequalModal) : prequalModal

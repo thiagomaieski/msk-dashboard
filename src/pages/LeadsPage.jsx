@@ -292,6 +292,7 @@ export default function LeadsPage() {
   const toggleLeadBotBarreira = useDash(s => s.toggleLeadBotBarreira);
   const saveLeadFilter = useDash(s => s.saveLeadFilter);
   const deleteLeadFilter = useDash(s => s.deleteLeadFilter);
+  const setFilteredLeadIds = useDash(s => s.setFilteredLeadIds);
 
   const prequalModal = useDash(s => s.prequalModal);
   const setPrequalModal = useDash(s => s.setPrequalModal);
@@ -511,6 +512,10 @@ export default function LeadsPage() {
 
     return { ...totals, list: filtered, paginated: pag, totalItems: tItems, totalPages: tPages, safePage: sPage };
   }, [data.leads, search, status, nicho, cidade, loteFilter, ddd, prequalFilter, quickFilter, sort, columnSort, page, resolvedPageSize]);
+
+  useEffect(() => {
+    setFilteredLeadIds(list.map(l => l.id));
+  }, [list, setFilteredLeadIds]);
 
   const kanbanFilteredLeads = useMemo(() => {
     let filtered = (data.leads || []).filter((l) => {

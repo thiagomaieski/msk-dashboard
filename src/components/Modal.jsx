@@ -4,6 +4,8 @@ import ImportFinancasModal from './ImportFinancasModal';
 import ImportLeadsModal from './ImportLeadsModal';
 import FeedbackModal from './FeedbackModal';
 import LeadForm from './modals/LeadForm';
+import LeadDrawer from './modals/LeadDrawer';
+import { FEATURES } from '../config/features';
 import ClienteForm from './modals/ClienteForm';
 import ProjetoForm from './modals/ProjetoForm';
 import RecorrenciaForm from './modals/RecorrenciaForm';
@@ -20,9 +22,16 @@ export default function Modal() {
   const modalTitle = useDash(s => s.modalTitle);
   const modalSize = useDash(s => s.modalSize);
   const closeModal = useDash(s => s.closeModal);
+  const data = useDash(s => s.data);
+  const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
 
   if (!modalOpen) return null;
+
+  if (modalType === 'lead' && FEATURES.LEADS_DRAWER) {
+    const leadItem = editingId.leads ? (data.leads || []).find(x => x.id === editingId.leads) : null;
+    return <LeadDrawer isOpen={modalOpen} onClose={closeModal} item={leadItem} />;
+  }
 
   const handleMouseDown = (e) => {
     overlayClickRef.current = e.target === e.currentTarget;
