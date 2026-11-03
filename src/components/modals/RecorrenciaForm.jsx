@@ -28,6 +28,7 @@ export default function RecorrenciaForm({ item }) {
     plano: item?.plano || '', periodicidade: item?.periodicidade || 'Mensal',
     status: item?.status || 'Ativo', vencimento: item?.vencimento || '',
     renovacao: item?.renovacao || '', dataInicio: item?.dataInicio || '',
+    reajusteEm: item?.reajusteEm || '',
     metodoPagamento: item?.metodoPagamento || 'PIX', observacoes: item?.observacoes || '',
     limiteHoras: item?.limiteHoras || '',
     codigoServicoNf: item?.codigoServicoNf || '',
@@ -145,19 +146,26 @@ export default function RecorrenciaForm({ item }) {
           <div className="form-group"><label className="form-label">Data de Início</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
           <div className="form-group">
             <label className="form-label">
-              Limite Mensal de Manutenção
-              <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>(horas)</span>
+              Próximo Reajuste / Renovação
+              <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>(opcional)</span>
             </label>
-            <input
-              className="form-input"
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="Ex: 4  (vazio = sem limite)"
-              value={f.limiteHoras}
-              onChange={u('limiteHoras')}
-            />
+            <input className="form-input" type="date" value={f.reajusteEm} onChange={u('reajusteEm')} />
           </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">
+            Limite Mensal de Manutenção
+            <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>(horas)</span>
+          </label>
+          <input
+            className="form-input"
+            type="number"
+            min="0"
+            step="0.5"
+            placeholder="Ex: 4  (vazio = sem limite)"
+            value={f.limiteHoras}
+            onChange={u('limiteHoras')}
+          />
         </div>
         <div className="form-grid form-grid-2">
           <div className="form-group">
@@ -196,6 +204,7 @@ export default function RecorrenciaForm({ item }) {
               limiteHoras: limiteHorasNum,
               vencimento: !isFixedDate ? (parseInt(f.vencimento) || 1) : null,
               renovacao: isFixedDate ? f.renovacao : null,
+              reajusteEm: f.reajusteEm || '',
               codigoServicoNf: (f.codigoServicoNf || '').trim(),
               descricaoNf: (f.descricaoNf || '').trim(),
               competencias: item?.competencias || {},

@@ -371,6 +371,29 @@ export default function RecorrenciaPage() {
                           {r.periodicidade}
                         </span>
                       )}
+                      {(() => {
+                        const targetDate = r.reajusteEm || ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') ? r.renovacao : '');
+                        if (!targetDate || r.status !== 'Ativo') return null;
+                        const dTarget = new Date(targetDate + 'T12:00:00');
+                        const days = diffDays(dTarget);
+                        if (days === null || days > 30 || days < -15) return null;
+                        return (
+                          <span
+                            style={{
+                              marginLeft: 6,
+                              fontSize: 10,
+                              padding: '1px 6px',
+                              borderRadius: 99,
+                              background: days <= 0 ? 'var(--red-bg)' : 'rgba(245,158,11,0.14)',
+                              color: days <= 0 ? 'var(--red)' : '#f59e0b',
+                              fontWeight: 700,
+                            }}
+                            title={`Data de reajuste/renovação: ${targetDate.split('-').reverse().join('/')}`}
+                          >
+                            {days < 0 ? `reajuste há ${Math.abs(days)}d` : days === 0 ? 'reajuste hoje' : `reajuste em ${days}d`}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td>
                       {formattedDoc ? (
