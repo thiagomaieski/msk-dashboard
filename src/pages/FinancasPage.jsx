@@ -110,15 +110,159 @@ function PayStatusPill({ id, pago, colPrefix, isRec = false }) {
   );
 }
 
+function stripInstallmentSuffix(desc = '') {
+  return String(desc).replace(/\s*\(\d+\/\d+\)\s*$/, '').trim();
+}
+
 function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSelect, colPrefix, showNf = false, showPayStatus = false }) {
   const bulkDeleteParcelamento = useDash(s => s.bulkDeleteParcelamento);
+  const allColItems = useDash(s => s.data[colPrefix] || []);
+  const [expandedGroups, setExpandedGroups] = useState({});
+
   if (!list.length) return <div className="finance-col-empty">Nenhuma {isRec ? 'receita' : 'despesa'}</div>;
   const todayISO = new Date().toISOString().split('T')[0];
   const CARD_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3 }} title="Cartão de crédito"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
   const INVEST_ICON = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11, verticalAlign: 'middle', marginRight: 3, color: 'var(--amber)' }} title="Investimento"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+
+  const seenGroups = new Set();
+
   return list.map(m => {
-    const displayTitle = m.entidade ? `${m.entidade} — ${m.descricao || ''}` : (m.descricao || '-');
     const parc = m.parcelamento;
+    const grupoId = parc?.grupoId;
+
+    if (grupoId) {
+      if (seenGroups.has(grupoId)) return null;
+      seenGroups.add(grupoId);
+
+      const groupItems = allColItems
+        .filter(x => x.parcelamento?.grupoId === grupoId)
+        .sort((a, b) => (a.parcelamento?.parcela || 0) - (b.parcelamento?.parcela || 0));
+      const itemsToRender = groupItems.length ? groupItems : [m];
+      const totalParcelas = parc.total || itemsToRender.length;
+      const isItemPaid = (x) => isRec ? isReceitaRecebida(x, todayISO) : !!x.pago;
+      const pagasCount = itemsToRender.filter(isItemPaid).length;
+      const faltamValor = itemsToRender.filter(x => !isItemPaid(x)).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+      const valorTotalGrupo = parc.valorTotal || itemsToRender.reduce((s, x) => s + (Number(x.valor) || 0), 0);
+      const baseDesc = stripInstallmentSuffix(m.descricao || 'Parcelamento');
+      const groupTitle = m.entidade ? `${m.entidade} — ${baseDesc}` : baseDesc;
+      const isExpanded = !!expandedGroups[grupoId];
+      const recTipo = isRec && colPrefix === 'negocio' ? getReceitaTipo(m) : null;
+
+      return (
+        <div key={`group_${grupoId}`} className="finance-card card-in" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <button
+              type="button"
+              className="row-btn"
+              onClick={() => setExpandedGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+              title={isExpanded ? 'Recolher parcelas' : 'Expandir parcelas'}
+              style={{ marginTop: 2, width: 22, height: 22, flexShrink: 0 }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12, transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="finance-card-top">
+                <div
+                  className="finance-card-desc"
+                  style={{ cursor: 'pointer', fontWeight: 600 }}
+                  onClick={() => setExpandedGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                >
+                  {groupTitle}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {recTipo && <ReceitaTipoChip tipo={recTipo} />}
+                  <span style={{ fontSize: 10, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 7px', borderRadius: 99, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {pagasCount}/{totalParcelas} pagas
+                  </span>
+                  <div className="finance-card-val" style={{ color: isRec ? 'var(--green)' : 'var(--red)' }}>
+                    {fmtBRL(m.valor)}
+                  </div>
+                </div>
+              </div>
+              <div className="finance-card-meta" style={{ marginTop: 4 }}>
+                <span style={{ fontWeight: 500, color: faltamValor > 0 ? 'var(--amber)' : 'var(--green)' }}>
+                  {faltamValor > 0 ? `Faltam ${fmtBRL(faltamValor)}` : 'Todas quitadas'}
+                </span>
+                <span>&bull;</span>
+                <span>Total: {fmtBRL(valorTotalGrupo)}</span>
+                <span>&bull;</span>
+                <span>Parcela no período: {parc.parcela}/{totalParcelas} ({fmtDate(m.data)})</span>
+              </div>
+              <div className="finance-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                <PayStatusPill id={m.id} pago={isItemPaid(m)} colPrefix={colPrefix} isRec={isRec} />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ fontSize: 10, padding: '2px 8px' }}
+                  onClick={() => setExpandedGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                >
+                  {isExpanded ? 'Ocultar parcelas' : `Ver ${itemsToRender.length} parcelas`}
+                </button>
+                <button
+                  className="row-btn del"
+                  style={{ color: 'var(--red)', fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}
+                  onClick={() => bulkDeleteParcelamento(grupoId)}
+                  title={`Excluir todas as ${totalParcelas} parcelas deste grupo`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                  Grupo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {isExpanded && (
+            <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {itemsToRender.map(inst => {
+                const instPaid = isItemPaid(inst);
+                return (
+                  <div
+                    key={inst.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      background: inst.id === m.id ? 'var(--bg3)' : 'var(--bg2)',
+                      border: `1px solid ${inst.id === m.id ? 'var(--accent)' : 'var(--border)'}`,
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
+                        {inst.parcelamento?.parcela}/{totalParcelas}
+                      </span>
+                      <span style={{ color: 'var(--text2)' }}>{fmtDate(inst.data)}</span>
+                      <span style={{ fontWeight: 600, color: isRec ? 'var(--green)' : 'var(--text)' }}>{fmtBRL(inst.valor)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <PayStatusPill id={inst.id} pago={instPaid} colPrefix={colPrefix} isRec={isRec} />
+                      {isRec && (
+                        <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(inst, useDash.getState().configData)} title="Gerar Recibo PDF">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                        </button>
+                      )}
+                      <button className="row-btn" onClick={() => onEdit(inst.id)} title="Editar parcela">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                      </button>
+                      <button className="row-btn del" onClick={() => onDelete(inst.id, inst.descricao)} title="Excluir parcela">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const displayTitle = m.entidade ? `${m.entidade} — ${m.descricao || ''}` : (m.descricao || '-');
     const isCartao = !!m.cartao;
     const showPill = showPayStatus && !isRec && !isCartao && !m.investimento;
     const showRecPill = isRec && colPrefix === 'negocio';
@@ -175,17 +319,6 @@ function FinanceColList({ list, isRec, onEdit, onDelete, selectedItems, toggleSe
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
               </button>
             )}
-            {parc?.grupoId && (
-              <button
-                className="row-btn del"
-                style={{ color: 'var(--red)', fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}
-                onClick={() => bulkDeleteParcelamento(parc.grupoId)}
-                title={`Excluir todas as ${parc.total} parcelas deste grupo`}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-                Grupo
-              </button>
-            )}
             <button className="row-btn" onClick={() => onEdit(m.id)} title="Editar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
             </button>
@@ -221,6 +354,7 @@ export function FinancasNegocioPage() {
   const [searchDesp, setSearchDesp] = useState('');
   const [clienteFilter, setClienteFilter] = useState('');
   const [viewMode, setViewMode] = useState('cols'); // 'cols', 'extrato'
+  const [expandedExtratoGroups, setExpandedExtratoGroups] = useState({});
 
   const setQuickFilter = (type) => {
     const today = new Date();
@@ -604,64 +738,206 @@ export function FinancasNegocioPage() {
             <tbody>
               {!filtered.length ? (
                 <tr><td colSpan={9}><div className="finance-col-empty">Nenhum lançamento no extrato</div></td></tr>
-              ) : filtered.map(m => (
-                <tr key={m.id} className="row-in">
-                  <td><input type="checkbox" checked={selectedItems.includes(m.id)} onChange={() => toggleSelect('negocio', m.id)} /></td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
-                  <td>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
-                          {m.tipo === 'Receita' ? <path d="m18 15-6-6-6 6"/> : <path d="m6 9 6 6 6-6"/>}
-                        </svg>
-                        {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
-                      </span>
-                      {m.tipo === 'Receita' && <ReceitaTipoChip tipo={getReceitaTipo(m)} />}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 500 }}>{m.descricao || '-'}</div>
-                    {m.entidade && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{m.entidade}</div>}
-                  </td>
-                  <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
-                  <td>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
-                        {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
-                      </span>
-                      {m.tipo === 'Receita' && (
-                        <PayStatusPill id={m.id} pago={isReceitaRecebida(m, todayISO)} colPrefix="negocio" isRec={true} />
-                      )}
-                      {m.tipo === 'Despesa' && !m.cartao && (
-                        <PayStatusPill id={m.id} pago={!!m.pago} colPrefix="negocio" />
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    {m.tipo === 'Receita' && m.nf ? (
-                      <span style={{ fontSize: 11, color: m.nf === 'pendente' ? '#f59e0b' : 'var(--text2)' }}>
-                        {m.nf === 'sim' ? 'Emitida' : m.nf === 'pendente' ? 'Pendente' : 'Sem NF'}
-                      </span>
-                    ) : '-'}
-                  </td>
-                  <td><span style={{ fontSize: 12 }}>{m.cartao ? 'Cartão' : (m.contaCaixa || 'Padrão')}</span></td>
-                  <td>
-                    <div className="row-actions">
-                      {m.tipo === 'Receita' && (
-                        <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(m, configData)} title="Gerar Recibo PDF">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
-                        </button>
-                      )}
-                      <button className="row-btn" onClick={() => openModal(m.tipo === 'Receita' ? 'negocioReceita' : 'negocioDespesa', m.id)} title="Editar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
-                      </button>
-                      <button className="row-btn del" onClick={() => deleteItem('negocio', m.id, m.descricao)} title="Excluir">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : (() => {
+                const seenExtratoGroups = new Set();
+                const rows = [];
+                for (const m of filtered) {
+                  const grupoId = m.parcelamento?.grupoId;
+                  if (grupoId) {
+                    if (seenExtratoGroups.has(grupoId)) continue;
+                    seenExtratoGroups.add(grupoId);
+
+                    const groupItems = (data.negocio || [])
+                      .filter(x => x.parcelamento?.grupoId === grupoId)
+                      .sort((a, b) => (a.parcelamento?.parcela || 0) - (b.parcelamento?.parcela || 0));
+                    const itemsToRender = groupItems.length ? groupItems : [m];
+                    const totalParcelas = m.parcelamento.total || itemsToRender.length;
+                    const isItemPaid = (x) => x.tipo === 'Receita' ? isReceitaRecebida(x, todayISO) : !!x.pago;
+                    const pagasCount = itemsToRender.filter(isItemPaid).length;
+                    const faltamValor = itemsToRender.filter(x => !isItemPaid(x)).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+                    const baseDesc = stripInstallmentSuffix(m.descricao || 'Parcelamento');
+                    const isExpanded = !!expandedExtratoGroups[grupoId];
+
+                    rows.push(
+                      <tr key={`ext_group_${grupoId}`} className="row-in" style={{ background: isExpanded ? 'var(--bg3)' : undefined }}>
+                        <td>
+                          <button
+                            type="button"
+                            className="row-btn"
+                            onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                            title={isExpanded ? 'Recolher parcelas' : 'Expandir parcelas'}
+                            style={{ width: 22, height: 22 }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12, transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </button>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
+                        <td>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
+                              {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
+                            </span>
+                            {m.tipo === 'Receita' && <ReceitaTipoChip tipo={getReceitaTipo(m)} />}
+                          </div>
+                        </td>
+                        <td style={{ cursor: 'pointer' }} onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}>
+                          <div style={{ fontWeight: 600 }}>
+                            {baseDesc}{' '}
+                            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginLeft: 4 }}>
+                              • {pagasCount}/{totalParcelas} pagas • {faltamValor > 0 ? `faltam ${fmtBRL(faltamValor)}` : 'quitado'}
+                            </span>
+                          </div>
+                          {m.entidade && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{m.entidade}</div>}
+                        </td>
+                        <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
+                        <td>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
+                              {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
+                            </span>
+                            <PayStatusPill id={m.id} pago={isItemPaid(m)} colPrefix="negocio" isRec={m.tipo === 'Receita'} />
+                          </div>
+                        </td>
+                        <td>
+                          {m.tipo === 'Receita' && m.nf ? (
+                            <span style={{ fontSize: 11, color: m.nf === 'pendente' ? '#f59e0b' : 'var(--text2)' }}>
+                              {m.nf === 'sim' ? 'Emitida' : m.nf === 'pendente' ? 'Pendente' : 'Sem NF'}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td><span style={{ fontSize: 12 }}>{m.cartao ? 'Cartão' : (m.contaCaixa || 'Padrão')}</span></td>
+                        <td>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: 10, padding: '2px 7px' }}
+                              onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                            >
+                              {isExpanded ? 'Ocultar' : `Parcelas (${totalParcelas})`}
+                            </button>
+                            <button
+                              className="row-btn del"
+                              onClick={() => useDash.getState().bulkDeleteParcelamento(grupoId)}
+                              title="Excluir todas as parcelas do grupo"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+
+                    if (isExpanded) {
+                      for (const inst of itemsToRender) {
+                        rows.push(
+                          <tr key={inst.id} style={{ background: 'var(--bg2)', fontSize: 12 }}>
+                            <td>
+                              <input type="checkbox" checked={selectedItems.includes(inst.id)} onChange={() => toggleSelect('negocio', inst.id)} />
+                            </td>
+                            <td style={{ whiteSpace: 'nowrap', paddingLeft: 20, color: 'var(--text2)' }}>{fmtDate(inst.data)}</td>
+                            <td>
+                              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-bg)', padding: '2px 6px', borderRadius: 99 }}>
+                                Parcela {inst.parcelamento?.parcela}/{totalParcelas}
+                              </span>
+                            </td>
+                            <td style={{ color: 'var(--text2)' }}>{inst.descricao}</td>
+                            <td><span style={{ fontSize: 11, color: 'var(--text3)' }}>{inst.categoria || '-'}</span></td>
+                            <td>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontWeight: 600, color: inst.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
+                                  {fmtBRL(inst.valor)}
+                                </span>
+                                <PayStatusPill id={inst.id} pago={isItemPaid(inst)} colPrefix="negocio" isRec={inst.tipo === 'Receita'} />
+                              </div>
+                            </td>
+                            <td>{inst.nf === 'sim' ? 'Emitida' : inst.nf === 'pendente' ? 'Pendente' : 'Sem NF'}</td>
+                            <td>{inst.formaPagamento || 'PIX'}</td>
+                            <td>
+                              <div className="row-actions">
+                                {inst.tipo === 'Receita' && (
+                                  <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(inst, configData)} title="Gerar Recibo PDF">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                                  </button>
+                                )}
+                                <button className="row-btn" onClick={() => openModal(inst.tipo === 'Receita' ? 'negocioReceita' : 'negocioDespesa', inst.id)} title="Editar">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                                </button>
+                                <button className="row-btn del" onClick={() => deleteItem('negocio', inst.id, inst.descricao)} title="Excluir">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    }
+                    continue;
+                  }
+
+                  rows.push(
+                    <tr key={m.id} className="row-in">
+                      <td><input type="checkbox" checked={selectedItems.includes(m.id)} onChange={() => toggleSelect('negocio', m.id)} /></td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
+                      <td>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
+                              {m.tipo === 'Receita' ? <path d="m18 15-6-6-6 6"/> : <path d="m6 9 6 6 6-6"/>}
+                            </svg>
+                            {m.tipo === 'Receita' ? 'Receita' : 'Despesa'}
+                          </span>
+                          {m.tipo === 'Receita' && <ReceitaTipoChip tipo={getReceitaTipo(m)} />}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{m.descricao || '-'}</div>
+                        {m.entidade && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{m.entidade}</div>}
+                      </td>
+                      <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
+                      <td>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
+                            {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
+                          </span>
+                          {m.tipo === 'Receita' && (
+                            <PayStatusPill id={m.id} pago={isReceitaRecebida(m, todayISO)} colPrefix="negocio" isRec={true} />
+                          )}
+                          {m.tipo === 'Despesa' && !m.cartao && (
+                            <PayStatusPill id={m.id} pago={!!m.pago} colPrefix="negocio" />
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {m.tipo === 'Receita' && m.nf ? (
+                          <span style={{ fontSize: 11, color: m.nf === 'pendente' ? '#f59e0b' : 'var(--text2)' }}>
+                            {m.nf === 'sim' ? 'Emitida' : m.nf === 'pendente' ? 'Pendente' : 'Sem NF'}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td><span style={{ fontSize: 12 }}>{m.cartao ? 'Cartão' : (m.contaCaixa || 'Padrão')}</span></td>
+                      <td>
+                        <div className="row-actions">
+                          {m.tipo === 'Receita' && (
+                            <button className="row-btn" style={{ color: 'var(--blue)' }} onClick={() => generateReciboPDF(m, configData)} title="Gerar Recibo PDF">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                            </button>
+                          )}
+                          <button className="row-btn" onClick={() => openModal(m.tipo === 'Receita' ? 'negocioReceita' : 'negocioDespesa', m.id)} title="Editar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                          </button>
+                          <button className="row-btn del" onClick={() => deleteItem('negocio', m.id, m.descricao)} title="Excluir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })()}
             </tbody>
           </table>
         </div>
