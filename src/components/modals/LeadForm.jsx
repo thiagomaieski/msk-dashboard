@@ -51,6 +51,7 @@ export default function LeadForm({ item }) {
     nicho: item?.nicho || configData.nichos[0] || '',
     status: item?.status || 'Novo', site: item?.site || '', observacoes: item?.observacoes || '',
     interacoes: item?.interacoes || [],
+    botBarreira: !!item?.botBarreira,
   });
 
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
@@ -185,7 +186,42 @@ export default function LeadForm({ item }) {
           </div>
           <div className="form-group"><label className="form-label">Próximo Contato (Agendamento)</label><input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} /></div>
           <div className="form-group">
-            <label className="form-label">Histórico de Interações</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Histórico de Interações</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 8px',
+                    color: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : 'var(--text2)',
+                    borderColor: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'rgba(16,185,129,0.4)' : undefined,
+                  }}
+                  onClick={() => {
+                    const nowISO = new Date().toISOString();
+                    const newInt = { data: nowISO, texto: 'Resposta recebida', tipo: 'resposta_recebida', criadoEm: nowISO };
+                    setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+                  }}
+                >
+                  ✓ Marcar resposta
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 8px',
+                    color: f.botBarreira ? 'var(--amber)' : 'var(--text2)',
+                    borderColor: f.botBarreira ? 'rgba(245,158,11,0.4)' : undefined,
+                    background: f.botBarreira ? 'rgba(245,158,11,0.12)' : undefined,
+                  }}
+                  onClick={() => setF(p => ({ ...p, botBarreira: !p.botBarreira }))}
+                >
+                  🤖 Bot no WhatsApp {f.botBarreira ? '• Ativo' : ''}
+                </button>
+              </div>
+            </div>
             <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border)' }}>
               {(f.interacoes || []).length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>

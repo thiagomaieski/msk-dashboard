@@ -287,6 +287,8 @@ export default function LeadsPage() {
   const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
   const runPreQualification = useDash(s => s.runPreQualification);
   const saveLead = useDash(s => s.saveLead);
+  const addLeadInteracao = useDash(s => s.addLeadInteracao);
+  const toggleLeadBotBarreira = useDash(s => s.toggleLeadBotBarreira);
 
   const prequalModal = useDash(s => s.prequalModal);
   const setPrequalModal = useDash(s => s.setPrequalModal);
@@ -346,6 +348,7 @@ export default function LeadsPage() {
   const abordadosHoje = useMemo(() => computeTodayAbordagens(data.leads), [data.leads]);
   const metaAbordagensDia = configData.metaDiariaAbordagens || configData.metaAbordagensDia || 10;
   const aguardandoRetorno = useMemo(() => computePendingResponseLeads(data.leads), [data.leads]);
+  const botBarreiraCount = useMemo(() => (data.leads || []).filter(l => l.botBarreira).length, [data.leads]);
 
   const cidadesDisponiveis = useMemo(() => {
     const set = new Set();
@@ -407,6 +410,9 @@ export default function LeadsPage() {
         const temResposta = (l.interacoes || []).some(i => i.tipo === 'resposta_recebida');
         if (!temResposta) return false;
       }
+      if (quickFilter === 'botBarreira') {
+        if (!l.botBarreira) return false;
+      }
       return true;
     });
 
@@ -452,6 +458,9 @@ export default function LeadsPage() {
         if (l.status === 'Fechado' || l.status === 'Perdido') return false;
         const temResposta = (l.interacoes || []).some(i => i.tipo === 'resposta_recebida');
         if (!temResposta) return false;
+      }
+      if (quickFilter === 'botBarreira') {
+        if (!l.botBarreira) return false;
       }
       return true;
     });
@@ -737,6 +746,23 @@ export default function LeadsPage() {
                 </svg>
                 <span>Aguardando retorno</span>
                 {aguardandoRetorno > 0 && <span className="leads-quick-badge">{aguardandoRetorno}</span>}
+              </button>
+
+              <button
+                type="button"
+                className={`leads-quick-btn ${quickFilter === 'botBarreira' ? 'active' : ''}`}
+                onClick={() => { setQuickFilter(q => q === 'botBarreira' ? '' : 'botBarreira'); setPage(1); }}
+                title="Filtrar leads com barreira de atendimento automático (Bot no WhatsApp)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <circle cx="12" cy="5" r="2" />
+                  <path d="M12 7v4" />
+                  <line x1="8" y1="16" x2="8" y2="16" />
+                  <line x1="16" y1="16" x2="16" y2="16" />
+                </svg>
+                <span>Bot no WhatsApp</span>
+                {botBarreiraCount > 0 && <span className="leads-quick-badge">{botBarreiraCount}</span>}
               </button>
             </div>
 
@@ -1473,13 +1499,31 @@ export default function LeadsPage() {
                   <td><input type="checkbox" checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
                   <td style={{ maxWidth: 220 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span
-                        style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                        onClick={() => openModal('lead', l.id)}
-                        title="Clique para editar"
-                      >
-                        {l.nome || '-'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <span
+                          style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          onClick={() => openModal('lead', l.id)}
+                          title="Clique para editar"
+                        >
+                          {l.nome || '-'}
+                        </span>
+                        {(l.interacoes || []).some(i => i.tipo === 'resposta_recebida') && (
+                          <span
+                            title="Respondeu mensagem"
+                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 600, flexShrink: 0 }}
+                          >
+                            Respondeu
+                          </span>
+                        )}
+                        {l.botBarreira && (
+                          <span
+                            title="Barreira de atendimento automático (Bot no WhatsApp)"
+                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 600, flexShrink: 0 }}
+                          >
+                            Bot
+                          </span>
+                        )}
+                      </div>
                       {l.cidade && (
                         <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -1619,6 +1663,22 @@ export default function LeadsPage() {
                   </td>
                   <td>
                     <div className="row-actions">
+                      <button
+                        className="row-btn"
+                        onClick={() => addLeadInteracao(l.id, { tipo: 'resposta_recebida', texto: 'Resposta recebida' })}
+                        title="Marcar resposta recebida"
+                        style={{ color: (l.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : undefined }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 11 12 15 8"/></svg>
+                      </button>
+                      <button
+                        className="row-btn"
+                        onClick={() => toggleLeadBotBarreira(l.id)}
+                        title={l.botBarreira ? 'Remover flag Bot no WhatsApp' : 'Marcar Bot no WhatsApp'}
+                        style={{ color: l.botBarreira ? 'var(--amber)' : undefined }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
+                      </button>
                       <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
                       </button>

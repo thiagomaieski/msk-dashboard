@@ -554,6 +554,23 @@ export const createCRMSlice = (set, get) => ({
     toast('Interação registrada!');
   },
 
+  toggleLeadBotBarreira: async (leadId) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const nextVal = !lead.botBarreira;
+    const nowISO = new Date().toISOString();
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, botBarreira: nextVal, modificadoEm: nowISO } : l) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, botBarreira: nextVal, modificadoEm: nowISO } : l) } }));
+      updateDoc(uDoc('leads', leadId), { botBarreira: nextVal, modificadoEm: serverTimestamp() }).catch(e => toast('Erro ao atualizar bot: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+    toast(nextVal ? 'Marcado como Bot no WhatsApp' : 'Flag Bot no WhatsApp removida');
+  },
+
   bulkEditLeads: async (field, value) => {
     const { selectedItems, showConfirm, toast, clearBulk, data, deleteFile } = get();
     if (!selectedItems.length || !value) return;
