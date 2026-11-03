@@ -79,10 +79,14 @@ function PVDetalhes({ p, onEdit, updateField }) {
   const [notes, setNotes] = useState(p.anotacoes || '');
   const [saving, setSaving] = useState(false);
   const data = useDash(s => s.data);
-  const configData = useDash(s => s.configData);
   const recsProjeto = data.negocio.filter(n => n.tipo === 'Receita' && n.projetoId === p.id);
-  const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)' }[p.status] || 'var(--text3)';
+  const sc = { 'Em andamento': 'var(--blue)', 'Aguardando cliente': 'var(--amber)', 'Aguardando Aprovação': 'var(--purple)', 'Concluído': 'var(--green)', 'Pausado': 'var(--text3)', 'Cancelado': 'var(--red)' }[p.status] || 'var(--text3)';
   const pc = { 'Pago': 'var(--green)', 'Parcial (50%)': 'var(--amber)', 'Pendente': 'var(--amber)' }[p.pagamento] || 'var(--text3)';
+
+  const tipoLabel = p.tipo || p.tipoProjeto || 'Não informado';
+  const origemLabel = p.origem || 'Não informado';
+  const fechadoEmStr = p.fechadoEm || (typeof p.criadoEm === 'string' && p.criadoEm.includes('-') ? p.criadoEm.split('T')[0] : '');
+  const siteHref = p.siteUrl ? (/^https?:\/\//i.test(p.siteUrl) ? p.siteUrl : `https://${p.siteUrl}`) : '';
   
   const handleSaveNotes = async () => {
     if (notes === p.anotacoes) return;
@@ -93,33 +97,66 @@ function PVDetalhes({ p, onEdit, updateField }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
         <div className="summary-card">
           <div className="summary-card-label">Valor do Projeto</div>
           <div className="summary-card-val" style={{ fontFamily: 'var(--sans)' }}>{fmtBRL(p.valor)}</div>
         </div>
         <div className="summary-card">
+          <div className="summary-card-label">Fechado em</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>{fechadoEmStr ? fmtDate(fechadoEmStr) : '—'}</div>
+        </div>
+        <div className="summary-card">
           <div className="summary-card-label">Prazo</div>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>{fmtDate(p.prazo)}</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>{p.prazo ? fmtDate(p.prazo) : '—'}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Status</div>
-          <div style={{ fontSize: 16, fontWeight: 500, color: sc }}>{p.status || '-'}</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: sc }}>{p.status || '—'}</div>
         </div>
         <div className="summary-card">
           <div className="summary-card-label">Pagamento</div>
-          <div style={{ fontSize: 16, fontWeight: 500, color: pc }}>{p.pagamento || '-'}</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: pc }}>{p.pagamento || '—'}</div>
         </div>
       </div>
-      <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)'} strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}>
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        </svg>
-        <div>
-          <div className="summary-card-label">Nota Fiscal</div>
-          <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)' }}>
-            {p.nf === 'sim' ? 'Emitida' : p.nf === 'pendente' ? 'Pendente' : 'Não emitida'}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+        <div className="summary-card">
+          <div className="summary-card-label">Tipo</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: p.tipo || p.tipoProjeto ? 'var(--text)' : 'var(--text3)' }}>{tipoLabel}</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-card-label">Origem</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: p.origem ? 'var(--text)' : 'var(--text3)' }}>{origemLabel}</div>
+        </div>
+        <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)'} strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}>
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <div>
+            <div className="summary-card-label">Nota Fiscal</div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)' }}>
+              {p.nf === 'sim' ? 'Emitida' : p.nf === 'pendente' ? 'Pendente' : 'Não emitida'}
+            </div>
           </div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-card-label">Site</div>
+          {siteHref ? (
+            <a
+              href={siteHref}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all' }}
+            >
+              <span>{p.siteUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0 }}>
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          ) : (
+            <div style={{ fontSize: 14, color: 'var(--text3)' }}>—</div>
+          )}
         </div>
       </div>
 
@@ -225,7 +262,6 @@ function PVTarefas({ p, onUpdate }) {
   const handleDragStart = (e, idx) => {
     setDraggedIdx(idx);
     e.dataTransfer.effectAllowed = 'move';
-    // Adiciona uma classe pequena de delay para não sumir o elemento que está sendo arrastado imediatamente
     setTimeout(() => {
       e.target.classList.add('dragging');
     }, 0);
@@ -363,12 +399,10 @@ function PVArquivos({ p, onAdd, onDel }) {
     setUploading(true);
     setProgress('Preparando envio...');
     try {
-      // O addArquivo agora recebe o arquivo real e faz o upload
       await onAdd(selectedFile, tipo, p.id);
       setNome(''); setSelectedFile(null); setProgress('');
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
-      // Erro já tratado no store
       setProgress('');
     } finally { setUploading(false); }
   };
