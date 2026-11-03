@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useDash, sortData } from '../store/useStore';
 import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
 import { getWaLink } from '../store/useStore';
 import { leadHasValidSite } from '../utils/prequalUtils';
 import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
 import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
-import { computePendingResponseLeads, computeTodayAbordagens } from '../utils/crmAnalyticsUtils';
+import { computePendingResponseLeads, computeTodayAbordagens, LEAD_STATUSES } from '../utils/crmAnalyticsUtils';
 import CustomSelect from '../components/CustomSelect';
 import { FEATURES } from '../config/features';
 
@@ -311,6 +311,21 @@ export default function LeadsPage() {
   const [pageSize, setPageSize] = useState(30);
   const [columnSort, setColumnSort] = useState({ key: null, direction: 'asc' });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [statusMenuLeadId, setStatusMenuLeadId] = useState(null);
+  const [undoAction, setUndoAction] = useState(null);
+
+  useEffect(() => {
+    if (!undoAction) return;
+    const t = setTimeout(() => setUndoAction(null), 8000);
+    return () => clearTimeout(t);
+  }, [undoAction]);
+
+  useEffect(() => {
+    if (!statusMenuLeadId) return;
+    const closeMenu = () => setStatusMenuLeadId(null);
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
+  }, [statusMenuLeadId]);
 
   const hasActiveFilters = !!(search || status || nicho || cidade || ddd || prequalFilter || quickFilter || sort !== 'criadoDesc');
 
@@ -510,13 +525,31 @@ export default function LeadsPage() {
     }
   };
 
-  const handleNextStatus = async (lead, e) => {
-    e.stopPropagation();
+  const handleChangeStatus = async (lead, nextStatus, e) => {
+    if (e) e.stopPropagation();
     const currentStatus = lead.status || 'Novo';
-    const statusFlow = ['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'];
-    const idx = statusFlow.indexOf(currentStatus);
-    const nextStatus = statusFlow[(idx + 1) % statusFlow.length];
+    if (nextStatus === currentStatus) {
+      setStatusMenuLeadId(null);
+      return;
+    }
+    const prevLeadSnapshot = { ...lead };
+    setStatusMenuLeadId(null);
     await saveLead({ ...lead, status: nextStatus });
+    setUndoAction({
+      id: Date.now(),
+      label: `Status de "${lead.nome || 'Lead'}" alterado para ${nextStatus}`,
+      onUndo: async () => {
+        await saveLead(prevLeadSnapshot);
+      },
+    });
+  };
+
+  const handleNextStatus = async (lead, e) => {
+    if (e) e.stopPropagation();
+    const currentStatus = lead.status || 'Novo';
+    const idx = LEAD_STATUSES.indexOf(currentStatus);
+    const nextStatus = LEAD_STATUSES[(idx + 1) % LEAD_STATUSES.length];
+    await handleChangeStatus(lead, nextStatus, e);
   };
 
   return (
@@ -763,7 +796,7 @@ export default function LeadsPage() {
                 placeholder="Todos"
                 options={[
                   { value: '', label: 'Todos' },
-                  ...['Novo', 'Abordado', 'Follow-up', 'Em negociação', 'Fechado', 'Perdido'].map(item => ({ value: item, label: item }))
+                  ...LEAD_STATUSES.map(item => ({ value: item, label: item }))
                 ]}
               />
 
@@ -1144,7 +1177,7 @@ export default function LeadsPage() {
               placeholder="Todos os status"
               options={[
                 { value: '', label: 'Todos os status' },
-                ...['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(item => ({ value: item, label: item }))
+                ...LEAD_STATUSES.map(item => ({ value: item, label: item }))
               ]}
             />
           </div>
@@ -1282,7 +1315,7 @@ export default function LeadsPage() {
           }}
           style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, marginTop: 16, minHeight: 400, userSelect: 'none' }}
         >
-          {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(colStatus => {
+          {LEAD_STATUSES.map(colStatus => {
             const colLeads = kanbanFilteredLeads.filter(l => (l.status || 'Novo') === colStatus);
             return (
               <div 
@@ -1442,20 +1475,76 @@ export default function LeadsPage() {
                       </a>
                     ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
                   </td>
-                  <td>
+                  <td style={{ position: 'relative' }}>
                     <div 
                       className="status-badge-interactive" 
                       onClick={(e) => handleNextStatus(l, e)}
-                      title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status`}
+                      title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status, ou na seta para escolher direto`}
                     >
                       <Badge status={l.status || 'Novo'}>
-                        <span className="status-badge-arrow">
+                        <span
+                          className="status-badge-arrow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusMenuLeadId(prev => prev === l.id ? null : l.id);
+                          }}
+                          title="Escolher status diretamente"
+                        >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                            <polyline points="6 9 12 15 18 9"/>
                           </svg>
                         </span>
                       </Badge>
                     </div>
+                    {statusMenuLeadId === l.id && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 8,
+                          zIndex: 40,
+                          marginTop: 4,
+                          background: 'var(--bg2)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                          padding: 4,
+                          minWidth: 145,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {LEAD_STATUSES.map(st => {
+                          const isCurr = (l.status || 'Novo') === st;
+                          return (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={(e) => handleChangeStatus(l, st, e)}
+                              style={{
+                                textAlign: 'left',
+                                background: isCurr ? 'var(--bg3)' : 'transparent',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '6px 10px',
+                                fontSize: 12,
+                                fontWeight: isCurr ? 600 : 400,
+                                color: isCurr ? 'var(--accent)' : 'var(--text)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                              }}
+                            >
+                              <span>{st}</span>
+                              {isCurr && <span style={{ fontSize: 10 }}>✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </td>
                   <td style={{ maxWidth: 170 }}>
                     <div className="lead-qual" title={l.observacoes || ''} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1625,6 +1714,51 @@ export default function LeadsPage() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {undoAction && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999,
+            background: 'var(--bg2)',
+            border: '1px solid var(--accent)',
+            borderRadius: 10,
+            padding: '10px 16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: 13,
+            color: 'var(--text)',
+          }}
+        >
+          <span>{undoAction.label}</span>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+            onClick={async () => {
+              const fn = undoAction.onUndo;
+              setUndoAction(null);
+              if (fn) await fn();
+              useDash.getState().toast('Alteração desfeita.');
+            }}
+          >
+            Desfazer
+          </button>
+          <button
+            type="button"
+            onClick={() => setUndoAction(null)}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+            title="Fechar"
+          >
+            ×
+          </button>
         </div>
       )}
 

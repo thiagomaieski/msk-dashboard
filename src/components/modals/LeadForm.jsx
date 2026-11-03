@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDash } from '../../store/useStore';
-import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS } from '../../utils/crmAnalyticsUtils';
+import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES } from '../../utils/crmAnalyticsUtils';
 import CustomSelect from '../CustomSelect';
 import { navToConfigTab } from './shared';
 
@@ -175,7 +175,7 @@ export default function LeadForm({ item }) {
             </div>
             <div className="form-group"><label className="form-label">Status</label>
               <CustomSelect variant="form" value={f.status} onChange={u('status')}>
-                {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(s => <option key={s}>{s}</option>)}
+                {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
               </CustomSelect>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { useDash } from '../store/useStore';
 import { normalizeImportedStatus } from '../store/storeUtils';
+import { LEAD_STATUSES } from '../utils/crmAnalyticsUtils';
 import { cleanMojibake } from '../utils/textUtils';
 
 export default function ImportLeadsModal() {
@@ -270,7 +271,7 @@ export default function ImportLeadsModal() {
                   if (e.target.value === '__FROM_COL__') setMapping(p => ({ ...p, status: headers[0] || '' }));
                   else { setMapping(p => ({ ...p, status: '' })); setDefaultStatus(e.target.value); }
                 }}>
-                  {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(s => <option key={s} value={s}>Valor padrão: {s}</option>)}
+                  {LEAD_STATUSES.map(s => <option key={s} value={s}>Valor padrão: {s}</option>)}
                   <option value="__FROM_COL__">Mapear da Planilha ↓</option>
                 </select>
                 {mapping.status && (

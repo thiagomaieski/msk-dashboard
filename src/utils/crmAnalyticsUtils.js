@@ -24,7 +24,16 @@ export const INTERACAO_TIPO_LABELS = {
   outro: 'Outro',
 };
 
-const STATUS_FUNNEL_ORDER = ['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'];
+export const LEAD_STATUSES = [
+  'Novo',
+  'Abordado',
+  'Follow-up',
+  'Em negociação',
+  'Fechado',
+  'Perdido',
+];
+
+const STATUS_FUNNEL_ORDER = LEAD_STATUSES;
 
 // Probabilidade ponderada de fechamento por estágio para forecast financeiro
 const STATUS_PROBABILITY = {
