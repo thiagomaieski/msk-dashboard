@@ -2,6 +2,7 @@ import { db, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeB
 import { uDoc, uCol } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
+import { fetchAiUsage } from '../../utils/aiApi';
 import { cleanMojibake, sanitizeObjectStrings } from '../../utils/textUtils';
 
 // ── Tipos de interação válidos (enum fixo) ───────────────────────────────────
@@ -53,6 +54,55 @@ function addDaysISO(days) {
 export const createCRMSlice = (set, get) => ({
   filteredLeadIds: [],
   setFilteredLeadIds: (ids) => set({ filteredLeadIds: ids }),
+  aiUsage: { used: 0, limit: 60, date: '' },
+  setAiUsage: (usage) => set((s) => ({
+    aiUsage: usage ? { ...s.aiUsage, ...usage } : s.aiUsage,
+  })),
+  refreshAiUsage: async () => {
+    const usage = await fetchAiUsage();
+    if (usage) {
+      set({ aiUsage: usage });
+    }
+    return usage;
+  },
+  saveLeadAiQualification: async (leadId, { chips, resumo, prioridade, observacoes }) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const nowISO = new Date().toISOString();
+    const qualChips = Array.isArray(chips) ? chips : (lead.qualChips || []);
+    const aiQualificacao = {
+      chips: qualChips,
+      resumo: resumo || '',
+      prioridade: prioridade || 'media',
+      qualifiedAt: nowISO,
+    };
+    const nextObs = observacoes !== undefined ? observacoes : (lead.observacoes || '');
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, qualChips, aiQualificacao, observacoes: nextObs, modificadoEm: nowISO } : l),
+        },
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          leads: s.realData.leads.map(l => l.id === leadId ? { ...l, qualChips, aiQualificacao, observacoes: nextObs, modificadoEm: nowISO } : l),
+        },
+      }));
+      await updateDoc(uDoc('leads', leadId), {
+        qualChips,
+        aiQualificacao,
+        observacoes: nextObs,
+        modificadoEm: serverTimestamp(),
+      }).catch(e => toast('Erro ao salvar qualificação da IA: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+    toast('Qualificação da IA confirmada e salva!');
+  },
   prequalModal: null,
   setPrequalModal: (prequalModal) => set((state) => ({
     prequalModal: typeof prequalModal === 'function' ? prequalModal(state.prequalModal) : prequalModal

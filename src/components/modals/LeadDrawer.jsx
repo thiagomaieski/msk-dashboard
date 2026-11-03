@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDash, getWaLink } from '../../store/useStore';
 import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS } from '../../utils/crmAnalyticsUtils';
+import { qualifyLeadWithAi } from '../../utils/aiApi';
 import CustomSelect from '../CustomSelect';
 import Drawer from '../ui/Drawer';
 import { PageSpeedScore } from './LeadForm';
@@ -52,6 +53,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const runPreQualification = useDash(s => s.runPreQualification);
   const deleteLeadScreenshot = useDash(s => s.deleteLeadScreenshot);
   const uploadManualScreenshot = useDash(s => s.uploadManualScreenshot);
+  const saveLeadAiQualification = useDash(s => s.saveLeadAiQualification);
+  const setAiUsage = useDash(s => s.setAiUsage);
   const filteredLeadIds = useDash(s => s.filteredLeadIds);
 
   const navTo = (tab) => navToConfigTab(onClose, setConfigTab, goTo, tab);
@@ -115,12 +118,17 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
     });
     setIntText('');
     setSingleProgress(null);
+    setAiDraft(null);
+    setAiError(null);
     setLightboxOpen(false);
   }, [item?.id, isOpen]);
 
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
 
   const [isPrequaling, setIsPrequaling] = useState(false);
+  const [isAiQualifying, setIsAiQualifying] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null); // { chips, resumo, prioridade } aguardando confirmação
+  const [aiError, setAiError] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxNotes, setLightboxNotes] = useState('');
   const [singleProgress, setSingleProgress] = useState(null);
@@ -190,6 +198,48 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
         setSingleProgress(p => p?.status === 'success' ? null : p);
       }, 6000);
     });
+  };
+
+  const handleQualifyWithAi = async () => {
+    if (!item?.id || isAiQualifying) return;
+    setIsAiQualifying(true);
+    setAiError(null);
+    try {
+      const mergedLead = { ...item, ...f };
+      const res = await qualifyLeadWithAi(mergedLead, {
+        aiProvider: configData.aiProvider || 'gemini',
+        ollamaModel: configData.ollamaModel || 'llama3.2',
+      });
+      if (res.usage) setAiUsage(res.usage);
+      if (!res.ok) {
+        setAiError(res.error || 'Falha ao qualificar com IA.');
+        return;
+      }
+      const mergedChips = Array.from(new Set([...(f.qualChips || []), ...(res.chips || [])]));
+      setF(p => ({
+        ...p,
+        qualChips: mergedChips,
+        observacoes: p.observacoes?.trim() ? p.observacoes : (res.resumo || ''),
+      }));
+      setAiDraft({
+        chips: mergedChips,
+        resumo: res.resumo || '',
+        prioridade: res.prioridade || 'media',
+      });
+    } finally {
+      setIsAiQualifying(false);
+    }
+  };
+
+  const handleConfirmAiDraft = async () => {
+    if (!item?.id || !aiDraft) return;
+    await saveLeadAiQualification(item.id, {
+      chips: f.qualChips,
+      resumo: aiDraft.resumo,
+      prioridade: aiDraft.prioridade,
+      observacoes: f.observacoes,
+    });
+    setAiDraft(null);
   };
 
   const handleSave = async (e) => {
@@ -450,21 +500,105 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               2. Qualificação
             </div>
             {item?.id && (
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                onClick={handleSinglePreQual}
-                disabled={isPrequaling}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
-                  background: isPrequaling ? 'var(--bg2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  color: '#fff', border: 'none',
-                }}
-              >
-                {isPrequaling ? 'Analisando...' : (prequalData ? 'Re-qualificar Site' : 'Qualificar Agora')}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleSinglePreQual}
+                  disabled={isPrequaling}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
+                    background: isPrequaling ? 'var(--bg2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                    color: '#fff', border: 'none',
+                  }}
+                >
+                  {isPrequaling ? 'Analisando...' : (prequalData ? 'Re-qualificar Site' : 'Qualificar Agora')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleQualifyWithAi}
+                  disabled={isAiQualifying}
+                  title="Analisar dados e print com IA para sugerir chips, resumo e prioridade"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
+                    borderColor: 'rgba(16,185,129,0.45)',
+                    background: isAiQualifying ? 'var(--bg2)' : 'rgba(16,185,129,0.14)',
+                    color: 'var(--green)',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>✨ {isAiQualifying ? 'Analisando com IA...' : (item?.aiQualificacao ? 'Refazer IA' : 'Qualificar com IA')}</span>
+                </button>
+              </div>
             )}
           </div>
+
+          {aiError && (
+            <div style={{ background: 'var(--red-bg)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--red)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span>{aiError}</span>
+              <button type="button" onClick={() => setAiError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 14 }}>×</button>
+            </div>
+          )}
+
+          {/* Sugestão da IA aguardando confirmação humana */}
+          {aiDraft && (
+            <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--green)' }}>
+                  ✨ Sugestão da IA (confirme ou ajuste os chips abaixo)
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    padding: '2px 8px',
+                    borderRadius: 99,
+                    background: aiDraft.prioridade === 'alta' ? 'var(--red-bg)' : aiDraft.prioridade === 'media' ? 'rgba(245,158,11,0.15)' : 'var(--bg2)',
+                    color: aiDraft.prioridade === 'alta' ? 'var(--red)' : aiDraft.prioridade === 'media' ? 'var(--amber)' : 'var(--text2)',
+                  }}
+                >
+                  Prioridade {aiDraft.prioridade}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.45 }}>
+                {aiDraft.resumo}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" className="btn btn-sm btn-secondary" onClick={() => setAiDraft(null)}>
+                  Descartar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  style={{ background: 'var(--green)', borderColor: 'var(--green)', color: '#fff' }}
+                  onClick={handleConfirmAiDraft}
+                >
+                  Confirmar e Salvar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Qualificação de IA já salva no lead */}
+          {!aiDraft && item?.aiQualificacao?.resumo && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>
+                  ✨ Resumo IA
+                </span>
+                {item.aiQualificacao.prioridade && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: item.aiQualificacao.prioridade === 'alta' ? 'var(--red)' : item.aiQualificacao.prioridade === 'media' ? 'var(--amber)' : 'var(--text3)', textTransform: 'uppercase' }}>
+                    Prioridade {item.aiQualificacao.prioridade}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 }}>
+                {item.aiQualificacao.resumo}
+              </div>
+            </div>
+          )}
 
           {/* Chips de Qualificação Rápida + Bot no WhatsApp */}
           <div>
