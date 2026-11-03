@@ -1265,8 +1265,11 @@ export function FinancasPessoaisPage() {
   const [mes, setMes] = useState(String(now.getMonth()));
   const [catRec, setCatRec] = useState('');
   const [catDesp, setCatDesp] = useState('');
+  const [tipoDesp, setTipoDesp] = useState('');
   const [searchRec, setSearchRec] = useState('');
   const [searchDesp, setSearchDesp] = useState('');
+  const [viewMode, setViewMode] = useState('cols');
+  const [expandedExtratoGroups, setExpandedExtratoGroups] = useState({});
 
   const { filtered, receitas, despesas, rec, desp, saldo, cartao, totalInvestido } = useMemo(() => {
     const list = data.pessoal.filter(f => {
@@ -1279,13 +1282,17 @@ export function FinancasPessoaisPage() {
 
     const recList = list.filter(p => p.tipo === 'Receita').filter(p => {
       if (catRec && p.categoria !== catRec) return false;
-      if (searchRec && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchRec)) return false;
+      if (searchRec && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchRec.toLowerCase())) return false;
       return true;
     });
     
     const despList = list.filter(p => p.tipo === 'Despesa').filter(p => {
       if (catDesp && p.categoria !== catDesp) return false;
-      if (searchDesp && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchDesp)) return false;
+      if (tipoDesp === 'investimento' && !p.investimento) return false;
+      if (tipoDesp === 'cartao' && !p.cartao) return false;
+      if (tipoDesp === 'fixa' && !p.despesaFixaId && p.origemAutomatica !== 'despesaFixa') return false;
+      if (tipoDesp === 'comum' && (p.investimento || p.cartao || p.despesaFixaId || p.origemAutomatica === 'despesaFixa')) return false;
+      if (searchDesp && !((p.descricao || '') + (p.categoria || '')).toLowerCase().includes(searchDesp.toLowerCase())) return false;
       return true;
     });
 
@@ -1303,7 +1310,7 @@ export function FinancasPessoaisPage() {
       cartao: despList.filter(p => p.cartao).reduce((s, p) => s + (p.valor || 0), 0),
       totalInvestido
     };
-  }, [data.pessoal, ano, mes, catRec, catDesp, searchRec, searchDesp]);
+  }, [data.pessoal, ano, mes, catRec, catDesp, tipoDesp, searchRec, searchDesp]);
 
   const metaVal = configData.metaInvestimento || 1500;
 
@@ -1328,33 +1335,45 @@ export function FinancasPessoaisPage() {
     <div>
       <div className="page-header">
         <div className="page-title">Finanças Pessoais</div>
-        <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'pessoal')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-          Importar Dados
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'pessoal')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Importar Dados
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => exportFinancasCSV('pessoal', filtered, `financas_pessoais_${ano}_${mes !== '' ? MESES[parseInt(mes)] : 'ano'}.csv`)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Exportar CSV
+          </button>
+        </div>
       </div>
-      <div className="finance-period">
-        <span className="finance-period-label">Período:</span>
-        <CustomSelect
-          variant="filter"
-          value={ano}
-          onChange={e => setAno(e.target.value)}
-          placeholder="Todos"
-          options={[
-            { value: '', label: 'Todos' },
-            ...YEARS.map(y => ({ value: String(y), label: String(y) }))
-          ]}
-        />
-        <CustomSelect
-          variant="filter"
-          value={mes}
-          onChange={e => setMes(e.target.value)}
-          placeholder="Todo ano"
-          options={[
-            { value: '', label: 'Todo ano' },
-            ...MESES.map((m, i) => ({ value: String(i), label: m }))
-          ]}
-        />
+      <div className="finance-period" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className="finance-period-label">Período:</span>
+          <CustomSelect
+            variant="filter"
+            value={ano}
+            onChange={e => setAno(e.target.value)}
+            placeholder="Todos"
+            options={[
+              { value: '', label: 'Todos' },
+              ...YEARS.map(y => ({ value: String(y), label: String(y) }))
+            ]}
+          />
+          <CustomSelect
+            variant="filter"
+            value={mes}
+            onChange={e => setMes(e.target.value)}
+            placeholder="Todo ano"
+            options={[
+              { value: '', label: 'Todo ano' },
+              ...MESES.map((m, i) => ({ value: String(i), label: m }))
+            ]}
+          />
+        </div>
+        <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+          <button className="btn btn-sm" style={{ background: viewMode === 'cols' ? 'var(--bg1)' : 'transparent', color: viewMode === 'cols' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} onClick={() => setViewMode('cols')}>Colunas</button>
+          <button className="btn btn-sm" style={{ background: viewMode === 'extrato' ? 'var(--bg1)' : 'transparent', color: viewMode === 'extrato' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} onClick={() => setViewMode('extrato')}>Extrato</button>
+        </div>
       </div>
       <div className="summary-cards">
         <div className="summary-card"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
@@ -1414,6 +1433,7 @@ export function FinancasPessoaisPage() {
           })()}
         </div>
       </div>
+      {viewMode === 'cols' ? (
       <div className="finance-cols">
         <div className="finance-col">
           <div className="finance-col-head">
@@ -1473,12 +1493,19 @@ export function FinancasPessoaisPage() {
               </span>
             </div>
           </div>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-            <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={tipoDesp} onChange={e => setTipoDesp(e.target.value)}>
+              <option value="">Todos os tipos</option>
+              <option value="comum">Avulsa / Comum</option>
+              <option value="fixa">Despesa Fixa</option>
+              <option value="cartao">Cartão de Crédito</option>
+              <option value="investimento">Investimento</option>
+            </select>
+            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasPessoal || []).map(c => <option key={c}>{c}</option>)}
             </select>
-            <div className="search-wrap" style={{ flex: 1 }}>
+            <div className="search-wrap" style={{ flex: 1, minWidth: 130 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
@@ -1494,6 +1521,181 @@ export function FinancasPessoaisPage() {
             }} onDelete={(id, desc) => deleteItem('pessoal', id, desc)} />
         </div>
       </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 30 }}><input type="checkbox" onChange={() => useDash.getState().selectAll('pessoal', filtered.map(x => x.id).join(','))} /></th>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+                <th>Modalidade</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {!filtered.length ? (
+                <tr><td colSpan={8}><div className="finance-col-empty">Nenhum lançamento no extrato</div></td></tr>
+              ) : (() => {
+                const seenGroups = new Set();
+                const rows = [];
+                for (const m of filtered) {
+                  const grupoId = m.parcelamento?.grupoId;
+                  if (grupoId) {
+                    if (seenGroups.has(grupoId)) continue;
+                    seenGroups.add(grupoId);
+
+                    const groupItems = (data.pessoal || [])
+                      .filter(x => x.parcelamento?.grupoId === grupoId)
+                      .sort((a, b) => (a.parcelamento?.parcela || 0) - (b.parcelamento?.parcela || 0));
+                    const itemsToRender = groupItems.length ? groupItems : [m];
+                    const totalParcelas = m.parcelamento.total || itemsToRender.length;
+                    const pagasCount = itemsToRender.filter(x => !!x.pago).length;
+                    const faltamValor = itemsToRender.filter(x => !x.pago).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+                    const baseDesc = stripInstallmentSuffix(m.descricao || 'Parcelamento');
+                    const isExpanded = !!expandedExtratoGroups[grupoId];
+
+                    rows.push(
+                      <tr key={`pess_group_${grupoId}`} className="row-in" style={{ background: isExpanded ? 'var(--bg3)' : undefined }}>
+                        <td>
+                          <button
+                            type="button"
+                            className="row-btn"
+                            onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                            style={{ width: 22, height: 22 }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12, transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </button>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
+                        <td>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
+                            {m.tipo}
+                          </span>
+                        </td>
+                        <td style={{ cursor: 'pointer' }} onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}>
+                          <div style={{ fontWeight: 600 }}>
+                            {baseDesc}{' '}
+                            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginLeft: 4 }}>
+                              • {pagasCount}/{totalParcelas} pagas • {faltamValor > 0 ? `faltam ${fmtBRL(faltamValor)}` : 'quitado'}
+                            </span>
+                          </div>
+                        </td>
+                        <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
+                        <td>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--text)' }}>
+                              {m.tipo === 'Despesa' ? '-' : ''}{fmtBRL(m.valor)}
+                            </span>
+                            {!m.cartao && <PayStatusPill id={m.id} pago={!!m.pago} colPrefix="pessoal" isRec={m.tipo === 'Receita'} />}
+                          </div>
+                        </td>
+                        <td><span style={{ fontSize: 12 }}>{m.investimento ? 'Investimento' : m.cartao ? 'Cartão' : 'Conta'}</span></td>
+                        <td>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: 10, padding: '2px 7px' }}
+                              onClick={() => setExpandedExtratoGroups(p => ({ ...p, [grupoId]: !p[grupoId] }))}
+                            >
+                              {isExpanded ? 'Ocultar' : `Parcelas (${totalParcelas})`}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+
+                    if (isExpanded) {
+                      for (const inst of itemsToRender) {
+                        rows.push(
+                          <tr key={inst.id} style={{ background: 'var(--bg2)', fontSize: 12 }}>
+                            <td><input type="checkbox" checked={selectedItems.includes(inst.id)} onChange={() => toggleSelect('pessoal', inst.id)} /></td>
+                            <td style={{ whiteSpace: 'nowrap', paddingLeft: 20, color: 'var(--text2)' }}>{fmtDate(inst.data)}</td>
+                            <td>
+                              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-bg)', padding: '2px 6px', borderRadius: 99 }}>
+                                Parcela {inst.parcelamento?.parcela}/{totalParcelas}
+                              </span>
+                            </td>
+                            <td style={{ color: 'var(--text2)' }}>{inst.descricao}</td>
+                            <td><span style={{ fontSize: 11, color: 'var(--text3)' }}>{inst.categoria || '-'}</span></td>
+                            <td>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontWeight: 600 }}>{fmtBRL(inst.valor)}</span>
+                                {!inst.cartao && <PayStatusPill id={inst.id} pago={!!inst.pago} colPrefix="pessoal" isRec={inst.tipo === 'Receita'} />}
+                              </div>
+                            </td>
+                            <td>{inst.cartao ? 'Cartão' : 'Conta'}</td>
+                            <td>
+                              <div className="row-actions">
+                                <button className="row-btn" onClick={() => openModal(inst.tipo === 'Receita' ? 'pessoalReceita' : 'pessoalDespesa', inst.id)} title="Editar">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                                </button>
+                                <button className="row-btn del" onClick={() => deleteItem('pessoal', inst.id, inst.descricao)} title="Excluir">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    }
+                    continue;
+                  }
+
+                  rows.push(
+                    <tr key={m.id} className="row-in">
+                      <td><input type="checkbox" checked={selectedItems.includes(m.id)} onChange={() => toggleSelect('pessoal', m.id)} /></td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
+                      <td>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: m.tipo === 'Receita' ? 'var(--green-bg)' : 'var(--red-bg)', color: m.tipo === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
+                            {m.tipo}
+                          </span>
+                          {m.tipo === 'Receita' && <ReceitaTipoChip tipo={getReceitaTipo(m)} />}
+                        </div>
+                      </td>
+                      <td><div style={{ fontWeight: 500 }}>{m.descricao || '-'}</div></td>
+                      <td><span style={{ fontSize: 12, color: 'var(--text3)' }}>{m.categoria || '-'}</span></td>
+                      <td>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 600, color: m.tipo === 'Receita' ? 'var(--green)' : m.investimento ? 'var(--amber)' : 'var(--text)' }}>
+                            {m.tipo === 'Despesa' && !m.investimento ? '-' : ''}{fmtBRL(m.valor)}
+                          </span>
+                          {m.tipo === 'Despesa' && !m.cartao && !m.investimento && (
+                            <PayStatusPill id={m.id} pago={!!m.pago} colPrefix="pessoal" />
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 12, color: m.investimento ? 'var(--amber)' : 'var(--text2)' }}>
+                          {m.investimento ? 'Investimento' : m.cartao ? 'Cartão' : 'Conta'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <button className="row-btn" onClick={() => openModal(m.tipo === 'Receita' ? 'pessoalReceita' : m.investimento ? 'pessoalInvestimento' : 'pessoalDespesa', m.id)} title="Editar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                          </button>
+                          <button className="row-btn del" onClick={() => deleteItem('pessoal', m.id, m.descricao)} title="Excluir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })()}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
