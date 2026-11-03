@@ -1,5 +1,5 @@
 import { db, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
-import { uDoc, uCol } from '../storeUtils';
+import { uDoc, uCol, fmtDateISO } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
 import { fetchAiUsage, qualifyLeadWithAi } from '../../utils/aiApi';

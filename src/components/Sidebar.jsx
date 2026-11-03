@@ -57,6 +57,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
   }).length;
 
   const uptimeOffline = (uptimeMonitors || []).filter(m => m.status === 'offline').length;
+  const lixeiraCount = (data?.lixeira || []).length;
 
   // Auto-expandir grupo se página ativa for uma das filhas
   useEffect(() => {

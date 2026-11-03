@@ -1,4 +1,4 @@
-import { doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
+import { db, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
 import { uDoc, uCol, getCurrentMonthKey, buildMonthlyDate, fmtDateISO } from '../storeUtils';
 
 export const createFinanceSlice = (set, get) => ({

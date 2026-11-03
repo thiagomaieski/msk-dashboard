@@ -278,3 +278,4 @@ export async function generateLeadMessageWithAi(lead, { tipo = 'abordagem_inicia
     };
   }
 }
+
