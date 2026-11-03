@@ -6,16 +6,9 @@
 
 require_once __DIR__ . '/auth-helper.php';
 
-if (!defined('ALLOWED_ORIGIN')) define('ALLOWED_ORIGIN', '*');
-
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Storage-API-Key');
+handleCors();
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit;
-}
 
 $headers = function_exists('getallheaders') ? getallheaders() : [];
 $clientKey = $headers['X-Storage-Api-Key'] ?? $headers['x-storage-api-key'] ?? $_SERVER['HTTP_X_STORAGE_API_KEY'] ?? $_GET['apiKey'] ?? '';

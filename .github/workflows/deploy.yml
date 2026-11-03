@@ -50,3 +50,4 @@ jobs:
         protocol: ftps
         port: 21
         security: loose
+        dangerous-clean-slate: false

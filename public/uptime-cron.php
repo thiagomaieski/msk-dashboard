@@ -14,6 +14,23 @@
 // Aumenta o tempo de execução para permitir os retries seguros
 set_time_limit(180);
 
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+}
+
+$isCli = (php_sapi_name() === 'cli');
+$cronSecret = defined('CRON_SECRET') ? CRON_SECRET : '';
+$providedKey = $_GET['key'] ?? '';
+
+if (!$isCli) {
+    if (empty($cronSecret) || !hash_equals((string)$cronSecret, (string)$providedKey)) {
+        http_response_code(403);
+        echo "Acesso negado: este script só pode ser executado via CLI ou via HTTP com a chave correta (?key=CRON_SECRET).\n";
+        exit;
+    }
+}
+
+
 define('BASE_UPLOAD_DIR', __DIR__ . '/uploads');
 define('TIMEOUT_SECONDS', 10);
 define('RETRY_DELAY_US', 2500000); // 2.5 segundos de intervalo entre retries

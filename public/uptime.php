@@ -6,16 +6,9 @@
 
 require_once __DIR__ . '/auth-helper.php';
 
-if (!defined('ALLOWED_ORIGIN')) define('ALLOWED_ORIGIN', '*');
-
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Storage-API-Key');
+handleCors();
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit;
-}
 
 // 1. Validação da Chave de API
 $headers = getallheaders();

@@ -1,3 +1,15 @@
+Options -MultiViews -Indexes
+
+RewriteEngine On
+
+# Repasse do cabeçalho Authorization para PHP/CGI
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Redirecionamento HTTPS (compatível com Hostinger e proxies reversos)
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 # Bloqueia acesso direto a arquivos de configuração e dados sensíveis
 <FilesMatch "^(config\.php|auth-helper\.php|\.env|.*\.log)$">
     <IfModule mod_authz_core.c>
@@ -9,4 +21,12 @@
     </IfModule>
 </FilesMatch>
 
-Options -Indexes
+# Não aplicar fallback SPA para /uploads e scripts *.php
+RewriteCond %{REQUEST_URI} ^/uploads(/|$) [OR]
+RewriteCond %{REQUEST_URI} \.php$
+RewriteRule ^ - [L]
+
+# Fallback de SPA para index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]

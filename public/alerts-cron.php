@@ -6,6 +6,23 @@
  */
 date_default_timezone_set('America/Sao_Paulo');
 
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+}
+
+$isCli = (php_sapi_name() === 'cli');
+$cronSecret = defined('CRON_SECRET') ? CRON_SECRET : '';
+$providedKey = $_GET['key'] ?? '';
+
+if (!$isCli) {
+    if (empty($cronSecret) || !hash_equals((string)$cronSecret, (string)$providedKey)) {
+        http_response_code(403);
+        echo "Acesso negado: este script só pode ser executado via CLI ou via HTTP com a chave correta (?key=CRON_SECRET).<br>\n";
+        exit;
+    }
+}
+
+
 define('BASE_UPLOAD_DIR', __DIR__ . '/uploads/alerts');
 define('LOG_FILE', __DIR__ . '/uploads/alerts_cron.log');
 

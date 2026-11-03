@@ -1,6 +1,6 @@
 <?php
 /**
- * proxy.php — Proxy seguro de APIs de terceiros com limitação diária de uso.
+ * proxy.php — Proxy seguro de APIs de terceiros com limites de uso por ação e por dia.
  * Suporta: pagespeed, instagram, screenshot.
  * As chaves de API ficam no servidor (config.php), nunca expostas no front-end.
  */
@@ -8,45 +8,17 @@
 require_once __DIR__ . '/auth-helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Storage-API-Key');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit;
-}
+handleCors();
 
 // 1. Autenticação obrigatória com Firebase ID Token criptograficamente verificado (RS256)
 $auth = requireFirebaseToken();
 $userId = $auth['userId'];
 
-// 2. Limite simples de taxa por usuário por dia (arquivo contador)
-function enforceUserRateLimit($userId, $maxDaily = 150) {
-    $tempDir = sys_get_temp_dir();
-    $safeUserId = preg_replace('/[^a-zA-Z0-9_-]/', '', $userId);
-    $rateFile = $tempDir . '/msk_rate_' . $safeUserId . '_' . date('Ymd') . '.txt';
-
-    $count = 0;
-    if (file_exists($rateFile)) {
-        $count = (int)@file_get_contents($rateFile);
-    }
-
-    if ($count >= $maxDaily) {
-        http_response_code(429);
-        echo json_encode(['error' => 'Limite diário de requisições excedido (' . $maxDaily . ' requisições/dia). Tente novamente amanhã.']);
-        exit;
-    }
-
-    @file_put_contents($rateFile, (string)($count + 1));
-}
-
-enforceUserRateLimit($userId);
-
-// 3. Leitura dos parâmetros (aceita tanto GET quanto POST/JSON)
+// 2. Leitura dos parâmetros (aceita GET e POST/JSON)
 $inputJSON = @file_get_contents('php://input');
 $jsonBody = json_decode($inputJSON, true) ?: [];
 
-$action = $_REQUEST['action'] ?? $jsonBody['action'] ?? '';
+$action = strtolower(trim($_REQUEST['action'] ?? $jsonBody['action'] ?? ''));
 $url = trim($_REQUEST['url'] ?? $jsonBody['url'] ?? $jsonBody['siteUrl'] ?? $jsonBody['instagramUrl'] ?? '');
 $leadId = preg_replace('/[^a-zA-Z0-9_-]/', '', $_REQUEST['leadId'] ?? $jsonBody['leadId'] ?? '');
 
@@ -56,44 +28,185 @@ if (empty($action)) {
     exit;
 }
 
+$validActions = ['pagespeed', 'instagram', 'screenshot'];
+if (!in_array($action, $validActions, true)) {
+    http_response_code(400);
+    echo json_encode(['error' => "Ação inválida: '{$action}'"]);
+    exit;
+}
+
+// 3. Limite diário por ação e por usuário
+function enforceUserRateLimit($userId, $action) {
+    $limits = [
+        'pagespeed'  => 300,
+        'instagram'  => 150,
+        'screenshot' => 150,
+    ];
+
+    $maxDaily = $limits[$action] ?? 150;
+
+    $cacheDir = getCacheDir() . '/rate_limits';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0700, true);
+        @chmod($cacheDir, 0700);
+    }
+
+    $safeUserId = preg_replace('/[^a-zA-Z0-9_-]/', '', $userId);
+    $safeAction = preg_replace('/[^a-zA-Z0-9_-]/', '', $action);
+    $rateFile = $cacheDir . '/rate_' . $safeAction . '_' . $safeUserId . '_' . date('Ymd') . '.txt';
+
+    $count = 0;
+    if (file_exists($rateFile)) {
+        $count = (int)@file_get_contents($rateFile);
+    }
+
+    if ($count >= $maxDaily) {
+        http_response_code(429);
+        echo json_encode([
+            'error' => "Limite diário para a ação '{$action}' excedido ({$maxDaily} requisições/dia). Tente novamente amanhã."
+        ]);
+        exit;
+    }
+
+    @file_put_contents($rateFile, (string)($count + 1));
+    @chmod($rateFile, 0600);
+}
+
+enforceUserRateLimit($userId, $action);
+
+// 4. Validador de URL (máx 2048 chars, esquema http/https)
+function validateRequestUrl($rawUrl) {
+    if (empty($rawUrl)) {
+        return 'URL não fornecida';
+    }
+    if (strlen($rawUrl) > 2048) {
+        return 'URL excede o limite máximo permitido de 2048 caracteres';
+    }
+    if (!filter_var($rawUrl, FILTER_VALIDATE_URL)) {
+        return 'URL inválida ou malformada';
+    }
+    $parsed = parse_url($rawUrl);
+    $scheme = strtolower($parsed['scheme'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true) || empty($parsed['host'])) {
+        return 'Protocolo de URL inválido. Apenas http e https são permitidos';
+    }
+    return null;
+}
+
 // ── Ação 1: PageSpeed Insights ────────────────────────────────────────────────
 if ($action === 'pagespeed') {
-    if (empty($url)) {
-        echo json_encode(['mobile' => null, 'desktop' => null, 'error' => 'URL não fornecida']);
+    $urlErr = validateRequestUrl($url);
+    if ($urlErr) {
+        echo json_encode(['mobile' => null, 'desktop' => null, 'score' => null, 'error' => $urlErr]);
         exit;
     }
 
     $apiKey = defined('PAGESPEED_API_KEY') ? PAGESPEED_API_KEY : getenv('PAGESPEED_API_KEY');
     if (empty($apiKey)) {
-        echo json_encode(['mobile' => null, 'desktop' => null, 'error' => 'PAGESPEED_API_KEY não configurada no servidor']);
+        echo json_encode(['mobile' => null, 'desktop' => null, 'score' => null, 'error' => 'PAGESPEED_API_KEY não configurada no servidor']);
         exit;
     }
 
-    $base = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+    $strategy = strtolower(trim($_REQUEST['strategy'] ?? $jsonBody['strategy'] ?? ''));
 
-    $fetchStrategy = function($strategy) use ($base, $url, $apiKey) {
+    // Quando informado o parâmetro strategy, busca uma única nota
+    if (!empty($strategy)) {
+        if (!in_array($strategy, ['mobile', 'desktop'], true)) {
+            http_response_code(400);
+            echo json_encode(['error' => "Estratégia inválida: '{$strategy}'. Use 'mobile' ou 'desktop'."]);
+            exit;
+        }
+
+        $base = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
         $endpoint = $base . '?url=' . urlencode($url) . '&strategy=' . $strategy . '&key=' . urlencode($apiKey);
-        $ctx = stream_context_create([
-            'http' => ['timeout' => 25, 'header' => "User-Agent: MSK-Dashboard/1.0\r\n"]
+        $raw = httpGet($endpoint, ["User-Agent: MSK-Dashboard/1.0"], 30);
+        if (!$raw) {
+            echo json_encode(['score' => null, $strategy => null, 'error' => "Falha ao obter pontuação PageSpeed ({$strategy})"]);
+            exit;
+        }
+
+        $data = json_decode($raw, true);
+        $score = $data['lighthouseResult']['categories']['performance']['score'] ?? null;
+        $scoreInt = ($score !== null) ? (int)round($score * 100) : null;
+
+        echo json_encode([
+            'score'    => $scoreInt,
+            'strategy' => $strategy,
+            $strategy  => $scoreInt
         ]);
-        $res = @file_get_contents($endpoint, false, $ctx);
-        if (!$res) return null;
-        $json = json_decode($res, true);
-        $score = $json['lighthouseResult']['categories']['performance']['score'] ?? null;
-        return $score !== null ? (int)round($score * 100) : null;
-    };
+        exit;
+    }
 
-    $mobile = $fetchStrategy('mobile');
-    $desktop = $fetchStrategy('desktop');
+    // Sem o parâmetro strategy, executa as duas estratégias em paralelo via curl_multi
+    $scores = ['mobile' => null, 'desktop' => null];
+    $base = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+    $strategies = ['mobile', 'desktop'];
 
-    echo json_encode(['mobile' => $mobile, 'desktop' => $desktop]);
+    if (function_exists('curl_multi_init')) {
+        $mh = curl_multi_init();
+        $handles = [];
+
+        foreach ($strategies as $strat) {
+            $endpoint = $base . '?url=' . urlencode($url) . '&strategy=' . $strat . '&key=' . urlencode($apiKey);
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'MSK-Dashboard/1.0');
+            curl_multi_add_handle($mh, $ch);
+            $handles[$strat] = $ch;
+        }
+
+        $running = null;
+        do {
+            $mrc = curl_multi_exec($mh, $running);
+            if ($running) {
+                curl_multi_select($mh, 0.5);
+            }
+        } while ($running > 0 && $mrc == CURLM_OK);
+
+        foreach ($strategies as $strat) {
+            $ch = $handles[$strat];
+            $content = curl_multi_getcontent($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $content) {
+                $parsed = json_decode($content, true);
+                $sc = $parsed['lighthouseResult']['categories']['performance']['score'] ?? null;
+                $scores[$strat] = ($sc !== null) ? (int)round($sc * 100) : null;
+            }
+        }
+        curl_multi_close($mh);
+    } else {
+        // Fallback sequencial se curl_multi não estiver habilitado
+        foreach ($strategies as $strat) {
+            $endpoint = $base . '?url=' . urlencode($url) . '&strategy=' . $strat . '&key=' . urlencode($apiKey);
+            $raw = httpGet($endpoint, ["User-Agent: MSK-Dashboard/1.0"], 30);
+            if ($raw) {
+                $parsed = json_decode($raw, true);
+                $sc = $parsed['lighthouseResult']['categories']['performance']['score'] ?? null;
+                $scores[$strat] = ($sc !== null) ? (int)round($sc * 100) : null;
+            }
+        }
+    }
+
+    echo json_encode($scores);
     exit;
 }
 
 // ── Ação 2: Instagram (Apify) ─────────────────────────────────────────────────
 if ($action === 'instagram') {
-    if (empty($url)) {
-        echo json_encode(['followers' => null, 'bio' => null, 'lastPost' => null, 'bioLink' => null, 'error' => 'URL do Instagram não fornecida']);
+    if (!preg_match('#^https?://#i', $url)) {
+        $url = 'https://' . ltrim($url, '/');
+    }
+
+    $urlErr = validateRequestUrl($url);
+    if ($urlErr) {
+        echo json_encode(['followers' => null, 'bio' => null, 'lastPost' => null, 'bioLink' => null, 'error' => $urlErr]);
         exit;
     }
 
@@ -112,16 +225,44 @@ if ($action === 'instagram') {
     $apifyEndpoint = 'https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=' . urlencode($apiKey);
     $payload = json_encode(['usernames' => [$username]]);
 
-    $ctx = stream_context_create([
-        'http' => [
-            'method'  => 'POST',
-            'header'  => "Content-Type: application/json\r\nUser-Agent: MSK-Dashboard/1.0\r\n",
-            'content' => $payload,
-            'timeout' => 45
-        ]
-    ]);
+    $raw = null;
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apifyEndpoint);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 45);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'User-Agent: MSK-Dashboard/1.0'
+        ]);
+        $raw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode < 200 || $httpCode >= 300) {
+            $raw = null;
+        }
+    }
 
-    $raw = @file_get_contents($apifyEndpoint, false, $ctx);
+    if (!$raw) {
+        $ctx = stream_context_create([
+            'http' => [
+                'method'  => 'POST',
+                'header'  => "Content-Type: application/json\r\nUser-Agent: MSK-Dashboard/1.0\r\n",
+                'content' => $payload,
+                'timeout' => 45
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+            ]
+        ]);
+        $raw = @file_get_contents($apifyEndpoint, false, $ctx);
+    }
+
     if (!$raw) {
         echo json_encode(['followers' => null, 'bio' => null, 'lastPost' => null, 'bioLink' => null, 'error' => 'Falha ao consultar perfil no Apify']);
         exit;
@@ -190,8 +331,15 @@ if ($action === 'instagram') {
 
 // ── Ação 3: Screenshot (ScreenshotMachine) ────────────────────────────────────
 if ($action === 'screenshot') {
-    if (empty($url)) {
-        echo json_encode(['url' => null, 'path' => null, 'error' => 'URL não fornecida']);
+    if (empty($leadId)) {
+        http_response_code(400);
+        echo json_encode(['url' => null, 'path' => null, 'error' => 'Parâmetro leadId é obrigatório para captura de screenshot']);
+        exit;
+    }
+
+    $urlErr = validateRequestUrl($url);
+    if ($urlErr) {
+        echo json_encode(['url' => null, 'path' => null, 'error' => $urlErr]);
         exit;
     }
 
@@ -211,22 +359,21 @@ if ($action === 'screenshot') {
                 '&delay=5000' .
                 '&cacheLimit=0';
 
-    $ctx = stream_context_create([
-        'http' => ['timeout' => 35, 'header' => "User-Agent: MSK-Dashboard/1.0\r\n"]
-    ]);
-
-    $imgData = @file_get_contents($endpoint, false, $ctx);
+    $imgData = httpGet($endpoint, ["User-Agent: MSK-Dashboard/1.0"], 35);
     if (!$imgData || strlen($imgData) < 500) {
         echo json_encode(['url' => null, 'path' => null, 'error' => 'Falha ao capturar imagem da ScreenshotMachine']);
         exit;
     }
 
-    // Salva o screenshot no storage PHP do usuário
-    $targetDir = BASE_UPLOAD_DIR . '/' . $userId . '/prequal';
-    if (!empty($leadId)) {
-        $targetDir .= '/' . $leadId;
+    // Validação estrita dos bytes mágicos de JPEG (FF D8 FF)
+    $magicBytes = bin2hex(substr($imgData, 0, 3));
+    if (strcasecmp($magicBytes, 'ffd8ff') !== 0) {
+        echo json_encode(['url' => null, 'path' => null, 'error' => 'Imagem capturada inválida (não corresponde ao formato JPEG: bytes mágicos FFD8FF ausentes)']);
+        exit;
     }
 
+    // Salva o screenshot no storage PHP do usuário
+    $targetDir = BASE_UPLOAD_DIR . '/' . $userId . '/prequal';
     if (!file_exists($targetDir)) {
         if (!mkdir($targetDir, 0755, true)) {
             echo json_encode(['url' => null, 'path' => null, 'error' => 'Falha ao criar diretório de destino']);
@@ -234,18 +381,26 @@ if ($action === 'screenshot') {
         }
     }
 
-    $randomName = 'screenshot_' . ($leadId ?: 'lead') . '_' . md5(uniqid(time(), true)) . '.jpg';
-    $targetPath = $targetDir . '/' . $randomName;
+    // Nome fixo {leadId}_screenshot.jpg (sobrescreve o screenshot anterior)
+    $fileName = $leadId . '_screenshot.jpg';
+    $targetPath = $targetDir . '/' . $fileName;
 
     if (@file_put_contents($targetPath, $imgData) === false) {
         echo json_encode(['url' => null, 'path' => null, 'error' => 'Falha ao salvar arquivo no storage']);
         exit;
     }
+    @chmod($targetPath, 0644);
 
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'];
-    $requestUri = explode('proxy.php', $_SERVER['REQUEST_URI'])[0];
-    $fullUrl = $protocol . $host . $requestUri . $targetPath;
+    $ts = time();
+    if (defined('PUBLIC_BASE_URL') && !empty(PUBLIC_BASE_URL)) {
+        $fullUrl = rtrim(PUBLIC_BASE_URL, '/') . '/' . ltrim($targetPath, '/') . '?v=' . $ts;
+    } else {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+        $rawHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $cleanHost = preg_replace('/[^a-zA-Z0-9.:_-]/', '', $rawHost);
+        $scriptPrefix = explode('proxy.php', $_SERVER['REQUEST_URI'] ?? '')[0];
+        $fullUrl = $protocol . $cleanHost . '/' . trim($scriptPrefix, '/') . (trim($scriptPrefix, '/') ? '/' : '') . ltrim($targetPath, '/') . '?v=' . $ts;
+    }
 
     echo json_encode([
         'url'  => $fullUrl,
@@ -253,6 +408,3 @@ if ($action === 'screenshot') {
     ]);
     exit;
 }
-
-http_response_code(400);
-echo json_encode(['error' => 'Ação desconhecida: ' . $action]);
