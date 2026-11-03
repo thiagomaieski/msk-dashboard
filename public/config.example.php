@@ -30,3 +30,9 @@ define('CRON_SECRET', 'SUA_CHAVE_SECRETA_DO_CRON_AQUI');
 
 // Diretório base para uploads
 define('BASE_UPLOAD_DIR', 'uploads');
+
+// Configuração de IA (Fase 4 — usadas apenas pelo ai.php no servidor)
+define('GEMINI_API_KEY', 'SUA_CHAVE_GEMINI_AQUI');
+define('GEMINI_MODEL', 'gemini-2.5-flash-lite');
+define('AI_DAILY_LIMIT', 60);
+
