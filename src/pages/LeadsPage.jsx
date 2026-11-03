@@ -342,8 +342,9 @@ export default function LeadsPage() {
     return count;
   }, [search, status, nicho, cidade, ddd, prequalFilter, quickFilter, sort]);
 
-  // Métricas para os filtros rápidos
+  // Métricas para os filtros rápidos e meta do dia
   const abordadosHoje = useMemo(() => computeTodayAbordagens(data.leads), [data.leads]);
+  const metaAbordagensDia = configData.metaDiariaAbordagens || configData.metaAbordagensDia || 10;
   const aguardandoRetorno = useMemo(() => computePendingResponseLeads(data.leads), [data.leads]);
 
   const cidadesDisponiveis = useMemo(() => {
@@ -557,11 +558,36 @@ export default function LeadsPage() {
       {/* ─── DESKTOP HEADER BAR ────────────────────────────────────── */}
       <div className="leads-page-header desktop-only">
         <div className="leads-page-header-left">
-          <div className="leads-page-title-wrap">
+          <div className="leads-page-title-wrap" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h1 className="leads-page-title">Leads & CRM</h1>
             <span className="leads-page-count-badge">
               {totalLeads.toLocaleString('pt-BR')} leads
             </span>
+            <button
+              type="button"
+              onClick={() => { setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje'); setPage(1); }}
+              title="Clique para filtrar leads abordados hoje"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 99,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: `1px solid ${abordadosHoje >= metaAbordagensDia ? 'rgba(16,185,129,0.4)' : abordadosHoje > 0 ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
+                background: abordadosHoje >= metaAbordagensDia ? 'var(--green-bg)' : abordadosHoje > 0 ? 'rgba(245,158,11,0.1)' : 'var(--bg2)',
+                color: abordadosHoje >= metaAbordagensDia ? 'var(--green)' : abordadosHoje > 0 ? 'var(--amber)' : 'var(--text2)',
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 13, height: 13 }}>
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="6" />
+                <circle cx="12" cy="12" r="2" />
+              </svg>
+              <span>{abordadosHoje}/{metaAbordagensDia} abordagens hoje</span>
+            </button>
           </div>
         </div>
 
@@ -1066,7 +1092,23 @@ export default function LeadsPage() {
 
       {/* ─── MOBILE HEADER (Optimized) ─────────────────────────── */}
       <div className="page-header mobile-only">
-        <div className="page-title">Leads</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="page-title">Leads</div>
+          <span
+            onClick={() => { setQuickFilter(q => q === 'abordadosHoje' ? '' : 'abordadosHoje'); setPage(1); }}
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 99,
+              border: `1px solid ${abordadosHoje >= metaAbordagensDia ? 'rgba(16,185,129,0.4)' : 'var(--border)'}`,
+              background: abordadosHoje >= metaAbordagensDia ? 'var(--green-bg)' : 'var(--bg2)',
+              color: abordadosHoje >= metaAbordagensDia ? 'var(--green)' : 'var(--text2)',
+            }}
+          >
+            {abordadosHoje}/{metaAbordagensDia} hoje
+          </span>
+        </div>
         <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {hasAlternativeViews && (
             <div className="pill-tab-group">
