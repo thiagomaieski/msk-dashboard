@@ -61,6 +61,8 @@ export default function ConfiguracoesPage() {
   const isAdmin = userRole === 'admin';
   const saveEmpresaData = useDash(s => s.saveEmpresaData);
   const repairMojibakeData = useDash(s => s.repairMojibakeData);
+  const aiUsage = useDash(s => s.aiUsage);
+  const refreshAiUsage = useDash(s => s.refreshAiUsage);
 
   const [nichoInput, setNichoInput] = useState('');
   const [catInput, setCatInput] = useState('');
@@ -152,6 +154,12 @@ export default function ConfiguracoesPage() {
       setConfigTab('cfg-conta');
     }
   }, [activeTab, setConfigTab]);
+
+  useEffect(() => {
+    if (['cfg-sistema', 'cfg-dados', 'cfg-prefs', 'cfg-notificacoes', 'cfg-sobre'].includes(activeTab)) {
+      refreshAiUsage();
+    }
+  }, [activeTab, refreshAiUsage]);
 
   const hasChanges = useMemo(() => {
     const nameChanged = tempName !== (profile.name || '');
@@ -987,13 +995,39 @@ export default function ConfiguracoesPage() {
                 </label>
               </div>
 
-              {/* T4.3 & T4.6: Inteligência Artificial (Instruções da IA e Provedor) */}
+              {/* T4.3, T4.5 & T4.6: Inteligência Artificial (Instruções da IA, Uso Diário e Provedor) */}
               <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}>
-                <div className="settings-row-info">
-                  <div className="settings-row-title">✨ Inteligência Artificial (Leads & CRM)</div>
-                  <div className="settings-row-desc">
-                    Personalize as instruções extras para geração de mensagens de abordagem e escolha o provedor de IA (Gemini via Hostinger ou Ollama local com fallback automático).
+                <div className="settings-row-info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div className="settings-row-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span>✨ Inteligência Artificial (Leads & CRM)</span>
+                      <span
+                        title="Cota diária de chamadas de IA no servidor"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 10px',
+                          borderRadius: 99,
+                          border: `1px solid ${(aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
+                          background: (aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'var(--red-bg)' : 'var(--bg3)',
+                          color: (aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'var(--red)' : (aiUsage?.used || 0) >= (aiUsage?.limit || 60) * 0.8 ? 'var(--amber)' : 'var(--green)',
+                        }}
+                      >
+                        IA hoje: {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 60}
+                      </span>
+                    </div>
+                    <div className="settings-row-desc">
+                      Personalize as instruções extras para geração de mensagens de abordagem e escolha o provedor de IA (Gemini via Hostinger ou Ollama local com fallback automático).
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => refreshAiUsage()}
+                    style={{ fontSize: 11 }}
+                  >
+                    Atualizar uso
+                  </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, maxWidth: 640 }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>

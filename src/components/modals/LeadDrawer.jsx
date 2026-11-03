@@ -54,8 +54,16 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const deleteLeadScreenshot = useDash(s => s.deleteLeadScreenshot);
   const uploadManualScreenshot = useDash(s => s.uploadManualScreenshot);
   const saveLeadAiQualification = useDash(s => s.saveLeadAiQualification);
+  const aiUsage = useDash(s => s.aiUsage);
   const setAiUsage = useDash(s => s.setAiUsage);
+  const refreshAiUsage = useDash(s => s.refreshAiUsage);
   const filteredLeadIds = useDash(s => s.filteredLeadIds);
+
+  useEffect(() => {
+    if (isOpen) {
+      refreshAiUsage();
+    }
+  }, [isOpen, refreshAiUsage]);
 
   const navTo = (tab) => navToConfigTab(onClose, setConfigTab, goTo, tab);
 
@@ -560,8 +568,24 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
         {/* ─── SEÇÃO 2: QUALIFICAÇÃO ────────────────────────────────────── */}
         <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
-              2. Qualificação
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
+                2. Qualificação
+              </div>
+              <span
+                title="Chamadas de IA utilizadas hoje pelo seu usuário"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: 99,
+                  border: `1px solid ${(aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
+                  background: (aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'var(--red-bg)' : 'var(--bg2)',
+                  color: (aiUsage?.used || 0) >= (aiUsage?.limit || 60) ? 'var(--red)' : (aiUsage?.used || 0) >= (aiUsage?.limit || 60) * 0.8 ? 'var(--amber)' : 'var(--text3)',
+                }}
+              >
+                IA hoje: {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 60}
+              </span>
             </div>
             {item?.id && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
