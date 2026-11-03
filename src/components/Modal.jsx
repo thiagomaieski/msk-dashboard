@@ -12,6 +12,7 @@ import PessoalInvestimentoForm from './modals/PessoalInvestimentoForm';
 import DespesaFixaForm from './modals/DespesaFixaForm';
 import LembreteForm, { VerNotaModal } from './modals/LembreteForm';
 import { CsvProgressModal, ChangePasswordForm, PagarRecorrenciaForm, AtividadeManutencaoForm } from './modals/SupportForms';
+import NovoFechamentoModal from './modals/NovoFechamentoModal';
 
 export default function Modal() {
   const modalOpen = useDash(s => s.modalOpen);
@@ -119,6 +120,12 @@ function ModalContent({ type }) {
       ? (rec.atividades || []).find(a => a.id === editingId.atividadeManutencaoId)
       : null;
     return <AtividadeManutencaoForm recorrenciaId={editingId.recorrencia} atividade={atividade} />;
+  }
+  if (type === 'novoFechamento') {
+    const lead = editingId.novoFechamentoLeadId
+      ? (data.leads || []).find(x => x.id === editingId.novoFechamentoLeadId) || null
+      : null;
+    return <NovoFechamentoModal lead={lead} />;
   }
   return null;
 }

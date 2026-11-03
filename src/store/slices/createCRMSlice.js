@@ -288,32 +288,245 @@ export const createCRMSlice = (set, get) => ({
   },
 
   convertLeadToCliente: async (leadId) => {
-    const { data, toast, saveCliente, showConfirm } = get();
+    const { data, openModal } = get();
     const lead = data.leads.find(l => l.id === leadId);
     if (!lead) return;
-    if (!await showConfirm('Converter lead em cliente?', `"${lead.nome}" será adicionado ao diretório de clientes.`, false)) return;
-    await saveCliente({
-      nome: lead.nome || '',
-      telefone: lead.telefone || '',
-      email: lead.email || '',
-      site: lead.site || '',
-      segmento: lead.nicho || '',
-      conheceu: 'Indicação',
-      instagram: '', facebook: '', youtube: '', linkCustom: '',
-      cpfCnpj: '',
-    });
-    const isMock = leadId.toString().startsWith('m-');
-    if (isMock) {
-      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', modificadoEm: new Date().toISOString() } : l) } }));
-    } else {
-      // Gravar historicoStatus na conversão
-      const historicoBase = getHistoricoStatus(lead);
-      const historicoStatus = [...historicoBase, buildHistoricoEntry(lead.status, 'Fechado')];
-      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, status: 'Fechado', historicoStatus, modificadoEm: new Date().toISOString() } : l) } }));
-      await updateDoc(uDoc('leads', leadId), { status: 'Fechado', historicoStatus, modificadoEm: serverTimestamp() }).catch(e => get().toast('Erro ao converter: ' + e.message, 'error'));
+    openModal('novoFechamento', leadId);
+  },
+
+  salvarNovoFechamento: async (wizardData) => {
+    const { data, demoMode, toast, closeModal, _refreshData } = get();
+    const nowISO = new Date().toISOString();
+    const st = serverTimestamp();
+
+    try {
+      const {
+        clienteMode,
+        clienteId: existingClienteId,
+        cliente,
+        incluirProjeto,
+        projeto,
+        incluirRecorrencia,
+        recorrencia,
+        incluirReceita,
+        receita,
+        leadOrigemId,
+      } = wizardData;
+
+      let finalClienteId = existingClienteId || '';
+      let finalClienteNome = '';
+      let createdClienteLocal = null;
+      let createdProjetoLocal = null;
+      let createdRecorrenciaLocal = null;
+      const createdNegociosLocal = [];
+
+      const batch = !demoMode ? writeBatch(db) : null;
+
+      // 1. Cliente
+      if (clienteMode === 'existing') {
+        const found = (data.clientes || []).find(c => c.id === existingClienteId);
+        if (!found) throw new Error('Selecione um cliente existente válido.');
+        finalClienteId = found.id;
+        finalClienteNome = found.nome;
+      } else {
+        if (!cliente?.nome?.trim()) throw new Error('O nome do cliente é obrigatório.');
+        finalClienteNome = cliente.nome.trim();
+        const cliRef = !demoMode ? doc(uCol('clientes')) : { id: 'm-cli-' + Date.now() };
+        finalClienteId = cliRef.id;
+
+        const cliPayload = {
+          nome: finalClienteNome,
+          razaoSocial: (cliente.razaoSocial || '').trim(),
+          nomeFantasia: (cliente.nomeFantasia || '').trim(),
+          cnpjCpf: (cliente.cnpjCpf || '').trim(),
+          cpfCnpj: (cliente.cnpjCpf || '').trim(),
+          telefone: (cliente.telefone || '').trim(),
+          email: (cliente.email || '').trim(),
+          segmento: (cliente.segmento || '').trim(),
+          conheceu: cliente.conheceu || 'Indicação',
+          site: (cliente.site || '').trim(),
+          observacoes: (cliente.observacoes || '').trim(),
+          status: 'Ativo',
+          ...(leadOrigemId ? { leadOrigemId } : {}),
+          criadoEm: st,
+          modificadoEm: st,
+        };
+        if (batch) batch.set(cliRef, cliPayload);
+        createdClienteLocal = { ...cliPayload, id: finalClienteId, criadoEm: nowISO, modificadoEm: nowISO, ...(demoMode ? { isMock: true } : {}) };
+      }
+
+      // 2. Projeto (opcional / padrão ativo)
+      let finalProjetoId = '';
+      if (incluirProjeto) {
+        if (!projeto?.descricao?.trim()) throw new Error('A descrição do projeto é obrigatória.');
+        const projRef = !demoMode ? doc(uCol('projetos')) : { id: 'm-proj-' + Date.now() };
+        finalProjetoId = projRef.id;
+        const projPayload = {
+          cliente: finalClienteNome,
+          clienteId: finalClienteId,
+          descricao: projeto.descricao.trim(),
+          tipo: projeto.tipo || 'Não informado',
+          tipoProjeto: projeto.tipo || 'Não informado',
+          valor: parseFloat(projeto.valor) || 0,
+          fechadoEm: projeto.fechadoEm || fmtDateISO(),
+          prazo: projeto.prazo || '',
+          origem: projeto.origem || 'Não informado',
+          status: projeto.status || 'Em andamento',
+          pagamento: projeto.pagamento || 'Pendente',
+          nf: projeto.nf || 'pendente',
+          siteUrl: (projeto.siteUrl || '').trim(),
+          tarefas: [],
+          arquivos: [],
+          criadoEm: st,
+          modificadoEm: st,
+        };
+        if (batch) batch.set(projRef, projPayload);
+        createdProjetoLocal = { ...projPayload, id: finalProjetoId, criadoEm: nowISO, modificadoEm: nowISO, ...(demoMode ? { isMock: true } : {}) };
+      }
+
+      // 3. Recorrência (opcional)
+      if (incluirRecorrencia) {
+        if (!recorrencia?.plano?.trim()) throw new Error('O plano/descrição da recorrência é obrigatório.');
+        const recRef = !demoMode ? doc(uCol('recorrencia')) : { id: 'm-rec-' + Date.now() };
+        const isFixedDate = recorrencia.periodicidade === 'Anual' || recorrencia.periodicidade === 'Semestral';
+        const recPayload = {
+          cliente: finalClienteNome,
+          clienteId: finalClienteId,
+          plano: recorrencia.plano.trim(),
+          valor: parseFloat(recorrencia.valor) || 0,
+          periodicidade: recorrencia.periodicidade || 'Mensal',
+          status: 'Ativo',
+          vencimento: !isFixedDate ? (parseInt(recorrencia.vencimento, 10) || 1) : null,
+          renovacao: isFixedDate ? (recorrencia.renovacao || fmtDateISO()) : null,
+          dataInicio: recorrencia.dataInicio || fmtDateISO(),
+          metodoPagamento: recorrencia.metodoPagamento || 'PIX',
+          codigoServicoNf: (recorrencia.codigoServicoNf || '').trim(),
+          descricaoNf: (recorrencia.descricaoNf || '').trim(),
+          limiteHoras: recorrencia.limiteHoras ? (parseFloat(recorrencia.limiteHoras) || null) : null,
+          competencias: {},
+          atividades: [],
+          criadoEm: st,
+          modificadoEm: st,
+        };
+        if (batch) batch.set(recRef, recPayload);
+        createdRecorrenciaLocal = { ...recPayload, id: recRef.id, criadoEm: nowISO, modificadoEm: nowISO, ...(demoMode ? { isMock: true } : {}) };
+      }
+
+      // 4. Receita / Parcelas (opcional)
+      if (incluirReceita) {
+        const total = parseFloat(receita.valor) || 0;
+        if (total <= 0) throw new Error('O valor da receita deve ser maior que zero.');
+        const numParcelas = Math.max(1, parseInt(receita.totalParcelas, 10) || 1);
+        const dateToUse = receita.dataInicio || fmtDateISO();
+        const descBase = (receita.descricao || projeto?.descricao || `Fechamento ${finalClienteNome}`).trim();
+        const totalTaxa = parseFloat(receita.taxaGateway) || 0;
+
+        if (numParcelas > 1) {
+          const valorParcela = Math.round((total / numParcelas) * 100) / 100;
+          const taxaParcela = Math.round((totalTaxa / numParcelas) * 100) / 100;
+          const grupoId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+          for (let i = 0; i < numParcelas; i++) {
+            const d = new Date(dateToUse + 'T12:00:00');
+            d.setMonth(d.getMonth() + i);
+            const dataStr = fmtDateISO(d);
+            const currValor = i === numParcelas - 1 ? Math.round((total - valorParcela * (numParcelas - 1)) * 100) / 100 : valorParcela;
+            const currTaxa = i === numParcelas - 1 ? Math.round((totalTaxa - taxaParcela * (numParcelas - 1)) * 100) / 100 : taxaParcela;
+            const currLiq = currValor - currTaxa;
+
+            const negRef = !demoMode ? doc(uCol('negocio')) : { id: `m-neg-${Date.now()}-${i}` };
+            const negPayload = {
+              tipo: 'Receita',
+              descricao: `${descBase} (${i + 1}/${numParcelas})`,
+              valor: currValor,
+              taxaGateway: currTaxa,
+              valorLiquido: currLiq,
+              data: dataStr,
+              categoria: receita.categoria || 'Trabalho Fixo',
+              entidade: finalClienteNome,
+              clienteId: finalClienteId,
+              projetoId: finalProjetoId,
+              nf: receita.nf || 'pendente',
+              formaPagamento: receita.formaPagamento || 'PIX',
+              observacoes: (receita.observacoes || '').trim(),
+              parcelamento: { total: numParcelas, parcela: i + 1, valorTotal: total, grupoId },
+              criadoEm: st,
+              modificadoEm: st,
+            };
+            if (batch) batch.set(negRef, negPayload);
+            createdNegociosLocal.push({ ...negPayload, id: negRef.id, criadoEm: nowISO, modificadoEm: nowISO, ...(demoMode ? { isMock: true } : {}) });
+          }
+        } else {
+          const negRef = !demoMode ? doc(uCol('negocio')) : { id: `m-neg-${Date.now()}` };
+          const negPayload = {
+            tipo: 'Receita',
+            descricao: descBase,
+            valor: total,
+            taxaGateway: totalTaxa,
+            valorLiquido: total - totalTaxa,
+            data: dateToUse,
+            categoria: receita.categoria || 'Trabalho Fixo',
+            entidade: finalClienteNome,
+            clienteId: finalClienteId,
+            projetoId: finalProjetoId,
+            nf: receita.nf || 'pendente',
+            formaPagamento: receita.formaPagamento || 'PIX',
+            observacoes: (receita.observacoes || '').trim(),
+            criadoEm: st,
+            modificadoEm: st,
+          };
+          if (batch) batch.set(negRef, negPayload);
+          createdNegociosLocal.push({ ...negPayload, id: negRef.id, criadoEm: nowISO, modificadoEm: nowISO, ...(demoMode ? { isMock: true } : {}) });
+        }
+      }
+
+      // 5. Atualizar lead de origem (se houver)
+      let updatedLeadHistorico = null;
+      if (leadOrigemId) {
+        const leadObj = (data.leads || []).find(l => l.id === leadOrigemId);
+        if (leadObj) {
+          const historicoBase = getHistoricoStatus(leadObj);
+          updatedLeadHistorico = [...historicoBase, buildHistoricoEntry(leadObj.status, 'Fechado')];
+          if (batch && !String(leadOrigemId).startsWith('m-')) {
+            batch.update(uDoc('leads', leadOrigemId), {
+              status: 'Fechado',
+              historicoStatus: updatedLeadHistorico,
+              modificadoEm: st,
+            });
+          }
+        }
+      }
+
+      if (batch) {
+        await batch.commit();
+      }
+
+      const targetKey = demoMode ? 'mockData' : 'realData';
+      set(s => {
+        const target = s[targetKey];
+        return {
+          [targetKey]: {
+            ...target,
+            clientes: createdClienteLocal ? [createdClienteLocal, ...target.clientes] : target.clientes,
+            projetos: createdProjetoLocal ? [createdProjetoLocal, ...target.projetos] : target.projetos,
+            recorrencia: createdRecorrenciaLocal ? [createdRecorrenciaLocal, ...target.recorrencia] : target.recorrencia,
+            negocio: createdNegociosLocal.length ? [...createdNegociosLocal, ...target.negocio] : target.negocio,
+            leads: leadOrigemId
+              ? target.leads.map(l => l.id === leadOrigemId ? { ...l, status: 'Fechado', ...(updatedLeadHistorico ? { historicoStatus: updatedLeadHistorico } : {}), modificadoEm: nowISO } : l)
+              : target.leads,
+          }
+        };
+      });
+
+      _refreshData();
+      closeModal();
+      toast('Fechamento registrado com sucesso!');
+      return { ok: true };
+    } catch (e) {
+      console.error('salvarNovoFechamento error:', e);
+      toast('Erro ao salvar fechamento: ' + (e.message || 'Falha na gravação'), 'error');
+      return { ok: false, error: e.message || 'Falha na gravação em lote.' };
     }
-    get()._refreshData();
-    toast(`${lead.nome} convertido para cliente!`);
   },
 
   addLeadInteracao: async (leadId, interacao) => {

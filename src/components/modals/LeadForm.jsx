@@ -541,10 +541,7 @@ export default function LeadForm({ item }) {
               className="btn btn-secondary lead-btn-convert"
               style={{ color: 'var(--green)', gap: 6, fontSize: 12 }}
               onClick={() => {
-                if (window.confirm('Deseja converter este lead em cliente? Todos os dados serão migrados.')) {
-                  useDash.getState().convertLeadToCliente(item.id);
-                  closeModal();
-                }
+                useDash.getState().convertLeadToCliente(item.id);
               }}
               title="Converter lead em cliente cadastrado"
             >

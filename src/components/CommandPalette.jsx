@@ -158,6 +158,7 @@ export default function CommandPalette({ isOpen, onClose }) {
 
     // 3. Ações Rápidas
     const actions = [
+      { id: 'act-fechamento', label: 'Novo Fechamento (Cliente + Projeto + Recorrência + Receita)', type: 'action', modal: 'novoFechamento', icon: 'plus' },
       { id: 'act-lead', label: 'Cadastrar Novo Lead', type: 'action', modal: 'lead', icon: 'plus' },
       { id: 'act-cli', label: 'Cadastrar Novo Cliente', type: 'action', modal: 'cliente', icon: 'plus' },
       { id: 'act-proj', label: 'Criar Novo Projeto', type: 'action', modal: 'projeto', icon: 'plus' },

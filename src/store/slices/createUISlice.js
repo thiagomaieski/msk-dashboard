@@ -268,6 +268,7 @@ export const createUISlice = (set, get) => ({
       gerarRecibo: 'Gerar Recibo de Pagamento',
       importFinancas: 'Importação Inteligente de Finanças',
       atividadeManutencao: extra?.atividadeId ? 'Editar Atividade' : 'Registrar Atividade',
+      novoFechamento: 'Novo Fechamento',
     };
 
     const colName = map[type];
@@ -286,6 +287,7 @@ export const createUISlice = (set, get) => ({
         importType: type === 'importFinancas' ? id : s.editingId.importType,
         atividadeManutencaoId: type === 'atividadeManutencao' ? (extra?.atividadeId || null) : s.editingId.atividadeManutencaoId,
         pagarCompetencia: type === 'pagarRecorrencia' ? (extra?.competencia || null) : s.editingId.pagarCompetencia,
+        novoFechamentoLeadId: type === 'novoFechamento' ? (id || null) : null,
       },
     }));
   },
