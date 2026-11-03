@@ -9,6 +9,38 @@ import { navToConfigTab } from './shared';
 const STEP_ORDER_DRAWER = ['pagespeed', 'instagram', 'screenshot'];
 const STEP_LABELS_DRAWER = { pagespeed: 'PageSpeed', instagram: 'Instagram', screenshot: 'Screenshot' };
 
+function resizeImageToMax1600(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const maxDim = 1600;
+      const scale = Math.min(1, maxDim / Math.max(img.width || 1, img.height || 1));
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error('Falha ao comprimir imagem'));
+          resolve(new File([blob], `screenshot_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Imagem inválida'));
+    };
+    img.src = objectUrl;
+  });
+}
+
 export default function LeadDrawer({ isOpen, onClose, item }) {
   const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
@@ -19,6 +51,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const setConfigTab = useDash(s => s.setConfigTab);
   const runPreQualification = useDash(s => s.runPreQualification);
   const deleteLeadScreenshot = useDash(s => s.deleteLeadScreenshot);
+  const uploadManualScreenshot = useDash(s => s.uploadManualScreenshot);
   const filteredLeadIds = useDash(s => s.filteredLeadIds);
 
   const navTo = (tab) => navToConfigTab(onClose, setConfigTab, goTo, tab);
@@ -92,6 +125,35 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const [lightboxNotes, setLightboxNotes] = useState('');
   const [singleProgress, setSingleProgress] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPrint, setIsUploadingPrint] = useState(false);
+
+  // T3.5: Colar print da área de transferência (Ctrl+V) reduzindo para no máx 1600px
+  useEffect(() => {
+    if (!isOpen || !item?.id) return;
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const clipItem of items) {
+        if (clipItem.type && clipItem.type.startsWith('image/')) {
+          e.preventDefault();
+          const rawFile = clipItem.getAsFile();
+          if (!rawFile || isUploadingPrint) return;
+          setIsUploadingPrint(true);
+          try {
+            const resized = await resizeImageToMax1600(rawFile);
+            await uploadManualScreenshot(item.id, resized);
+          } catch (err) {
+            useDash.getState().toast('Erro ao colar print: ' + (err.message || 'Falha'), 'error');
+          } finally {
+            setIsUploadingPrint(false);
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, item?.id, isUploadingPrint, uploadManualScreenshot]);
 
   const prequalData = item?.prequalData || null;
   const screenshotUrlWithCacheBuster = prequalData?.screenshotUrl
@@ -515,7 +577,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
             </div>
           )}
 
-          {/* Print com Lightbox */}
+          {/* Print com Lightbox e Colar Ctrl+V */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <label className="form-label" style={{ marginBottom: 0, fontSize: 11 }}>
@@ -523,23 +585,33 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 {item?.screenshotManual && (
                   <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>• Manual</span>
                 )}
+                {isUploadingPrint && (
+                  <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--amber)' }}>Enviando print...</span>
+                )}
               </label>
-              {prequalData?.screenshotUrl && item?.id && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  style={{ fontSize: 10, padding: '2px 8px', color: 'var(--red)' }}
-                  onClick={() => deleteLeadScreenshot(item.id)}
-                >
-                  Remover print
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {item?.id && (
+                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>
+                    Cole com <kbd>Ctrl</kbd>+<kbd>V</kbd>
+                  </span>
+                )}
+                {prequalData?.screenshotUrl && item?.id && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: 10, padding: '2px 8px', color: 'var(--red)' }}
+                    onClick={() => deleteLeadScreenshot(item.id)}
+                  >
+                    Remover print
+                  </button>
+                )}
+              </div>
             </div>
             {screenshotUrlWithCacheBuster ? (
               <div
                 className="prequal-screenshot-wrap"
                 onClick={() => { setLightboxNotes(f.observacoes || ''); setLightboxOpen(true); }}
-                title="Clique para ampliar no Lightbox"
+                title="Clique para ampliar no Lightbox (ou cole outro print com Ctrl+V para substituir)"
                 style={{ maxHeight: 220, overflow: 'hidden', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)' }}
               >
                 <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="prequal-screenshot-img" />
@@ -549,7 +621,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 className="prequal-screenshot-placeholder"
                 style={{ padding: '18px 12px', borderRadius: 8, border: '1px dashed var(--border)', textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}
               >
-                Nenhum print capturado para este lead.
+                {item?.id
+                  ? 'Nenhum print capturado. Pressione Ctrl+V para colar um print da área de transferência (máx. 1600px).'
+                  : 'Salve o lead primeiro para poder colar um print com Ctrl+V.'}
               </div>
             )}
           </div>

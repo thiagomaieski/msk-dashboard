@@ -852,6 +852,62 @@ export const createCRMSlice = (set, get) => ({
     toast('Screenshot removido.');
   },
 
+  uploadManualScreenshot: async (leadId, file) => {
+    const { data, uploadFile, deleteFile, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead || !file) return;
+
+    const oldPath = lead.prequalData?.screenshotPath;
+    if (oldPath) {
+      await deleteFile(oldPath).catch(e => console.warn('[uploadManualScreenshot] Falha ao remover print anterior:', e));
+    }
+
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+    let url = null;
+    let path = null;
+
+    if (isMock) {
+      url = URL.createObjectURL(file);
+      path = `mock/screenshots/${leadId}_${Date.now()}.jpg`;
+    } else {
+      const res = await uploadFile(file, 'screenshots', leadId);
+      url = res.url;
+      path = res.path;
+    }
+
+    const nowISO = new Date().toISOString();
+    const updatedPrequalData = {
+      ...(lead.prequalData || {}),
+      screenshotUrl: url,
+      screenshotPath: path,
+      prequalizedAt: nowISO,
+    };
+
+    if (isMock) {
+      set(s => ({
+        mockData: {
+          ...s.mockData,
+          leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, prequalData: updatedPrequalData, screenshotManual: true, modificadoEm: nowISO } : l),
+        },
+      }));
+    } else {
+      set(s => ({
+        realData: {
+          ...s.realData,
+          leads: s.realData.leads.map(l => l.id === leadId ? { ...l, prequalData: updatedPrequalData, screenshotManual: true, modificadoEm: nowISO } : l),
+        },
+      }));
+      await updateDoc(uDoc('leads', leadId), {
+        prequalData: updatedPrequalData,
+        screenshotManual: true,
+        modificadoEm: serverTimestamp(),
+      }).catch(e => toast('Erro ao salvar print no banco: ' + e.message, 'error'));
+    }
+
+    get()._refreshData();
+    toast('Print colado e salvo com sucesso!');
+  },
+
   bulkAddLeads: async (items) => {
     const { toast, _refreshData, currentUser } = get();
     try {
