@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDash } from '../../store/useStore';
-import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES } from '../../utils/crmAnalyticsUtils';
+import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS } from '../../utils/crmAnalyticsUtils';
 import CustomSelect from '../CustomSelect';
 import { navToConfigTab } from './shared';
 
@@ -52,6 +52,7 @@ export default function LeadForm({ item }) {
     status: item?.status || 'Novo', site: item?.site || '', observacoes: item?.observacoes || '',
     interacoes: item?.interacoes || [],
     botBarreira: !!item?.botBarreira,
+    qualChips: Array.isArray(item?.qualChips) ? item.qualChips : [],
   });
 
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
@@ -289,7 +290,42 @@ export default function LeadForm({ item }) {
               </div>
             </div>
           </div>
-          <div className="form-group"><label className="form-label">Qualificação / Observações Gerais</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
+          <div className="form-group">
+            <label className="form-label">Chips de Qualificação Rápida</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {QUAL_CHIPS.map(chip => {
+                const active = (f.qualChips || []).includes(chip.id);
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setF(p => {
+                      const curr = Array.isArray(p.qualChips) ? p.qualChips : [];
+                      return {
+                        ...p,
+                        qualChips: curr.includes(chip.id) ? curr.filter(c => c !== chip.id) : [...curr, chip.id],
+                      };
+                    })}
+                    style={{
+                      fontSize: 11,
+                      padding: '4px 10px',
+                      borderRadius: 99,
+                      cursor: 'pointer',
+                      fontWeight: active ? 600 : 500,
+                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'rgba(99,102,241,0.16)' : 'var(--bg3)',
+                      color: active ? 'var(--accent)' : 'var(--text2)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {active ? '✓ ' : '+ '}{chip.label}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="form-label">Qualificação / Observações Gerais</label>
+            <textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} />
+          </div>
         </div>
 
         {/* DIVISOR */}

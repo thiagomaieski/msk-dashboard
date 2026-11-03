@@ -33,6 +33,22 @@ export const LEAD_STATUSES = [
   'Perdido',
 ];
 
+export const QUAL_CHIPS = [
+  { id: 'sem_ssl', label: 'Sem SSL' },
+  { id: 'lento_mobile', label: 'Lento no mobile' },
+  { id: 'visual_antigo', label: 'Visual antigo' },
+  { id: 'sem_whatsapp', label: 'Sem WhatsApp' },
+  { id: 'sem_site', label: 'Sem site' },
+];
+
+export const QUAL_CHIP_LABELS = {
+  sem_ssl: 'Sem SSL',
+  lento_mobile: 'Lento no mobile',
+  visual_antigo: 'Visual antigo',
+  sem_whatsapp: 'Sem WhatsApp',
+  sem_site: 'Sem site',
+};
+
 const STATUS_FUNNEL_ORDER = LEAD_STATUSES;
 
 // Probabilidade ponderada de fechamento por estágio para forecast financeiro

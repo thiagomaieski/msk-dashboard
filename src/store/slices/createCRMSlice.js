@@ -571,6 +571,25 @@ export const createCRMSlice = (set, get) => ({
     toast(nextVal ? 'Marcado como Bot no WhatsApp' : 'Flag Bot no WhatsApp removida');
   },
 
+  toggleLeadQualChip: async (leadId, chipId) => {
+    const { data, toast } = get();
+    const lead = data.leads.find(l => l.id === leadId);
+    if (!lead || !chipId) return;
+    const current = Array.isArray(lead.qualChips) ? lead.qualChips : [];
+    const nextChips = current.includes(chipId)
+      ? current.filter(c => c !== chipId)
+      : [...current, chipId];
+    const nowISO = new Date().toISOString();
+    const isMock = leadId.toString().startsWith('m-') || lead.isMock;
+    if (isMock) {
+      set(s => ({ mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === leadId ? { ...l, qualChips: nextChips, modificadoEm: nowISO } : l) } }));
+    } else {
+      set(s => ({ realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === leadId ? { ...l, qualChips: nextChips, modificadoEm: nowISO } : l) } }));
+      updateDoc(uDoc('leads', leadId), { qualChips: nextChips, modificadoEm: serverTimestamp() }).catch(e => toast('Erro ao atualizar qualificação: ' + e.message, 'error'));
+    }
+    get()._refreshData();
+  },
+
   bulkEditLeads: async (field, value) => {
     const { selectedItems, showConfirm, toast, clearBulk, data, deleteFile } = get();
     if (!selectedItems.length || !value) return;

@@ -5,7 +5,7 @@ import { getWaLink } from '../store/useStore';
 import { leadHasValidSite } from '../utils/prequalUtils';
 import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
 import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
-import { computePendingResponseLeads, computeTodayAbordagens, LEAD_STATUSES } from '../utils/crmAnalyticsUtils';
+import { computePendingResponseLeads, computeTodayAbordagens, LEAD_STATUSES, QUAL_CHIP_LABELS } from '../utils/crmAnalyticsUtils';
 import CustomSelect from '../components/CustomSelect';
 import { FEATURES } from '../config/features';
 
@@ -1632,33 +1632,56 @@ export default function LeadsPage() {
                       </div>
                     )}
                   </td>
-                  <td style={{ maxWidth: 170 }}>
-                    <div className="lead-qual" title={l.observacoes || ''} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {l.prequalData && (
-                        <span 
-                          title="Lead Pré-Qualificado"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 16,
-                            height: 16,
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                            color: '#fff',
-                            flexShrink: 0,
-                            boxShadow: '0 2px 4px rgba(99,102,241,0.3)',
-                          }}
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 9, height: 9 }}>
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.35-4.35" />
-                          </svg>
-                        </span>
+                  <td style={{ maxWidth: 190 }}>
+                    <div className="lead-qual" title={l.observacoes || ''} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {Array.isArray(l.qualChips) && l.qualChips.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                          {l.qualChips.map(cid => (
+                            <span
+                              key={cid}
+                              style={{
+                                fontSize: 10,
+                                padding: '1px 6px',
+                                borderRadius: 99,
+                                background: 'rgba(99,102,241,0.14)',
+                                color: '#818cf8',
+                                border: '1px solid rgba(99,102,241,0.3)',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {QUAL_CHIP_LABELS[cid] || cid}
+                            </span>
+                          ))}
+                        </div>
                       )}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {l.observacoes || '-'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        {l.prequalData && (
+                          <span 
+                            title="Lead Pré-Qualificado"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                              color: '#fff',
+                              flexShrink: 0,
+                              boxShadow: '0 2px 4px rgba(99,102,241,0.3)',
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 9, height: 9 }}>
+                              <circle cx="11" cy="11" r="8" />
+                              <path d="m21 21-4.35-4.35" />
+                            </svg>
+                          </span>
+                        )}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          {l.observacoes || (Array.isArray(l.qualChips) && l.qualChips.length > 0 ? '' : '-')}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td>
