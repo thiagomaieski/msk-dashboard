@@ -4,7 +4,15 @@ import {
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Tooltip,
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
-import { useDash, fmtBRL, fmtDate, getRecorrenciaVencimento, fmtDateISO } from '../store/useStore';
+import {
+  useDash,
+  fmtBRL,
+  fmtDate,
+  getRecorrenciaVencimento,
+  fmtDateISO,
+  isRecorrenciaEligibleInCompetencia,
+  isRecorrenciaPaidInCompetencia,
+} from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
 import LembretesCalendar from '../components/LembretesCalendar';
 import { FEATURES } from '../config/features';
@@ -292,7 +300,10 @@ export default function DashboardPage() {
   const leads      = useDash(s => s.data.leads);
   const projetos   = useDash(s => s.data.projetos);
   const recorrencia = useDash(s => s.data.recorrencia);
+  const despesasFixas = useDash(s => s.data.despesasFixas);
   const lembretesRaw = useDash(s => s.data.lembretes);
+  const uptimeMonitors = useDash(s => s.uptimeMonitors);
+  const fetchUptimeData = useDash(s => s.fetchUptimeData);
   const configData  = useDash(s => s.configData);
   const modules     = configData.modules;
   const currentUser = useDash(s => s.currentUser);
@@ -309,6 +320,13 @@ export default function DashboardPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [lembretesView, setLembretesView] = useState('lista');
+  const [showCharts, setShowCharts] = useState(false);
+
+  useEffect(() => {
+    if (!uptimeMonitors || uptimeMonitors.length === 0) {
+      fetchUptimeData?.();
+    }
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -500,6 +518,75 @@ export default function DashboardPage() {
     totalLeads: crmStats.leadsTotal
   };
 
+  const hojeStats = useMemo(() => {
+    const todayISO = fmtDateISO(now);
+    const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+    const metaAbordagens = parseInt(configData.metaAbordagensDia, 10) || 10;
+
+    const abordagensHoje = (leads || []).filter(l => {
+      if ((l.dataAbordagem || '').slice(0, 10) === todayISO) return true;
+      if (Array.isArray(l.interacoes) && l.interacoes.some(it => (it.data || '').slice(0, 10) === todayISO)) return true;
+      return false;
+    }).length;
+
+    const eligibleRecs = (recorrencia || []).filter(r => isRecorrenciaEligibleInCompetencia(r, monthKey));
+    const mensalidadesPendentes = eligibleRecs.filter(r => !isRecorrenciaPaidInCompetencia(r, monthKey, negocio || [])).length;
+    const nfsPendentes = eligibleRecs.filter(r => {
+      const nfState = r.competencias?.[monthKey]?.nf;
+      return nfState !== 'emitida' && nfState !== 'dispensada';
+    }).length;
+
+    const dasFixa = (despesasFixas || []).find(d => d.contexto === 'negocio' && (d.descricao || '').toUpperCase().includes('DAS'));
+    const dasLancamento = (negocio || []).find(n =>
+      n.tipo === 'Despesa' &&
+      (n.data || '').slice(0, 7) === monthKey &&
+      ((dasFixa && n.despesaFixaId === dasFixa.id) || (n.descricao || '').toUpperCase().includes('DAS'))
+    );
+    const dasPago = dasLancamento ? !!dasLancamento.pago : false;
+    const dasPendente = !!(dasFixa || dasLancamento) && !dasPago;
+    const despNegocioPendentes = (negocio || []).filter(n =>
+      n.tipo === 'Despesa' && !n.cartao && !n.pago && (n.data || '').slice(0, 7) === monthKey
+    ).length;
+
+    const monitors = uptimeMonitors || [];
+    const offlineSites = monitors.filter(m => !m.paused && m.status === 'offline').length;
+    const onlineSites = monitors.filter(m => !m.paused && m.status === 'online').length;
+
+    const limitValue = parseFloat(configData.limiteAnual) || 81000;
+    const metaMensal = parseFloat(configData.metaFaturamento) || Math.round((limitValue / 12) * 100) / 100;
+    const recGarantidoMes = eligibleRecs.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    const parcelasMes = (negocio || [])
+      .filter(n => n.tipo === 'Receita' && (n.data || '').slice(0, 7) === monthKey && !n.recorrenciaId && n.categoria !== 'Recorrência')
+      .reduce((s, n) => s + (Number(n.valor) || 0), 0);
+    const garantidoMes = recGarantidoMes + parcelasMes;
+    const faltaFecharMes = Math.max(0, metaMensal - garantidoMes);
+
+    const validProjs = (projetos || []).filter(p => p.status !== 'Cancelado' && (Number(p.valor) || 0) > 0);
+    const ticketMedio = validProjs.length > 0
+      ? validProjs.reduce((s, p) => s + (Number(p.valor) || 0), 0) / validProjs.length
+      : 0;
+    const projFaltantesMes = ticketMedio > 0 && faltaFecharMes > 0 ? Math.ceil(faltaFecharMes / ticketMedio) : 0;
+
+    return {
+      abordagensHoje,
+      metaAbordagens,
+      mensalidadesPendentes,
+      nfsPendentes,
+      eligibleRecCount: eligibleRecs.length,
+      dasPendente,
+      dasPago,
+      hasDasConfig: !!(dasFixa || dasLancamento),
+      despNegocioPendentes,
+      offlineSites,
+      onlineSites,
+      totalMonitors: monitors.length,
+      garantidoMes,
+      faltaFecharMes,
+      metaMensal,
+      projFaltantesMes,
+    };
+  }, [now, anoAtual, mesAtual, configData, leads, recorrencia, negocio, despesasFixas, uptimeMonitors, projetos]);
+
 
   const mesLabel = MESES_CURTOS[mesPrev];
   const activeModulesCount = [stats.isNegocioOn, stats.isPessoalOn, stats.isLeadsOn, stats.isProjetosOn, stats.isRecorrenciaOn].filter(Boolean).length;
@@ -531,7 +618,263 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
-      {/* ─── KPI Row ─────────────────────────────────────────────────────── */}
+      {/* ─── T2.6: Primeira Linha "Hoje" ─────────────────────────────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(195px, 1fr))',
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        {/* 1. Meta de abordagens do dia */}
+        <div
+          onClick={() => goTo('leads')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Abordagens Hoje
+            </span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green-bg)' : 'rgba(59,130,246,0.12)',
+              color: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green)' : 'var(--blue)',
+            }}>
+              {hojeStats.abordagensHoje}/{hojeStats.metaAbordagens}
+            </span>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+            {hojeStats.abordagensHoje >= hojeStats.metaAbordagens
+              ? 'Meta batida! 🎯'
+              : `Faltam ${Math.max(0, hojeStats.metaAbordagens - hojeStats.abordagensHoje)}`}
+          </div>
+          <div style={{ height: 5, background: 'var(--bg3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min(100, (hojeStats.abordagensHoje / hojeStats.metaAbordagens) * 100)}%`,
+              background: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green)' : 'var(--blue)',
+              borderRadius: 99,
+            }} />
+          </div>
+        </div>
+
+        {/* 2. NFs e mensalidades pendentes do mês */}
+        <div
+          onClick={() => goTo('recorrencia')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Fechamento do Mês
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: (hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'var(--green-bg)' : 'rgba(245,158,11,0.12)',
+              color: (hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'var(--green)' : 'var(--amber)',
+            }}>
+              {(hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'Em dia ✓' : 'Atenção'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+            {hojeStats.nfsPendentes} NF(s) • {hojeStats.mensalidadesPendentes} mens.
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            Pendentes em {MESES_CURTOS[mesAtual]}/{anoAtual}
+          </div>
+        </div>
+
+        {/* 3. DAS a vencer & despesas fixas */}
+        <div
+          onClick={() => goTo('financas-negocio')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              DAS & Impostos
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.dasPendente ? 'rgba(245,158,11,0.12)' : 'var(--green-bg)',
+              color: hojeStats.dasPendente ? 'var(--amber)' : 'var(--green)',
+            }}>
+              {hojeStats.dasPendente ? 'Vence dia 20' : hojeStats.dasPago ? 'DAS Pago ✓' : 'Ver fixas'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: hojeStats.dasPendente ? 'var(--amber)' : 'var(--text)' }}>
+            {hojeStats.dasPendente ? 'DAS MEI Pendente' : hojeStats.dasPago ? 'DAS MEI Quitado' : 'Sem DAS pendente'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.despNegocioPendentes} despesa(s) do negócio a pagar
+          </div>
+        </div>
+
+        {/* 4. Sites Offline (Uptime) */}
+        <div
+          onClick={() => goTo('uptime')}
+          style={{
+            background: 'var(--bg2)',
+            border: `1px solid ${hojeStats.offlineSites > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Uptime Sites
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.offlineSites > 0 ? 'var(--red-bg)' : 'var(--green-bg)',
+              color: hojeStats.offlineSites > 0 ? 'var(--red)' : 'var(--green)',
+            }}>
+              {hojeStats.offlineSites > 0 ? `${hojeStats.offlineSites} offline` : '100% online'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: hojeStats.offlineSites > 0 ? 'var(--red)' : 'var(--text)' }}>
+            {hojeStats.offlineSites > 0 ? `${hojeStats.offlineSites} site(s) fora do ar` : `${hojeStats.onlineSites} online`}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.totalMonitors} monitorado(s) no total
+          </div>
+        </div>
+
+        {/* 5. Previsão resumida do mês */}
+        <div
+          onClick={() => goTo('financas-negocio')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Previsão {MESES_CURTOS[mesAtual]}
+            </span>
+            {hojeStats.faltaFecharMes <= 0 ? (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: 'var(--green-bg)', color: 'var(--green)' }}>
+                Meta batida ✓
+              </span>
+            ) : hojeStats.projFaltantesMes > 0 ? (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)' }}>
+                ≈ {hojeStats.projFaltantesMes} proj.
+              </span>
+            ) : null}
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--green)' }}>
+            {fmtBRL(hojeStats.garantidoMes)} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)' }}>garantido</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.faltaFecharMes > 0 ? `Falta fechar ${fmtBRL(hojeStats.faltaFecharMes)}` : `Meta de ${fmtBRL(hojeStats.metaMensal)} superada`}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── T2.6: Faturamento do Mês em uma Linha Compacta ──────────────── */}
+      <div
+        style={{
+          background: 'var(--bg2)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '10px 16px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, cursor: 'pointer' }} onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}>
+            <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>Faturamento ({MESES_CURTOS[mesAtual]}):</span>
+            <strong style={{ fontSize: 16, color: 'var(--green)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong>
+            <Trend value={stats.trendRec} suffix={`vs ${mesLabel}`} />
+          </div>
+          {stats.isRecorrenciaOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('recorrencia')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>MRR:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{fmtBRL(stats.mrr)}</strong>
+            </div>
+          )}
+          {stats.isPessoalOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('financas-pessoais')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Desp. Pessoais:</span>
+              <strong style={{ fontSize: 14, color: 'var(--red)' }}>{fmtBRL(stats.despMesAtual)}</strong>
+            </div>
+          )}
+          {stats.isProjetosOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('projetos')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Projetos ativos:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{stats.projAtivos}</strong>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-secondary"
+          onClick={() => setShowCharts(v => !v)}
+          style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, transform: showCharts ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          {showCharts ? 'Recolher gráficos e KPIs' : 'Expandir gráficos e KPIs'}
+        </button>
+      </div>
+
+      {/* ─── KPI Row (Recolhido por padrão, expansível) ──────────────────── */}
+      {showCharts && (
       <div className={`dash-kpi-row ${is5Cards ? 'is-5-cards' : ''}`}>
         {(stats.isNegocioOn || stats.isPessoalOn) && (
           <KpiCard
@@ -600,6 +943,7 @@ export default function DashboardPage() {
           />
         )}
       </div>
+      )}
 
       <div className="dash-bento-grid">
 
@@ -698,7 +1042,7 @@ export default function DashboardPage() {
         )}
 
         {/* Receita vs Despesas (large) */}
-        {(stats.isNegocioOn || stats.isPessoalOn) && (
+        {showCharts && (stats.isNegocioOn || stats.isPessoalOn) && (
           <motion.div
             className={`dash-glass-card dash-bento-chart-main ${(!stats.isLeadsOn && !stats.isPessoalOn) ? 'full-width' : ''}`}
             custom={0}
@@ -748,7 +1092,7 @@ export default function DashboardPage() {
         )}
 
         {/* Dynamic Donut (Leads OR Personal Expenses) */}
-        {(stats.isLeadsOn || stats.isPessoalOn) && (
+        {showCharts && (stats.isLeadsOn || stats.isPessoalOn) && (
           <motion.div
             className={`dash-glass-card dash-bento-donut ${!(stats.isNegocioOn || stats.isPessoalOn) ? 'full-width' : ''}`}
             custom={1}
@@ -1041,7 +1385,7 @@ export default function DashboardPage() {
         {stats.isProjetosOn && (
           <>
             <motion.div
-              className={`dash-glass-card dash-bento-projetos ${stats.projetosByStatus.length === 0 ? 'full-width' : ''}`}
+              className={`dash-glass-card dash-bento-projetos ${(!showCharts || stats.projetosByStatus.length === 0) ? 'full-width' : ''}`}
               custom={4}
               variants={fadeUp}
               initial="hidden"
@@ -1096,7 +1440,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Status dos Projetos - Mini chart */}
-            {stats.projetosByStatus.length > 0 && (
+            {showCharts && stats.projetosByStatus.length > 0 && (
               <motion.div
                 className="dash-glass-card dash-bento-proj-status"
                 custom={5}

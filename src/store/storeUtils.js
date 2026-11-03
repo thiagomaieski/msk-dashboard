@@ -195,6 +195,18 @@ export const clampDayToMonth = (day, date = new Date()) => {
 };
 export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDayToMonth(day, date)).padStart(2, '0')}`;
 
+export function isRecorrenciaEligibleInCompetencia(r, competenciaKey) {
+  if (!r || !competenciaKey) return false;
+  if (r.status && r.status !== 'Ativo') return false;
+  const per = r.periodicidade || 'Mensal';
+  if (per === 'Anual' || per === 'Semestral') {
+    const renMonth = (r.renovacao || '').slice(0, 7);
+    if (!renMonth) return true;
+    return renMonth === competenciaKey;
+  }
+  return true;
+}
+
 export function isRecorrenciaPaidInCompetencia(r, competenciaKey, negocioList) {
   if (!r || !competenciaKey) return false;
   const list = negocioList || [];
