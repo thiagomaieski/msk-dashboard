@@ -475,6 +475,89 @@ export function FinancasNegocioPage() {
   const pctLimite = Math.min((usadoLimite / limitValue) * 100, 100);
   const alerteLimite = pctLimite >= 80;
 
+  const [forecastHorizon, setForecastHorizon] = useState(6);
+
+  const forecastInfo = useMemo(() => {
+    const metaMensal = parseFloat(configData.metaFaturamento) || Math.round((limitValue / 12) * 100) / 100;
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+
+    const allValidProjects = (data.projetos || []).filter(p => p.status !== 'Cancelado' && (Number(p.valor) || 0) > 0);
+    const projectsLast12m = allValidProjects.filter(p => {
+      const refDate = (p.fechadoEm || (typeof p.criadoEm === 'string' ? p.criadoEm : '') || '').slice(0, 10);
+      return refDate ? refDate >= oneYearAgo : true;
+    });
+    const sampleProjects = projectsLast12m.length > 0 ? projectsLast12m : allValidProjects;
+    const ticketMedio = sampleProjects.length > 0
+      ? sampleProjects.reduce((s, p) => s + (Number(p.valor) || 0), 0) / sampleProjects.length
+      : 0;
+
+    // Projetos com pagamento pendente (ou 50% adiantado) e sem parcelas lançadas em data.negocio
+    const openPendingProjects = (data.projetos || []).filter(p => {
+      if (p.status === 'Cancelado') return false;
+      const val = Number(p.valor) || 0;
+      if (val <= 0) return false;
+      const pag = p.pagamento || 'Pendente';
+      if (pag !== 'Pendente' && pag !== '50% adiantado') return false;
+      const hasInstallments = (data.negocio || []).some(n => n.projetoId === p.id && n.tipo === 'Receita');
+      return !hasInstallments;
+    });
+    const estimadoAbertoValor = openPendingProjects.reduce((s, p) => {
+      const val = Number(p.valor) || 0;
+      return s + (p.pagamento === '50% adiantado' ? val * 0.5 : val);
+    }, 0);
+
+    const months = Array.from({ length: forecastHorizon }, (_, idx) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + idx, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+      const label = `${MESES[m].slice(0, 3)}/${String(y).slice(2)}`;
+
+      // Recorrências ativas previstas para o mês
+      const recorrenciaValor = (data.recorrencia || []).reduce((acc, r) => {
+        if (r.status !== 'Ativo') return acc;
+        if (r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') {
+          if ((r.renovacao || '').slice(0, 7) !== monthKey) return acc;
+        }
+        return acc + (Number(r.valor) || 0);
+      }, 0);
+
+      // Parcelas futuras não pagas (e no mês atual, parcelas não pagas + receitas de projeto/avulso do mês)
+      const parcelasValor = (data.negocio || []).reduce((acc, n) => {
+        if (n.tipo !== 'Receita') return acc;
+        if ((n.data || '').slice(0, 7) !== monthKey) return acc;
+        if (n.recorrenciaId || n.categoria === 'Recorrência') return acc;
+        if (idx > 0 && isReceitaRecebida(n, todayISO)) return acc;
+        return acc + (Number(n.valor) || 0);
+      }, 0);
+
+      const garantido = recorrenciaValor + parcelasValor;
+      const faltaFechar = Math.max(0, metaMensal - garantido);
+      const projetosFaltantes = ticketMedio > 0 && faltaFechar > 0 ? Math.ceil(faltaFechar / ticketMedio) : 0;
+      const pctGarantido = metaMensal > 0 ? Math.min(100, (garantido / metaMensal) * 100) : 100;
+
+      return {
+        monthKey,
+        label,
+        recorrenciaValor,
+        parcelasValor,
+        garantido,
+        faltaFechar,
+        projetosFaltantes,
+        pctGarantido,
+      };
+    });
+
+    return {
+      metaMensal,
+      ticketMedio,
+      sampleCount: sampleProjects.length,
+      openPendingCount: openPendingProjects.length,
+      estimadoAbertoValor,
+      months,
+    };
+  }, [data.projetos, data.recorrencia, data.negocio, configData.metaFaturamento, limitValue, forecastHorizon, todayISO]);
+
   return (
     <div>
       <div className="page-header">
@@ -628,6 +711,114 @@ export function FinancasNegocioPage() {
           <div style={{ height: '100%', width: `${pctLimite}%`, background: pctLimite >= 100 ? 'var(--red)' : pctLimite >= 80 ? '#f59e0b' : 'var(--green)', borderRadius: 4, transition: 'width .5s' }} />
         </div>
         {alerteLimite && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 6, fontWeight: 600 }}>⚠ Atenção: você usou {pctLimite.toFixed(0)}% do limite de faturamento {configData.tipoEmpresa || 'Empresa'}.</div>}
+      </div>
+
+      {/* Previsão de 3 a 6 meses (T2.4) */}
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Previsão de Faturamento ({forecastHorizon} meses)</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: 'var(--bg3)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                Estimativa
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
+              Meta mensal: <strong style={{ color: 'var(--text2)' }}>{fmtBRL(forecastInfo.metaMensal)}</strong>
+              {' • '}
+              Ticket médio (12m): <strong style={{ color: 'var(--text2)' }}>{forecastInfo.ticketMedio > 0 ? fmtBRL(forecastInfo.ticketMedio) : 'Sem base'}</strong>
+              {forecastInfo.sampleCount > 0 && ` (${forecastInfo.sampleCount} proj.)`}
+            </div>
+          </div>
+          <div style={{ display: 'inline-flex', background: 'var(--bg3)', borderRadius: 8, padding: 2, border: '1px solid var(--border)' }}>
+            {[3, 6].map(h => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setForecastHorizon(h)}
+                style={{
+                  border: 'none',
+                  background: forecastHorizon === h ? 'var(--bg1)' : 'transparent',
+                  color: forecastHorizon === h ? 'var(--text)' : 'var(--text3)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                {h} meses
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          {forecastInfo.months.map(m => (
+            <div
+              key={m.monthKey}
+              style={{
+                background: 'var(--bg3)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{m.label}</span>
+                {m.faltaFechar <= 0 ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', background: 'var(--green-bg)', padding: '2px 6px', borderRadius: 99 }}>
+                    Meta atingida ✓
+                  </span>
+                ) : m.projetosFaltantes > 0 ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--amber)', background: 'rgba(245,158,11,0.12)', padding: '2px 6px', borderRadius: 99 }} title="Calculado pelo ticket médio dos projetos dos últimos 12 meses">
+                    ≈ {m.projetosFaltantes} proj.
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Barra empilhada: Garantido vs Falta fechar */}
+              <div style={{ height: 8, background: 'rgba(245,158,11,0.18)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                <div
+                  style={{
+                    width: `${m.pctGarantido}%`,
+                    background: 'var(--green)',
+                    height: '100%',
+                    transition: 'width 0.35s ease',
+                  }}
+                  title={`Garantido: ${fmtBRL(m.garantido)}`}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2 }}>
+                <span style={{ color: 'var(--green)', fontWeight: 600 }} title={`Recorrência: ${fmtBRL(m.recorrenciaValor)} + Parcelas/Receitas: ${fmtBRL(m.parcelasValor)}`}>
+                  Garantido: {fmtBRL(m.garantido)}
+                </span>
+                <span style={{ color: m.faltaFechar > 0 ? 'var(--amber)' : 'var(--text3)', fontWeight: 600 }}>
+                  {m.faltaFechar > 0 ? `Falta: ${fmtBRL(m.faltaFechar)}` : 'R$ 0,00'}
+                </span>
+              </div>
+
+              <div style={{ fontSize: 10, color: 'var(--text3)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Recorr.: {fmtBRL(m.recorrenciaValor)}</span>
+                <span>Parcelas: {fmtBRL(m.parcelasValor)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {forecastInfo.openPendingCount > 0 && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--text2)' }}>
+            <span>
+              <strong style={{ color: 'var(--amber)' }}>Estimado (projetos em aberto sem parcelas):</strong>{' '}
+              {fmtBRL(forecastInfo.estimadoAbertoValor)} em {forecastInfo.openPendingCount} projeto(s) com pagamento pendente/50% adiantado.
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text3)' }}>Não somado ao garantido por não ter parcelas agendadas</span>
+          </div>
+        )}
       </div>
 
       {/* Painel Despesas Fixas do Negócio + DAS do MEI */}
