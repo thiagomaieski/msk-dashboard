@@ -287,6 +287,7 @@ export default function LeadsPage() {
   const convertLeadToCliente = useDash(s => s.convertLeadToCliente);
   const runPreQualification = useDash(s => s.runPreQualification);
   const saveLead = useDash(s => s.saveLead);
+  const logLeadContact = useDash(s => s.logLeadContact);
   const addLeadInteracao = useDash(s => s.addLeadInteracao);
   const toggleLeadBotBarreira = useDash(s => s.toggleLeadBotBarreira);
   const saveLeadFilter = useDash(s => s.saveLeadFilter);
@@ -321,6 +322,63 @@ export default function LeadsPage() {
   const [savingFilterOpen, setSavingFilterOpen] = useState(false);
   const [savingFilterName, setSavingFilterName] = useState('');
   const [showLoteSummary, setShowLoteSummary] = useState(false);
+  const [pendingWaLead, setPendingWaLead] = useState(null);
+  const [waPromptLead, setWaPromptLead] = useState(null);
+
+  useEffect(() => {
+    if (!pendingWaLead) return;
+    const checkReturn = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') return;
+      const elapsed = Date.now() - pendingWaLead.clickedAt;
+      if (elapsed <= 10 * 60 * 1000) {
+        setWaPromptLead(pendingWaLead);
+      }
+      setPendingWaLead(null);
+    };
+    const onVisChange = () => {
+      if (document.visibilityState === 'visible') checkReturn();
+    };
+    window.addEventListener('focus', checkReturn);
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => {
+      window.removeEventListener('focus', checkReturn);
+      document.removeEventListener('visibilitychange', onVisChange);
+    };
+  }, [pendingWaLead]);
+
+  const handleWaClick = (lead, e) => {
+    if (e) e.stopPropagation();
+    setWaPromptLead(null);
+    setPendingWaLead({
+      id: lead.id,
+      nome: lead.nome || 'Lead',
+      status: lead.status || 'Novo',
+      clickedAt: Date.now(),
+    });
+  };
+
+  const handleConfirmWaSent = async () => {
+    if (!waPromptLead) return;
+    const lead = (data.leads || []).find(l => l.id === waPromptLead.id);
+    setWaPromptLead(null);
+    if (!lead) return;
+    const prevSnapshot = { ...lead, interacoes: [...(lead.interacoes || [])], historicoStatus: [...(lead.historicoStatus || [])] };
+    const isNovo = (lead.status || 'Novo') === 'Novo';
+    const tipo = isNovo ? 'abordagem_inicial' : 'follow_up';
+    const novoStatus = isNovo ? 'Abordado' : (lead.status || 'Abordado');
+    await logLeadContact(lead.id, {
+      tipo,
+      texto: isNovo ? 'Abordagem via WhatsApp' : 'Follow-up via WhatsApp',
+      novoStatus,
+    });
+    setUndoAction({
+      id: Date.now(),
+      label: `Contato registrado para "${lead.nome || 'Lead'}" (${novoStatus})`,
+      onUndo: async () => {
+        await saveLead(prevSnapshot);
+      },
+    });
+  };
 
   const loteSummary = useMemo(() => computeLoteSummary(data.leads), [data.leads]);
 
@@ -1713,7 +1771,7 @@ export default function LeadsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, color: 'var(--text3)' }}>{l.telefone || '-'}</span>
                           {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
-                            <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                            <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => handleWaClick(l, e)}>
                               <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14, color: '#25D366' }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
                             </a>
                           )}
@@ -1733,6 +1791,50 @@ export default function LeadsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ─── PROMPT DE RETORNO DO WHATSAPP (T3.3) ──────────────── */}
+      {waPromptLead && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            background: 'rgba(37, 211, 102, 0.1)',
+            border: '1px solid rgba(37, 211, 102, 0.35)',
+            borderRadius: 10,
+            padding: '10px 16px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)' }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 16, height: 16, color: '#25D366', flexShrink: 0 }}>
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/>
+            </svg>
+            <span>
+              Enviou para <strong>{waPromptLead.nome}</strong>?
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              style={{ background: '#25D366', borderColor: '#25D366', color: '#fff', fontWeight: 600 }}
+              onClick={handleConfirmWaSent}
+            >
+              Sim, registrar
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setWaPromptLead(null)}
+            >
+              Não
+            </button>
+          </div>
         </div>
       )}
 
@@ -1827,7 +1929,7 @@ export default function LeadsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <CopyCell text={l.telefone} />
                       {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
-                        <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => e.stopPropagation()}>
+                        <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => handleWaClick(l, e)}>
                           <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
                         </a>
                       )}
