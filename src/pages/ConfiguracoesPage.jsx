@@ -85,6 +85,9 @@ export default function ConfiguracoesPage() {
   const [tempCcVenc, setTempCcVenc] = useState(configData.cartaoVenc || 1);
   const [tempNotifEnabled, setTempNotifEnabled] = useState(configData.notifEnabled !== false);
   const [tempLancarDespesasAuto, setTempLancarDespesasAuto] = useState(configData.lancarDespesasAuto || false);
+  const [tempAiInstrucoes, setTempAiInstrucoes] = useState(configData.aiInstrucoes || '');
+  const [tempAiProvider, setTempAiProvider] = useState(configData.aiProvider || 'gemini');
+  const [tempOllamaModel, setTempOllamaModel] = useState(configData.ollamaModel || 'llama3.2');
   const [tempEmpresa, setTempEmpresa] = useState({
     nomeEmpresa: configData.nomeEmpresa || '',
     cnpj: configData.cnpj || '',
@@ -125,6 +128,12 @@ export default function ConfiguracoesPage() {
   }, [configData.lancarDespesasAuto]);
 
   useEffect(() => {
+    setTempAiInstrucoes(configData.aiInstrucoes || '');
+    setTempAiProvider(configData.aiProvider || 'gemini');
+    setTempOllamaModel(configData.ollamaModel || 'llama3.2');
+  }, [configData.aiInstrucoes, configData.aiProvider, configData.ollamaModel]);
+
+  useEffect(() => {
     setTempEmpresa({
       nomeEmpresa: configData.nomeEmpresa || '',
       cnpj: configData.cnpj || '',
@@ -151,9 +160,13 @@ export default function ConfiguracoesPage() {
     const ccVencChanged = tempCcVenc !== (configData.cartaoVenc || 1);
     const notifEnabledChanged = tempNotifEnabled !== (configData.notifEnabled !== false);
     const autoChanged = tempLancarDespesasAuto !== (configData.lancarDespesasAuto || false);
+    const aiChanged =
+      tempAiInstrucoes !== (configData.aiInstrucoes || '') ||
+      tempAiProvider !== (configData.aiProvider || 'gemini') ||
+      tempOllamaModel !== (configData.ollamaModel || 'llama3.2');
     const empresaChanged = Object.keys(tempEmpresa).some(k => tempEmpresa[k] !== (configData[k] || ''));
-    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || autoChanged || empresaChanged;
-  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempLancarDespesasAuto, tempEmpresa, profile, configData]);
+    return nameChanged || modulesChanged || ccNomeChanged || ccVencChanged || notifEnabledChanged || autoChanged || aiChanged || empresaChanged;
+  }, [tempName, tempModules, tempCcNome, tempCcVenc, tempNotifEnabled, tempLancarDespesasAuto, tempAiInstrucoes, tempAiProvider, tempOllamaModel, tempEmpresa, profile, configData]);
 
   const handleSaveAll = async () => {
     setIsSaving(true);
@@ -170,6 +183,19 @@ export default function ConfiguracoesPage() {
       if (tempLancarDespesasAuto !== configData.lancarDespesasAuto) {
         await setDoc(uDoc('settings', 'main'), { lancarDespesasAuto: tempLancarDespesasAuto }, { merge: true });
         useDash.setState(s => ({ configData: { ...s.configData, lancarDespesasAuto: tempLancarDespesasAuto } }));
+      }
+      if (
+        tempAiInstrucoes !== (configData.aiInstrucoes || '') ||
+        tempAiProvider !== (configData.aiProvider || 'gemini') ||
+        tempOllamaModel !== (configData.ollamaModel || 'llama3.2')
+      ) {
+        const aiPayload = {
+          aiInstrucoes: tempAiInstrucoes,
+          aiProvider: tempAiProvider,
+          ollamaModel: tempOllamaModel,
+        };
+        await setDoc(uDoc('settings', 'main'), aiPayload, { merge: true });
+        useDash.setState(s => ({ configData: { ...s.configData, ...aiPayload } }));
       }
       
       const empresaChanged = Object.keys(tempEmpresa).some(k => tempEmpresa[k] !== (configData[k] || ''));
@@ -192,6 +218,9 @@ export default function ConfiguracoesPage() {
     setTempCcVenc(configData.cartaoVenc || 1);
     setTempNotifEnabled(configData.notifEnabled !== false);
     setTempLancarDespesasAuto(configData.lancarDespesasAuto || false);
+    setTempAiInstrucoes(configData.aiInstrucoes || '');
+    setTempAiProvider(configData.aiProvider || 'gemini');
+    setTempOllamaModel(configData.ollamaModel || 'llama3.2');
     setTempEmpresa({
       nomeEmpresa: configData.nomeEmpresa || '',
       cnpj: configData.cnpj || '',
@@ -956,6 +985,52 @@ export default function ConfiguracoesPage() {
                   />
                   <span className="switch-slider"></span>
                 </label>
+              </div>
+
+              {/* T4.3 & T4.6: Inteligência Artificial (Instruções da IA e Provedor) */}
+              <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}>
+                <div className="settings-row-info">
+                  <div className="settings-row-title">✨ Inteligência Artificial (Leads & CRM)</div>
+                  <div className="settings-row-desc">
+                    Personalize as instruções extras para geração de mensagens de abordagem e escolha o provedor de IA (Gemini via Hostinger ou Ollama local com fallback automático).
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, maxWidth: 640 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Provedor de IA</label>
+                    <CustomSelect
+                      variant="form"
+                      value={tempAiProvider}
+                      onChange={e => setTempAiProvider(e.target.value)}
+                      options={[
+                        { value: 'gemini', label: 'Gemini Flash-Lite (Servidor Hostinger)' },
+                        { value: 'ollama', label: 'Ollama Local (localhost:11434 + fallback Gemini)' },
+                      ]}
+                    />
+                  </div>
+                  {tempAiProvider === 'ollama' && (
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Modelo do Ollama Local</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tempOllamaModel}
+                        onChange={e => setTempOllamaModel(e.target.value)}
+                        placeholder="Ex: llama3.2, qwen2.5:7b"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Instruções da IA (Tom de voz e diretrizes para mensagens)</label>
+                  <textarea
+                    className="form-textarea"
+                    style={{ minHeight: 85 }}
+                    placeholder="Ex: Use um tom consultivo e direto, apresente-se como Thiago da agência Maieski, evite parecer robótico e finalize convidando para uma conversa rápida..."
+                    value={tempAiInstrucoes}
+                    onChange={e => setTempAiInstrucoes(e.target.value)}
+                  />
+                </div>
               </div>
 
               {/* Lixeira do Sistema */}

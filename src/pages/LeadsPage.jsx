@@ -358,6 +358,22 @@ export default function LeadsPage() {
     });
   };
 
+  useEffect(() => {
+    const onCustomWaClick = (ev) => {
+      if (ev?.detail?.id) {
+        setWaPromptLead(null);
+        setPendingWaLead({
+          id: ev.detail.id,
+          nome: ev.detail.nome || 'Lead',
+          status: ev.detail.status || 'Novo',
+          clickedAt: Date.now(),
+        });
+      }
+    };
+    window.addEventListener('msk:wa-clicked', onCustomWaClick);
+    return () => window.removeEventListener('msk:wa-clicked', onCustomWaClick);
+  }, []);
+
   const handleConfirmWaSent = async () => {
     if (!waPromptLead) return;
     const lead = (data.leads || []).find(l => l.id === waPromptLead.id);

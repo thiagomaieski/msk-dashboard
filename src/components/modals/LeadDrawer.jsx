@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDash, getWaLink } from '../../store/useStore';
-import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS } from '../../utils/crmAnalyticsUtils';
-import { qualifyLeadWithAi } from '../../utils/aiApi';
+import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS, generatePitchMessage } from '../../utils/crmAnalyticsUtils';
+import { qualifyLeadWithAi, generateLeadMessageWithAi } from '../../utils/aiApi';
 import CustomSelect from '../CustomSelect';
 import Drawer from '../ui/Drawer';
 import { PageSpeedScore } from './LeadForm';
@@ -120,6 +120,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
     setSingleProgress(null);
     setAiDraft(null);
     setAiError(null);
+    setMsgDraft('');
+    setMsgError(null);
+    setMsgTipo((item?.status && item.status !== 'Novo') ? 'follow_up' : 'abordagem_inicial');
     setLightboxOpen(false);
   }, [item?.id, isOpen]);
 
@@ -129,6 +132,10 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const [isAiQualifying, setIsAiQualifying] = useState(false);
   const [aiDraft, setAiDraft] = useState(null); // { chips, resumo, prioridade } aguardando confirmação
   const [aiError, setAiError] = useState(null);
+  const [msgTipo, setMsgTipo] = useState('abordagem_inicial');
+  const [isGeneratingMsg, setIsGeneratingMsg] = useState(false);
+  const [msgDraft, setMsgDraft] = useState('');
+  const [msgError, setMsgError] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxNotes, setLightboxNotes] = useState('');
   const [singleProgress, setSingleProgress] = useState(null);
@@ -240,6 +247,63 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
       observacoes: f.observacoes,
     });
     setAiDraft(null);
+  };
+
+  const handleGenerateAiMessage = async () => {
+    if (isGeneratingMsg) return;
+    setIsGeneratingMsg(true);
+    setMsgError(null);
+    try {
+      const mergedLead = { ...item, ...f };
+      const res = await generateLeadMessageWithAi(mergedLead, {
+        tipo: msgTipo,
+        instrucoes: configData.aiInstrucoes || '',
+        aiProvider: configData.aiProvider || 'gemini',
+        ollamaModel: configData.ollamaModel || 'llama3.2',
+      });
+      if (res.usage) setAiUsage(res.usage);
+      if (!res.ok) {
+        setMsgError(res.error || 'Falha ao gerar mensagem com IA.');
+        return;
+      }
+      setMsgDraft(res.mensagem || '');
+    } finally {
+      setIsGeneratingMsg(false);
+    }
+  };
+
+  const handleGenerateOfflineMessage = () => {
+    setMsgError(null);
+    const mergedLead = { ...item, ...f };
+    const text = generatePitchMessage(mergedLead, msgTipo);
+    setMsgDraft(text || '');
+  };
+
+  const handleCopyMessage = async () => {
+    if (!msgDraft.trim()) return;
+    try {
+      await navigator.clipboard.writeText(msgDraft);
+      useDash.getState().toast('Mensagem copiada para a área de transferência!');
+    } catch {
+      useDash.getState().toast('Falha ao copiar mensagem.', 'error');
+    }
+  };
+
+  const handleOpenWhatsAppWithText = () => {
+    const waBase = getWaLink(f.telefone);
+    if (!waBase) {
+      useDash.getState().toast('Informe um telefone válido antes de abrir o WhatsApp.', 'error');
+      return;
+    }
+    const url = msgDraft.trim()
+      ? `${waBase}?text=${encodeURIComponent(msgDraft.trim())}`
+      : waBase;
+    if (item?.id) {
+      window.dispatchEvent(new CustomEvent('msk:wa-clicked', {
+        detail: { id: item.id, nome: f.nome || item.nome || 'Lead', status: f.status || item.status || 'Novo' }
+      }));
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleSave = async (e) => {
@@ -772,6 +836,112 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               value={f.observacoes}
               onChange={u('observacoes')}
             />
+          </div>
+
+          {/* T4.3: Gerar mensagem com IA ou Modelo Offline */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Mensagem de Abordagem
+                </span>
+                <span
+                  style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}
+                  onClick={() => navTo('cfg-sistema')}
+                  title="Personalizar tom de voz e instruções da IA em Configurações > Sistema"
+                >
+                  Instruções da IA →
+                </span>
+              </div>
+              <div style={{ display: 'inline-flex', gap: 4 }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${msgTipo === 'abordagem_inicial' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 10, padding: '2px 8px' }}
+                  onClick={() => setMsgTipo('abordagem_inicial')}
+                >
+                  Abordagem inicial
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${msgTipo === 'follow_up' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 10, padding: '2px 8px' }}
+                  onClick={() => setMsgTipo('follow_up')}
+                >
+                  Follow-up
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={handleGenerateAiMessage}
+                disabled={isGeneratingMsg}
+                style={{
+                  fontSize: 11,
+                  borderColor: 'rgba(99,102,241,0.45)',
+                  background: isGeneratingMsg ? 'var(--bg2)' : 'rgba(99,102,241,0.14)',
+                  color: 'var(--accent)',
+                  fontWeight: 600,
+                }}
+              >
+                ✨ {isGeneratingMsg ? 'Gerando mensagem...' : 'Gerar mensagem com IA'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={handleGenerateOfflineMessage}
+                style={{ fontSize: 11 }}
+                title="Gerar mensagem usando o modelo local sem consumir cota de IA"
+              >
+                ⚡ Modelo rápido (offline)
+              </button>
+            </div>
+
+            {msgError && (
+              <div style={{ background: 'var(--red-bg)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'var(--red)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span>{msgError}</span>
+                <button type="button" onClick={() => setMsgError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 13 }}>×</button>
+              </div>
+            )}
+
+            {msgDraft !== '' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <textarea
+                  className="form-textarea"
+                  style={{ minHeight: 88, fontSize: 12 }}
+                  value={msgDraft}
+                  onChange={e => setMsgDraft(e.target.value)}
+                  placeholder="Edite a mensagem antes de copiar ou abrir no WhatsApp..."
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={handleCopyMessage}
+                    style={{ fontSize: 11 }}
+                  >
+                    📋 Copiar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={handleOpenWhatsAppWithText}
+                    style={{
+                      fontSize: 11,
+                      background: '#25D366',
+                      borderColor: '#25D366',
+                      color: '#fff',
+                      fontWeight: 600,
+                    }}
+                  >
+                    💬 Abrir WhatsApp com o texto ↗
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
