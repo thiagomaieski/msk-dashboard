@@ -307,41 +307,65 @@ export const createFinanceSlice = (set, get) => ({
       const monthKey = getCurrentMonthKey();
       const createdNegocio = [];
       const createdPessoal = [];
+      const updatedFixaIds = [];
 
-      if (configSource.lancarDespesasAuto) {
-        for (const despesa of (dataSource.despesasFixas || [])) {
-          const alreadyExists = (dataSource.pessoal || []).some(item =>
-            item.tipo === 'Despesa' &&
-            ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === despesa.id && item.referenciaMes === monthKey) ||
-            ((item.descricao || '') === (despesa.descricao || '') && Number(item.valor || 0) === Number(despesa.valor || 0) && String(item.data || '').startsWith(monthKey)))
-          );
-          if (alreadyExists) continue;
+      for (const despesa of (dataSource.despesasFixas || [])) {
+        if (!despesa?.id) continue;
+        const isNegocio = despesa.contexto === 'negocio';
+        if (!isNegocio && !configSource.lancarDespesasAuto) continue;
 
-          const payload = {
-            data: buildMonthlyDate(despesa.dia || 1),
-            tipo: 'Despesa',
-            descricao: despesa.descricao,
-            valor: Number(despesa.valor || 0),
-            categoria: despesa.categoria || '',
-            cartao: !!despesa.cartao,
-            origemAutomatica: 'despesaFixa',
-            despesaFixaId: despesa.id,
-            referenciaMes: monthKey,
-            modificadoEm: serverTimestamp(),
-            criadoEm: serverTimestamp()
-          };
+        const targetList = isNegocio ? (dataSource.negocio || []) : (dataSource.pessoal || []);
+        const targetCol = isNegocio ? 'negocio' : 'pessoal';
+
+        const alreadyByUltimo = despesa.ultimoLancamento === monthKey;
+        const alreadyInList = targetList.some(item =>
+          item.tipo === 'Despesa' &&
+          ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === despesa.id && item.referenciaMes === monthKey) ||
+          ((item.descricao || '') === (despesa.descricao || '') && String(item.data || '').startsWith(monthKey)))
+        );
+        if (alreadyByUltimo || alreadyInList) {
+          if (!alreadyByUltimo && alreadyInList && !despesa.isMock) {
+            updatedFixaIds.push(despesa.id);
+            updateDoc(uDoc('despesasFixas', despesa.id), { ultimoLancamento: monthKey, modificadoEm: serverTimestamp() }).catch(() => {});
+          }
+          continue;
+        }
+
+        const payload = {
+          data: buildMonthlyDate(despesa.dia || 1),
+          tipo: 'Despesa',
+          descricao: despesa.descricao,
+          valor: Number(despesa.valor || 0),
+          categoria: despesa.categoria || (isNegocio ? 'Impostos' : ''),
+          cartao: !!despesa.cartao,
+          pago: false,
+          origemAutomatica: 'despesaFixa',
+          despesaFixaId: despesa.id,
+          referenciaMes: monthKey,
+          modificadoEm: serverTimestamp(),
+          criadoEm: serverTimestamp()
+        };
+
+        updatedFixaIds.push(despesa.id);
+        if (!despesa.isMock) {
           const { addDoc } = await import('../../firebase');
-          const res = await addDoc(uCol('pessoal'), payload);
-          createdPessoal.push({ id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() });
+          const res = await addDoc(uCol(targetCol), payload);
+          await updateDoc(uDoc('despesasFixas', despesa.id), { ultimoLancamento: monthKey, modificadoEm: serverTimestamp() }).catch(() => {});
+          const createdObj = { id: res.id, ...payload, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+          if (isNegocio) createdNegocio.push(createdObj);
+          else createdPessoal.push(createdObj);
         }
       }
 
-      if (createdNegocio.length || createdPessoal.length) {
+      if (createdNegocio.length || createdPessoal.length || updatedFixaIds.length) {
         set(s => ({
           realData: {
             ...s.realData,
             negocio: [...createdNegocio, ...s.realData.negocio],
-            pessoal: [...createdPessoal, ...s.realData.pessoal]
+            pessoal: [...createdPessoal, ...s.realData.pessoal],
+            despesasFixas: s.realData.despesasFixas.map(d =>
+              updatedFixaIds.includes(d.id) ? { ...d, ultimoLancamento: monthKey } : d
+            ),
           }
         }));
         get()._refreshData();
@@ -353,33 +377,51 @@ export const createFinanceSlice = (set, get) => ({
     }
   },
 
-  lancarDespesasMensais: async () => {
+  lancarDespesasMensais: async (contextoFilter = null) => {
     const { data, showConfirm, toast } = get();
-    if (!await showConfirm('Lançar despesas fixas?', 'Todas as despesas fixas serão lançadas como lançamentos no mês atual.', false)) return;
+    if (!contextoFilter && !await showConfirm('Lançar despesas fixas?', 'As despesas fixas pendentes de lançamento neste mês serão criadas.', false)) return;
     const now = new Date();
     const monthKey = getCurrentMonthKey(now);
     let count = 0;
     const { addDoc } = await import('../../firebase');
     
-    for (const d of data.despesasFixas) {
-      const alreadyExists = data.pessoal.some(item => 
+    for (const d of (data.despesasFixas || [])) {
+      const ctx = d.contexto === 'negocio' ? 'negocio' : 'pessoal';
+      if (contextoFilter && ctx !== contextoFilter) continue;
+      const targetList = ctx === 'negocio' ? (data.negocio || []) : (data.pessoal || []);
+      const alreadyExists = d.ultimoLancamento === monthKey || targetList.some(item => 
         item.tipo === 'Despesa' &&
         ((item.origemAutomatica === 'despesaFixa' && item.despesaFixaId === d.id && item.referenciaMes === monthKey) ||
-        ((item.descricao || '') === (d.descricao || '') && Number(item.valor || 0) === Number(d.valor || 0) && String(item.data || '').startsWith(monthKey)))
+        ((item.descricao || '') === (d.descricao || '') && String(item.data || '').startsWith(monthKey)))
       );
       if (alreadyExists) continue;
       const payload = {
-        data: buildMonthlyDate(d.dia || 1, now), tipo: 'Despesa',
-        descricao: d.descricao, valor: d.valor, categoria: d.categoria, cartao: !!d.cartao,
-        origemAutomatica: 'despesaFixa', despesaFixaId: d.id, referenciaMes: monthKey,
-        modificadoEm: serverTimestamp(), criadoEm: serverTimestamp()
+        data: buildMonthlyDate(d.dia || 1, now),
+        tipo: 'Despesa',
+        descricao: d.descricao,
+        valor: Number(d.valor || 0),
+        categoria: d.categoria || (ctx === 'negocio' ? 'Impostos' : ''),
+        cartao: !!d.cartao,
+        pago: false,
+        origemAutomatica: 'despesaFixa',
+        despesaFixaId: d.id,
+        referenciaMes: monthKey,
+        modificadoEm: serverTimestamp(),
+        criadoEm: serverTimestamp()
       };
-      const res = await addDoc(uCol('pessoal'), payload);
-      set(s => ({ realData: { ...s.realData, pessoal: [{ id: res.id, ...payload, criadoEm: new Date().toISOString() }, ...s.realData.pessoal] } }));
+      const res = await addDoc(uCol(ctx), payload);
+      await updateDoc(uDoc('despesasFixas', d.id), { ultimoLancamento: monthKey, modificadoEm: serverTimestamp() }).catch(() => {});
+      set(s => ({
+        realData: {
+          ...s.realData,
+          [ctx]: [{ id: res.id, ...payload, criadoEm: new Date().toISOString() }, ...s.realData[ctx]],
+          despesasFixas: s.realData.despesasFixas.map(x => x.id === d.id ? { ...x, ultimoLancamento: monthKey } : x),
+        }
+      }));
       count++;
     }
     get()._refreshData();
-    toast(`${count} lançamentos criados!`);
+    toast(`${count} lançamento(s) criado(s)!`);
   },
 
   // ── ATIVIDADES DE MANUTENÇÃO ──

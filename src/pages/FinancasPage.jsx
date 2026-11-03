@@ -616,7 +616,7 @@ export function FinancasNegocioPage() {
         </div>
       </div>
       {/* Limite MEI / empresa */}
-      <div style={{ background: 'var(--bg2)', border: `1px solid ${alerteLimite ? 'var(--amber)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
+      <div style={{ background: 'var(--bg2)', border: `1px solid ${alerteLimite ? 'var(--amber)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Limite Anual {configData.tipoEmpresa || 'Empresa'} ({parseInt(ano) || CURRENT_YEAR})</div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -629,6 +629,116 @@ export function FinancasNegocioPage() {
         </div>
         {alerteLimite && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 6, fontWeight: 600 }}>⚠ Atenção: você usou {pctLimite.toFixed(0)}% do limite de faturamento {configData.tipoEmpresa || 'Empresa'}.</div>}
       </div>
+
+      {/* Painel Despesas Fixas do Negócio + DAS do MEI */}
+      {(() => {
+        const fixasNegocio = (data.despesasFixas || []).filter(d => d.contexto === 'negocio');
+        const dasItem = fixasNegocio.find(d => (d.descricao || '').toUpperCase().includes('DAS'));
+        const isJanuaryOrOutdatedDas = dasItem && (now.getMonth() === 0 || (dasItem.valorReajustaEm && Number(dasItem.valorReajustaEm) < CURRENT_YEAR)) && String(dasItem.valorReajustaEm || '') !== String(CURRENT_YEAR);
+        const totalFixasMes = fixasNegocio.reduce((s, d) => s + (Number(d.valor) || 0), 0);
+
+        return (
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: fixasNegocio.length ? 12 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Despesas Fixas do Negócio</span>
+                <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: 99 }}>
+                  {fixasNegocio.length} cadastrada(s) • {fmtBRL(totalFixasMes)}/mês
+                </span>
+                {isJanuaryOrOutdatedDas && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '3px 10px',
+                      borderRadius: 99,
+                      background: 'rgba(245,158,11,0.12)',
+                      color: '#f59e0b',
+                      border: '1px solid rgba(245,158,11,0.3)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => openModal('despesaFixa', dasItem.id)}
+                    title="Clique para atualizar o valor anual do DAS"
+                  >
+                    ⚠ Atualizar valor do DAS ({CURRENT_YEAR})
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {!dasItem && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: 11, color: 'var(--amber)', borderColor: 'rgba(245,158,11,0.35)' }}
+                    onClick={() =>
+                      openModal('despesaFixa', null, {
+                        contexto: 'negocio',
+                        descricao: 'DAS MEI',
+                        dia: '20',
+                        categoria: 'Impostos',
+                        valor: 75.9,
+                        valorReajustaEm: String(CURRENT_YEAR),
+                      })
+                    }
+                  >
+                    + Adicionar DAS do MEI (dia 20)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ fontSize: 11 }}
+                  onClick={() => openModal('despesaFixa', null, { contexto: 'negocio' })}
+                >
+                  + Nova Despesa Fixa
+                </button>
+              </div>
+            </div>
+
+            {fixasNegocio.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 10 }}>
+                {fixasNegocio.map(df => (
+                  <div
+                    key={df.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: 'var(--bg3)',
+                      border: '1px solid var(--border)',
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {df.descricao}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                        Dia {df.dia || 1} • {df.categoria || 'Impostos'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--red)' }}>{fmtBRL(df.valor)}</span>
+                      <button className="row-btn" onClick={() => openModal('despesaFixa', df.id)} title="Editar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                      </button>
+                      <button className="row-btn del" onClick={() => deleteItem('despesasFixas', df.id, df.descricao)} title="Excluir">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
       {viewMode === 'cols' ? (
         <div className="finance-cols">
           <div className="finance-col">

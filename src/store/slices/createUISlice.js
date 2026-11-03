@@ -288,6 +288,7 @@ export const createUISlice = (set, get) => ({
         atividadeManutencaoId: type === 'atividadeManutencao' ? (extra?.atividadeId || null) : s.editingId.atividadeManutencaoId,
         pagarCompetencia: type === 'pagarRecorrencia' ? (extra?.competencia || null) : s.editingId.pagarCompetencia,
         novoFechamentoLeadId: type === 'novoFechamento' ? (id || null) : null,
+        despesaFixaExtra: type === 'despesaFixa' ? (extra || null) : null,
       },
     }));
   },
@@ -828,7 +829,44 @@ export const createUISlice = (set, get) => ({
           }
         }
       }
+      if (item.tipo === 'Despesa' && !item.pago && !item.cartao && item.data) {
+        const diffDesp = Math.ceil((new Date(item.data + 'T12:00:00').getTime() - now.getTime()) / 86400000);
+        const isDasOrFixed = item.origemAutomatica === 'despesaFixa' || (item.descricao || '').toUpperCase().includes('DAS');
+        if (isDasOrFixed && diffDesp >= 0 && diffDesp <= 5) {
+          const rid = `desp-fixa-venc-${item.id}-${diffDesp === 0 ? 'hoje' : 'prox'}`;
+          if (!fired.has(rid)) {
+            fired.add(rid);
+            addNotification({
+              title: diffDesp === 0 ? `Vence Hoje: ${item.descricao}` : `${item.descricao} vence em ${diffDesp} dia(s)`,
+              message: `Valor: ${fmtBRL(item.valor)}. Dê baixa em Finanças Negócio.`,
+              priority: diffDesp <= 1 ? 'Alta' : 'Média',
+              reminderId: rid,
+              action: { page: 'financas' },
+            });
+          }
+        }
+      }
     });
+
+    // Lembrete em janeiro para atualizar o valor anual do DAS
+    if (now.getMonth() === 0) {
+      const currYearStr = String(now.getFullYear());
+      (data.despesasFixas || []).forEach(df => {
+        if ((df.descricao || '').toUpperCase().includes('DAS') && String(df.valorReajustaEm || '') !== currYearStr) {
+          const rid = `das-reajuste-${df.id}-${currYearStr}`;
+          if (!fired.has(rid)) {
+            fired.add(rid);
+            addNotification({
+              title: `Atualizar valor do DAS (${currYearStr})`,
+              message: `O salário mínimo mudou em janeiro. Confira e atualize o valor da guia DAS em Finanças Negócio.`,
+              priority: 'Média',
+              reminderId: rid,
+              action: { page: 'financas' },
+            });
+          }
+        }
+      });
+    }
 
     data.projetos.forEach(proj => {
       if (proj.status === 'Concluído' || proj.status === 'Cancelado' || proj.status === 'Aguardando Aprovação' || !proj.prazo) return;
