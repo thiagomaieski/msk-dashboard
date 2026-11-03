@@ -1,13 +1,29 @@
 import { useState, useMemo } from 'react';
-import { useDash, sortData, fmtBRL } from '../store/useStore';
+import { useDash, sortData, fmtBRL, getWaLink } from '../store/useStore';
 import CustomSelect from '../components/CustomSelect';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
+import { CopyButton } from '../components/ui/CopyButton';
+import { EmptyDiv } from '../components/shared';
 
 const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
 
-function formatCpfCnpj(v = '') {
-  const d = v.replace(/\D/g, '');
+export function formatCpfCnpj(v = '') {
+  const d = (v || '').replace(/\D/g, '');
+  if (!d) return '';
   if (d.length <= 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+}
+
+function stripPunctuation(v = '') {
+  return (v || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function onlyDigits(v = '') {
+  return (v || '').toString().replace(/\D/g, '');
 }
 
 function ClientePerfilModal({ cliente, onClose }) {
@@ -28,7 +44,7 @@ function ClientePerfilModal({ cliente, onClose }) {
     [data.negocio, cliente]
   );
   const totalReceitas = useMemo(() =>
-    (data.negocio || []).filter(r => r.tipo === 'Receita' && r.entidade === cliente.nome)
+    (data.negocio || []).filter(r => r.tipo === 'Receita' && (r.entidade === cliente.nome || r.clienteId === cliente.id))
       .reduce((s, r) => s + (parseFloat(r.valor) || 0), 0),
     [data.negocio, cliente]
   );
@@ -92,7 +108,10 @@ function ClientePerfilModal({ cliente, onClose }) {
               )}
             </div>
           </div>
-          <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onClose}>Fechar</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { onClose(); openModal('cliente', cliente.id); }}>Editar</button>
+            <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onClose}>Fechar</button>
+          </div>
         </div>
 
         {/* Scrollable body */}
@@ -214,58 +233,149 @@ export default function ClientesPage() {
   const openModal = useDash(s => s.openModal);
   const deleteItem = useDash(s => s.deleteItem);
   const selectedItems = useDash(s => s.selectedItems);
-  const toggleSelect = useDash(s => s.toggleSelect);
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('nomeAz');
+  const [tab, setTab] = useState('ativos'); // 'ativos' | 'inativos' | 'todos'
+  const [colSort, setColSort] = useState(null); // { key, dir }
   const [perfilCliente, setPerfilCliente] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
-  const { ativos, inativos } = useMemo(() => {
-    let l = [...(data.clientes || [])];
-    if (search) {
-      l = l.filter(c => 
-        (c.nome || '').toLowerCase().includes(search.toLowerCase()) || 
-        (c.segmento || '').toLowerCase().includes(search.toLowerCase()) || 
-        (c.email || '').toLowerCase().includes(search.toLowerCase())
-      );
+  // Pré-calcula métricas por cliente com useMemo (para não pesar com muitos clientes)
+  const metricsByClient = useMemo(() => {
+    const map = new Map();
+    const projetos = data.projetos || [];
+    const recorrencias = data.recorrencia || [];
+    const negocios = data.negocio || [];
+
+    for (const c of (data.clientes || [])) {
+      let numProjetos = 0;
+      let temProjetoAtivo = false;
+      for (const p of projetos) {
+        if (p.cliente === c.nome || p.clienteId === c.id) {
+          numProjetos++;
+          if (p.status === 'Em andamento') temProjetoAtivo = true;
+        }
+      }
+
+      let numRecTotal = 0;
+      let numRecAtivas = 0;
+      for (const r of recorrencias) {
+        if (r.cliente === c.nome || r.clienteId === c.id) {
+          numRecTotal++;
+          if (r.status === 'Ativo') numRecAtivas++;
+        }
+      }
+
+      let totalFaturado = 0;
+      for (const n of negocios) {
+        if (n.tipo === 'Receita' && (n.entidade === c.nome || n.clienteId === c.id)) {
+          totalFaturado += parseFloat(n.valor) || 0;
+        }
+      }
+
+      const isAtivo = temProjetoAtivo || numRecAtivas > 0;
+      map.set(c.id, {
+        numProjetos,
+        numRecTotal,
+        numRecAtivas,
+        totalFaturado,
+        isAtivo,
+      });
     }
-    const sorted = sortData(l, sort);
-    
+    return map;
+  }, [data.clientes, data.projetos, data.recorrencia, data.negocio]);
+
+  const { ativos, inativos, todos } = useMemo(() => {
+    let l = [...(data.clientes || [])];
+
+    if (search.trim()) {
+      const qText = stripPunctuation(search.trim());
+      const qDigits = onlyDigits(search.trim());
+
+      l = l.filter(c => {
+        const nomeMatch = stripPunctuation(c.nome).includes(qText);
+        const segMatch = stripPunctuation(c.segmento).includes(qText);
+        const emailMatch = stripPunctuation(c.email).includes(qText);
+        const rawCpfMatch = stripPunctuation(c.cpfCnpj).includes(qText);
+        const rawTelMatch = stripPunctuation(c.telefone).includes(qText);
+
+        let digitsMatch = false;
+        if (qDigits.length > 0) {
+          const cpfDigits = onlyDigits(c.cpfCnpj);
+          const telDigits = onlyDigits(c.telefone);
+          digitsMatch = cpfDigits.includes(qDigits) || telDigits.includes(qDigits);
+        }
+
+        return nomeMatch || segMatch || emailMatch || rawCpfMatch || rawTelMatch || digitsMatch;
+      });
+    }
+
+    let sorted;
+    if (colSort) {
+      const { key, dir } = colSort;
+      const mult = dir === 'asc' ? 1 : -1;
+      sorted = [...l].sort((a, b) => {
+        const ma = metricsByClient.get(a.id) || { numProjetos: 0, numRecAtivas: 0, totalFaturado: 0, isAtivo: false };
+        const mb = metricsByClient.get(b.id) || { numProjetos: 0, numRecAtivas: 0, totalFaturado: 0, isAtivo: false };
+
+        if (key === 'projetos') return (ma.numProjetos - mb.numProjetos) * mult;
+        if (key === 'recorrencias') return (ma.numRecAtivas - mb.numRecAtivas) * mult;
+        if (key === 'faturado') return (ma.totalFaturado - mb.totalFaturado) * mult;
+        if (key === 'status') return ((ma.isAtivo ? 1 : 0) - (mb.isAtivo ? 1 : 0)) * mult;
+
+        const va = (a[key] || '').toString();
+        const vb = (b[key] || '').toString();
+        return va.localeCompare(vb, 'pt-BR', { sensitivity: 'base' }) * mult;
+      });
+    } else {
+      sorted = sortData(l, sort);
+    }
+
     const listAtivos = [];
     const listInativos = [];
-    
+
     for (const c of sorted) {
-      const temProjeto = (data.projetos || []).some(p => (p.cliente === c.nome || p.clienteId === c.id) && p.status === 'Em andamento');
-      const temRec = (data.recorrencia || []).some(r => (r.cliente === c.nome || r.clienteId === c.id) && r.status === 'Ativo');
-      if (temProjeto || temRec) {
+      const m = metricsByClient.get(c.id);
+      if (m?.isAtivo) {
         listAtivos.push(c);
       } else {
         listInativos.push(c);
       }
     }
-    
-    return { ativos: listAtivos, inativos: listInativos };
-  }, [data.clientes, data.projetos, data.recorrencia, search, sort]);
 
-  const handleCopy = (e, text) => {
+    return { ativos: listAtivos, inativos: listInativos, todos: sorted };
+  }, [data.clientes, metricsByClient, search, sort, colSort]);
+
+  const handleHeaderSort = (key) => {
+    setColSort(prev => {
+      if (prev?.key === key) {
+        return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      }
+      const descDefault = ['projetos', 'recorrencias', 'faturado'].includes(key);
+      return { key, dir: descDefault ? 'desc' : 'asc' };
+    });
+  };
+
+  const handleSelectSortChange = (e) => {
+    setColSort(null);
+    setSort(e.target.value);
+  };
+
+  const handleCopy = (e, text, msg = 'CPF/CNPJ copiado!') => {
     e.stopPropagation();
     if (!text) return;
     navigator.clipboard.writeText(text);
-    useDash.getState().toast('CPF/CNPJ copiado!', 'success');
+    useDash.getState().toast(msg, 'success');
   };
 
-  const totalClientes = ativos.length + inativos.length;
+  const currentList = tab === 'ativos' ? ativos : tab === 'inativos' ? inativos : todos;
+  const totalClientes = (data.clientes || []).length;
 
   const renderGrid = (items) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
       {items.map(c => {
-        const temProjeto = (data.projetos || []).some(p => (p.cliente === c.nome || p.clienteId === c.id) && p.status === 'Em andamento');
-        const temRec = (data.recorrencia || []).some(r => (r.cliente === c.nome || r.clienteId === c.id) && r.status === 'Ativo');
-        const isAtivo = temProjeto || temRec;
-        
-        const numProjetos = (data.projetos || []).filter(p => p.cliente === c.nome || p.clienteId === c.id).length;
-        const numRec = (data.recorrencia || []).filter(r => r.cliente === c.nome || r.clienteId === c.id).length;
-        const totalFaturado = (data.negocio || []).filter(r => r.tipo === 'Receita' && r.entidade === c.nome).reduce((s, r) => s + (parseFloat(r.valor) || 0), 0);
+        const m = metricsByClient.get(c.id) || { numProjetos: 0, numRecTotal: 0, numRecAtivas: 0, totalFaturado: 0, isAtivo: false };
         const isSelected = selectedItems.includes(c.id);
 
         return (
@@ -286,8 +396,8 @@ export default function ClientesPage() {
           >
             {/* Status badge */}
             <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: isAtivo ? 'var(--green)' : 'var(--text3)', display: 'inline-block' }} />
-              <span style={{ fontSize: 10, color: isAtivo ? 'var(--green)' : 'var(--text3)', fontWeight: 600 }}>{isAtivo ? 'ATIVO' : 'INATIVO'}</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: m.isAtivo ? 'var(--green)' : 'var(--text3)', display: 'inline-block' }} />
+              <span style={{ fontSize: 10, color: m.isAtivo ? 'var(--green)' : 'var(--text3)', fontWeight: 600 }}>{m.isAtivo ? 'ATIVO' : 'INATIVO'}</span>
             </div>
 
             {/* Avatar + nome */}
@@ -317,7 +427,7 @@ export default function ClientesPage() {
               )}
               {c.cpfCnpj && (
                 <div 
-                  onClick={(e) => handleCopy(e, c.cpfCnpj)}
+                  onClick={(e) => handleCopy(e, c.cpfCnpj, 'CPF/CNPJ copiado!')}
                   title="Clique para copiar CPF/CNPJ"
                   style={{ 
                     fontSize: 11, 
@@ -354,16 +464,16 @@ export default function ClientesPage() {
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{numProjetos}</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{m.numProjetos}</div>
                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>Projetos</div>
               </div>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{numRec}</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{m.numRecAtivas}</div>
                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>Mensalidades</div>
               </div>
-              {totalFaturado > 0 && (
+              {m.totalFaturado > 0 && (
                 <div style={{ flex: 1.5, textAlign: 'center' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)' }}>{fmtBRL(totalFaturado)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)' }}>{fmtBRL(m.totalFaturado)}</div>
                   <div style={{ fontSize: 10, color: 'var(--text3)' }}>Faturado</div>
                 </div>
               )}
@@ -387,7 +497,7 @@ export default function ClientesPage() {
       <div className="page-header">
         <div className="page-title">Clientes</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{totalClientes} cliente(s)</span>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{todos.length} cliente(s)</span>
           <button className="btn btn-primary" onClick={() => openModal('cliente')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Novo Cliente
@@ -395,17 +505,79 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      <div className="filters">
-        <div className="search-wrap" style={{ flex: 1 }}>
+      {/* Abas Ativos | Inativos | Todos + Busca e Ordenação */}
+      <div className="filters" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md, 8px)',
+            padding: 3,
+            gap: 2,
+          }}
+        >
+          {[
+            { id: 'ativos', label: 'Ativos', count: ativos.length },
+            { id: 'inativos', label: 'Inativos', count: inativos.length },
+            { id: 'todos', label: 'Todos', count: todos.length },
+          ].map(item => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  fontSize: 12,
+                  fontWeight: active ? 600 : 500,
+                  borderRadius: 'var(--r-sm, 6px)',
+                  border: 'none',
+                  background: active ? 'var(--bg3)' : 'transparent',
+                  color: active ? 'var(--text)' : 'var(--text3)',
+                  cursor: 'pointer',
+                  transition: 'all 120ms ease',
+                }}
+              >
+                <span>{item.label}</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 99,
+                    background: active ? 'var(--accent-bg)' : 'var(--bg1)',
+                    color: active ? 'var(--accent)' : 'var(--text3)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {item.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="search-wrap" style={{ flex: 1, minWidth: 220 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          <input className="filter-input" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            className="filter-input"
+            placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
+
         <CustomSelect
           variant="filter"
           value={sort}
-          onChange={e => setSort(e.target.value)}
+          onChange={handleSelectSortChange}
           style={{ minWidth: 140 }}
           options={[
             { value: 'nomeAz', label: 'Nome A-Z' },
@@ -426,30 +598,274 @@ export default function ClientesPage() {
           <div style={{ fontSize: 13, marginBottom: 20 }}>Adicione seus clientes para vincular projetos, receitas e recorrências</div>
           <button className="btn btn-primary" onClick={() => openModal('cliente')}>Adicionar primeiro cliente</button>
         </div>
+      ) : currentList.length === 0 ? (
+        <EmptyDiv msg="Nenhum cliente encontrado nesta visualização" />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Ativos */}
-          {ativos.length > 0 && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--text)' }}>Clientes Ativos ({ativos.length})</span>
-              </div>
-              {renderGrid(ativos)}
-            </div>
-          )}
-          
-          {/* Inativos */}
-          {inativos.length > 0 && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text3)' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--text3)' }}>Clientes Inativos ({inativos.length})</span>
-              </div>
-              {renderGrid(inativos)}
-            </div>
-          )}
-        </div>
+        <>
+          {/* DESKTOP: Tabela de consulta rápida */}
+          <div className="desktop-only">
+            <Table>
+              <TableHeader>
+                <tr>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'nome'}
+                    sortDirection={colSort?.key === 'nome' ? colSort.dir : 'asc'}
+                    onSort={() => handleHeaderSort('nome')}
+                  >
+                    Nome
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'cpfCnpj'}
+                    sortDirection={colSort?.key === 'cpfCnpj' ? colSort.dir : 'asc'}
+                    onSort={() => handleHeaderSort('cpfCnpj')}
+                  >
+                    CPF / CNPJ
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'email'}
+                    sortDirection={colSort?.key === 'email' ? colSort.dir : 'asc'}
+                    onSort={() => handleHeaderSort('email')}
+                  >
+                    E-mail
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'telefone'}
+                    sortDirection={colSort?.key === 'telefone' ? colSort.dir : 'asc'}
+                    onSort={() => handleHeaderSort('telefone')}
+                  >
+                    Telefone
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'projetos'}
+                    sortDirection={colSort?.key === 'projetos' ? colSort.dir : 'desc'}
+                    onSort={() => handleHeaderSort('projetos')}
+                    style={{ textAlign: 'center' }}
+                  >
+                    Projetos
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'recorrencias'}
+                    sortDirection={colSort?.key === 'recorrencias' ? colSort.dir : 'desc'}
+                    onSort={() => handleHeaderSort('recorrencias')}
+                    style={{ textAlign: 'center' }}
+                  >
+                    Recorrências ativas
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'faturado'}
+                    sortDirection={colSort?.key === 'faturado' ? colSort.dir : 'desc'}
+                    onSort={() => handleHeaderSort('faturado')}
+                    style={{ textAlign: 'right' }}
+                  >
+                    Total faturado
+                  </TableHead>
+                  <TableHead
+                    sortable
+                    sorted={colSort?.key === 'status'}
+                    sortDirection={colSort?.key === 'status' ? colSort.dir : 'desc'}
+                    onSort={() => handleHeaderSort('status')}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead style={{ width: 88, textAlign: 'right' }}>Ações</TableHead>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {currentList.map(c => {
+                  const m = metricsByClient.get(c.id) || { numProjetos: 0, numRecAtivas: 0, totalFaturado: 0, isAtivo: false };
+                  const isHovered = hoveredId === c.id;
+                  const waLink = getWaLink(c.telefone);
+
+                  return (
+                    <TableRow
+                      key={c.id}
+                      onMouseEnter={() => setHoveredId(c.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      onClick={() => setPerfilCliente(c)}
+                      style={{
+                        cursor: 'pointer',
+                        background: isHovered ? 'var(--bg3)' : undefined,
+                      }}
+                    >
+                      <TableCell>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontWeight: 500, color: 'var(--text)' }}>{c.nome}</span>
+                          {c.segmento && (
+                            <span style={{ fontSize: 11, color: 'var(--text3)' }}>{c.segmento}</span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell mono onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                        {c.cpfCnpj ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span
+                              onClick={(e) => handleCopy(e, c.cpfCnpj, 'CPF/CNPJ copiado!')}
+                              title="Clique para copiar CPF/CNPJ"
+                              style={{ fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}
+                            >
+                              {formatCpfCnpj(c.cpfCnpj)}
+                            </span>
+                            <CopyButton
+                              text={c.cpfCnpj}
+                              showToast
+                              toastMsg="CPF/CNPJ copiado!"
+                              size="sm"
+                            />
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text3)' }}>—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                        {c.email ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span
+                              onClick={(e) => handleCopy(e, c.email, 'E-mail copiado!')}
+                              title="Clique para copiar e-mail"
+                              style={{ fontSize: 12, color: 'var(--text2)', cursor: 'pointer', maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {c.email}
+                            </span>
+                            <CopyButton
+                              text={c.email}
+                              showToast
+                              toastMsg="E-mail copiado!"
+                              size="sm"
+                            />
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text3)' }}>—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                        {c.telefone ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span
+                              onClick={(e) => handleCopy(e, c.telefone, 'Telefone copiado!')}
+                              title="Clique para copiar telefone"
+                              style={{ fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}
+                            >
+                              {c.telefone}
+                            </span>
+                            <CopyButton
+                              text={c.telefone}
+                              showToast
+                              toastMsg="Telefone copiado!"
+                              size="sm"
+                            />
+                            {waLink && (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir WhatsApp"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--green)',
+                                  padding: '3px 5px',
+                                  borderRadius: 6,
+                                }}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text3)' }}>—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell align="center" mono style={{ color: m.numProjetos > 0 ? 'var(--text)' : 'var(--text3)' }}>
+                        {m.numProjetos}
+                      </TableCell>
+
+                      <TableCell align="center" mono style={{ color: m.numRecAtivas > 0 ? 'var(--accent)' : 'var(--text3)', fontWeight: m.numRecAtivas > 0 ? 600 : 400 }}>
+                        {m.numRecAtivas}
+                      </TableCell>
+
+                      <TableCell align="right" mono style={{ fontWeight: 500, color: m.totalFaturado > 0 ? 'var(--green)' : 'var(--text3)', whiteSpace: 'nowrap' }}>
+                        {m.totalFaturado > 0 ? fmtBRL(m.totalFaturado) : '—'}
+                      </TableCell>
+
+                      <TableCell style={{ whiteSpace: 'nowrap' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            color: m.isAtivo ? 'var(--green)' : 'var(--text3)',
+                            background: m.isAtivo ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg3)',
+                            borderRadius: 99,
+                            padding: '3px 9px',
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.isAtivo ? 'var(--green)' : 'var(--text3)' }} />
+                          {m.isAtivo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </TableCell>
+
+                      <TableCell
+                        align="right"
+                        onClick={e => e.stopPropagation()}
+                        style={{ whiteSpace: 'nowrap', padding: '6px 12px' }}
+                      >
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            opacity: isHovered ? 1 : 0.25,
+                            transition: 'opacity 120ms ease',
+                          }}
+                        >
+                          <button
+                            className="row-btn"
+                            onClick={() => openModal('cliente', c.id)}
+                            title="Editar"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="row-btn del"
+                            onClick={() => deleteItem('clientes', c.id, c.nome)}
+                            title="Excluir"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* MOBILE: Cards atuais preservados */}
+          <div className="mobile-only">
+            {renderGrid(currentList)}
+          </div>
+        </>
       )}
 
       {/* Perfil modal */}
