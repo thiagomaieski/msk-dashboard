@@ -16,6 +16,7 @@ const STATUS_CONFIG = {
   online:  { label: 'Online',   color: 'var(--green)', bg: 'var(--green-bg)' },
   offline: { label: 'Offline',  color: 'var(--red)',   bg: 'var(--red-bg)' },
   pending: { label: 'Pendente', color: 'var(--text3)', bg: 'var(--bg4)' },
+  paused:  { label: 'Pausado',  color: 'var(--amber)', bg: 'var(--amber-bg)' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -165,33 +166,64 @@ function AddMonitorForm({ onAdd, loading }) {
 }
 
 // ─── Monitor Card ─────────────────────────────────────────────────────────────
-function MonitorCard({ monitor, onDelete }) {
+function MonitorCard({ monitor, onDelete, onUpdate }) {
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editDomain, setEditDomain] = useState(() => cleanDomain(monitor.domain || ''));
+  const [editLabel, setEditLabel] = useState(() => monitor.label || '');
+  const [saving, setSaving] = useState(false);
+
+  const isPaused = Boolean(monitor.paused || monitor.status === 'paused');
+  const effectiveStatus = isPaused ? 'paused' : (monitor.status || 'pending');
 
   const handleDelete = () => {
     if (confirming) { onDelete(monitor.id); }
     else { setConfirming(true); setTimeout(() => setConfirming(false), 2500); }
   };
 
+  const handleStartEdit = () => {
+    setEditDomain(cleanDomain(monitor.domain || ''));
+    setEditLabel(monitor.label || '');
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e?.preventDefault();
+    if (!editDomain.trim()) return;
+    setSaving(true);
+    const ok = await onUpdate(monitor.id, {
+      domain: editDomain.trim(),
+      label: editLabel.trim(),
+    });
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  const handleTogglePause = async () => {
+    setSaving(true);
+    await onUpdate(monitor.id, { paused: !isPaused });
+    setSaving(false);
+  };
+
   const displayName = monitor.label || cleanDomain(monitor.domain);
   const displayUrl = cleanDomain(monitor.domain);
   const lastChecked = formatLastChecked(monitor.lastChecked);
 
-  const statusGlow = monitor.status === 'online'
+  const statusGlow = effectiveStatus === 'online'
     ? 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(34, 197, 94, 0.15) 0%, transparent 75%), var(--bg2)'
-    : monitor.status === 'offline'
+    : effectiveStatus === 'offline'
     ? 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(239, 68, 68, 0.2) 0%, transparent 75%), var(--bg2)'
     : 'radial-gradient(ellipse 200px 140px at 95% 15%, rgba(148, 163, 184, 0.09) 0%, transparent 75%), var(--bg2)';
 
-  const borderColor = monitor.status === 'online'
+  const borderColor = effectiveStatus === 'online'
     ? 'rgba(34, 197, 94, 0.22)'
-    : monitor.status === 'offline'
+    : effectiveStatus === 'offline'
     ? 'rgba(239, 68, 68, 0.32)'
     : 'rgba(255, 255, 255, 0.08)';
 
-  const shadowGlow = monitor.status === 'online'
+  const shadowGlow = effectiveStatus === 'online'
     ? '0 10px 28px -8px rgba(0, 0, 0, 0.5), 0 0 20px -4px rgba(34, 197, 94, 0.12)'
-    : monitor.status === 'offline'
+    : effectiveStatus === 'offline'
     ? '0 10px 28px -8px rgba(0, 0, 0, 0.5), 0 0 22px -4px rgba(239, 68, 68, 0.18)'
     : '0 10px 28px -8px rgba(0, 0, 0, 0.4)';
 
@@ -214,32 +246,64 @@ function MonitorCard({ monitor, onDelete }) {
         position: 'relative',
         boxShadow: shadowGlow,
         overflow: 'hidden',
+        opacity: isPaused ? 0.78 : 1,
       }}
     >
       {/* Top Section: Domain info & Status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <PulseDot status={monitor.status} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{
-              fontSize: 15, fontWeight: 600, color: 'var(--text)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-            }}>
-              {displayName}
-            </div>
-            {monitor.label && (
-              <div style={{
-                fontSize: 12, color: 'var(--text3)', marginTop: 2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-              }}>
-                {displayUrl}
-              </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+          <PulseDot status={effectiveStatus} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {editing ? (
+              <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  className="form-input"
+                  style={{ height: 30, fontSize: 12.5, padding: '4px 8px' }}
+                  placeholder="Apelido (ex: Loja Principal)"
+                  value={editLabel}
+                  onChange={e => setEditLabel(e.target.value)}
+                  autoFocus
+                />
+                <input
+                  className="form-input"
+                  style={{ height: 30, fontSize: 12, padding: '4px 8px', fontFamily: 'var(--mono)' }}
+                  placeholder="dominio.com.br"
+                  value={editDomain}
+                  onChange={e => setEditDomain(e.target.value)}
+                  required
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  <button type="submit" className="btn btn-primary btn-xs" disabled={saving}>
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditing(false)} disabled={saving}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div style={{
+                  fontSize: 15, fontWeight: 600, color: 'var(--text)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                }}>
+                  {displayName}
+                </div>
+                {monitor.label && (
+                  <div style={{
+                    fontSize: 12, color: 'var(--text3)', marginTop: 2,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                  }}>
+                    {displayUrl}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-          <StatusBadge status={monitor.status} />
-          {monitor.httpCode != null && monitor.httpCode > 0 && (
+          <StatusBadge status={effectiveStatus} />
+          {!isPaused && monitor.httpCode != null && monitor.httpCode > 0 && (
             <span style={{
               fontSize: 10,
               fontWeight: 600,
@@ -258,7 +322,7 @@ function MonitorCard({ monitor, onDelete }) {
       </div>
 
       {/* Diagnostic Alert Box */}
-      {monitor.errorDetail && (
+      {!isPaused && monitor.errorDetail && (
         <div style={{
           background: 'rgba(239, 68, 68, 0.08)',
           border: '1px solid rgba(239, 68, 68, 0.22)',
@@ -296,7 +360,7 @@ function MonitorCard({ monitor, onDelete }) {
           <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4, fontWeight: 500 }}>
             Tempo de Resposta
           </div>
-          {monitor.responseTime != null ? (
+          {!isPaused && monitor.responseTime != null ? (
             <div style={{
               fontSize: 16, fontFamily: 'var(--sans)', fontWeight: 600,
               color: monitor.responseTime < 500 ? 'var(--green)' : monitor.responseTime < 1500 ? 'var(--amber)' : 'var(--red)',
@@ -306,11 +370,15 @@ function MonitorCard({ monitor, onDelete }) {
               <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>ms</span>
             </div>
           ) : (
-            <div style={{ color: 'var(--text3)', fontSize: 15 }}>—</div>
+            <div style={{ color: 'var(--text3)', fontSize: 15 }}>{isPaused ? 'Pausado' : '—'}</div>
           )}
           <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span>Última verificação: {lastChecked || 'Aguardando verificação...'}</span>
-            {monitor.attempts != null && (
+            <span>
+              {isPaused
+                ? 'Ignorado pelo cron até retomar'
+                : `Última verificação: ${lastChecked || 'Aguardando verificação...'}`}
+            </span>
+            {!isPaused && monitor.attempts != null && (
               <span style={{
                 fontSize: 10,
                 fontWeight: 600,
@@ -330,7 +398,50 @@ function MonitorCard({ monitor, onDelete }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            className="btn-icon"
+            title={isPaused ? 'Retomar monitoramento' : 'Pausar monitoramento'}
+            onClick={handleTogglePause}
+            disabled={saving}
+            style={{
+              background: isPaused ? 'var(--amber-bg)' : 'var(--bg3)',
+              color: isPaused ? 'var(--amber)' : 'var(--text3)',
+              border: 'none',
+              width: 32,
+              height: 32,
+              borderRadius: 8
+            }}
+          >
+            {isPaused ? (
+              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 13, height: 13 }}>
+                <polygon points="6 4 20 12 6 20 6 4"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 13, height: 13 }}>
+                <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
+            title="Editar URL e apelido"
+            onClick={handleStartEdit}
+            style={{
+              background: editing ? 'var(--accent-bg)' : 'var(--bg3)',
+              color: editing ? 'var(--accent)' : 'var(--text3)',
+              border: 'none',
+              width: 32,
+              height: 32,
+              borderRadius: 8
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </button>
           <a
             href={monitor.domain}
             target="_blank"
@@ -477,7 +588,7 @@ function EmailConfigRow({ email, onSave, loading }) {
 export default function UptimePage() {
   const {
     uptimeMonitors, uptimeEmail, uptimeLoading,
-    fetchUptimeData, addUptimeMonitor, deleteUptimeMonitor, setUptimeAlertEmail,
+    fetchUptimeData, addUptimeMonitor, updateUptimeMonitor, deleteUptimeMonitor, setUptimeAlertEmail,
   } = useDash();
 
   const [submitting, setSubmitting] = useState(false);
@@ -485,9 +596,10 @@ export default function UptimePage() {
   useEffect(() => { fetchUptimeData(); }, []);
 
   const total   = uptimeMonitors.length;
-  const online  = uptimeMonitors.filter(m => m.status === 'online').length;
-  const offline = uptimeMonitors.filter(m => m.status === 'offline').length;
-  const pending = uptimeMonitors.filter(m => m.status === 'pending').length;
+  const online  = uptimeMonitors.filter(m => !m.paused && m.status === 'online').length;
+  const offline = uptimeMonitors.filter(m => !m.paused && m.status === 'offline').length;
+  const paused  = uptimeMonitors.filter(m => m.paused || m.status === 'paused').length;
+  const pending = uptimeMonitors.filter(m => !m.paused && m.status === 'pending').length;
 
   const handleAdd = async (domain, label) => {
     setSubmitting(true);
@@ -549,6 +661,9 @@ export default function UptimePage() {
         <KpiChip index={1} label="Online" value={online} color="var(--green)" bg="var(--green-bg)" />
         <KpiChip index={2} label="Offline" value={offline} color="var(--red)" bg="var(--red-bg)" />
         <KpiChip index={3} label="Aguardando" value={pending} color="var(--text3)" bg="var(--bg4)" />
+        {paused > 0 && (
+          <KpiChip index={4} label="Pausados" value={paused} color="var(--amber)" bg="var(--amber-bg)" />
+        )}
       </div>
 
       {/* ─── Add + Email Config ───────────────────────────────────────────── */}
@@ -638,6 +753,7 @@ export default function UptimePage() {
                   key={m.id}
                   monitor={m}
                   onDelete={deleteUptimeMonitor}
+                  onUpdate={updateUptimeMonitor}
                 />
               ))
             )}

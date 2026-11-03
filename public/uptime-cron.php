@@ -256,6 +256,9 @@ foreach ($files as $file) {
     $allData[$file] = $data;
 
     foreach ($data['monitors'] as $index => $monitor) {
+        if (!empty($monitor['paused']) || ($monitor['status'] ?? '') === 'paused') {
+            continue;
+        }
         $url = $monitor['domain'];
         $key = $file . '::' . $index;
 

@@ -84,6 +84,47 @@ export const createUptimeSlice = (set, get) => ({
     }
   },
 
+  updateUptimeMonitor: async (id, updates) => {
+    const { currentUser, toast } = get();
+    if (!currentUser) return false;
+
+    try {
+      const token = await currentUser.getIdToken();
+      const apiKey = import.meta.env.VITE_STORAGE_API_KEY;
+      const apiDomain = import.meta.env.VITE_STORAGE_API_DOMAIN || '';
+
+      const payload = {
+        action: 'update',
+        userId: currentUser.uid,
+        id,
+        ...updates
+      };
+
+      const res = await fetch(`${apiDomain}/uptime.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-Storage-API-Key': apiKey,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        set({ uptimeMonitors: json.data?.monitors || [] });
+        toast(updates.paused !== undefined ? (updates.paused ? 'Monitor pausado.' : 'Monitor retomado.') : 'Monitor atualizado!');
+        return true;
+      } else {
+        toast('Erro ao atualizar: ' + (json.error || 'Falha'), 'error');
+        return false;
+      }
+    } catch (e) {
+      toast('Erro de conexão ao atualizar monitor.', 'error');
+      return false;
+    }
+  },
+
   deleteUptimeMonitor: async (id) => {
     const { currentUser, toast } = get();
     if (!currentUser) return;

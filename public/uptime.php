@@ -99,6 +99,61 @@ if ($method === 'POST') {
         echo json_encode(['success' => true, 'message' => 'Monitor removido', 'data' => $data]);
         exit;
     }
+
+    if ($action === 'update') {
+        $id = trim($input['id'] ?? '');
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID do monitor não fornecido']);
+            exit;
+        }
+
+        $found = false;
+        foreach ($data['monitors'] as &$m) {
+            if ($m['id'] === $id) {
+                $found = true;
+                if (isset($input['label'])) {
+                    $m['label'] = trim($input['label']);
+                }
+                if (isset($input['domain'])) {
+                    $newDomain = strtolower(trim($input['domain']));
+                    if (!empty($newDomain)) {
+                        if (strpos($newDomain, 'http') !== 0) {
+                            $newDomain = 'https://' . $newDomain;
+                        }
+                        if ($newDomain !== $m['domain']) {
+                            $m['domain'] = $newDomain;
+                            $m['id'] = md5($newDomain);
+                            if (empty($m['paused'])) {
+                                $m['status'] = 'pending';
+                                $m['httpCode'] = null;
+                                $m['attempts'] = null;
+                                $m['errorDetail'] = null;
+                                $m['responseTime'] = null;
+                            }
+                        }
+                    }
+                }
+                if (isset($input['paused'])) {
+                    $isPaused = (bool)$input['paused'];
+                    $m['paused'] = $isPaused;
+                    $m['status'] = $isPaused ? 'paused' : 'pending';
+                }
+                break;
+            }
+        }
+        unset($m);
+
+        if (!$found) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Monitor não encontrado']);
+            exit;
+        }
+
+        saveData($jsonFile, $data);
+        echo json_encode(['success' => true, 'message' => 'Monitor atualizado', 'data' => $data]);
+        exit;
+    }
     
     // Adicionar/Atualizar monitor
     $domain = trim($input['domain'] ?? '');
