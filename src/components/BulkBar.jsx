@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useDash } from '../store/useStore';
 import { leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
 
@@ -12,6 +12,7 @@ export default function BulkBar() {
   const data = useDash(s => s.data);
   const prequalModal = useDash(s => s.prequalModal);
   const handlePreQualification = useDash(s => s.handlePreQualification);
+  const [withAi, setWithAi] = useState(true);
 
   const isPrequaling = prequalModal !== null && !prequalModal.done;
 
@@ -48,7 +49,7 @@ export default function BulkBar() {
           <>
             <button
               className="btn btn-sm"
-              onClick={handlePreQualification}
+              onClick={() => handlePreQualification({ withAi })}
               disabled={isPrequaling || selectedWithSiteOrInstagram === 0}
               title={selectedWithSiteOrInstagram === 0 ? 'Nenhum lead selecionado tem site ou Instagram válido' : `Pré-qualificar ${selectedWithSiteOrInstagram} de ${selectedItems.length} lead(s) selecionado(s)`}
               style={{
@@ -66,6 +67,24 @@ export default function BulkBar() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v3l2 2"/></svg>
               )}
               {isPrequaling ? 'Qualificando...' : `Pré-Qualificar (${selectedWithSiteOrInstagram})`}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setWithAi(v => !v)}
+              disabled={isPrequaling}
+              title="Incluir análise com IA após a pré-qualificação (respeita o teto diário)"
+              style={{
+                height: 30,
+                fontSize: 11,
+                padding: '0 10px',
+                borderColor: withAi ? 'rgba(16,185,129,0.5)' : 'var(--border)',
+                background: withAi ? 'rgba(16,185,129,0.14)' : 'var(--bg3)',
+                color: withAi ? 'var(--green)' : 'var(--text3)',
+                fontWeight: withAi ? 600 : 500,
+              }}
+            >
+              ✨ {withAi ? '+ IA ativo' : 'Sem IA'}
             </button>
             <select
               className="form-select"

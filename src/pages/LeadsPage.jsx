@@ -53,13 +53,13 @@ function MobileFilterSheet({ open, onClose, children, hasActiveFilters, onClear 
 }
 
 /* ─── Pré-Qual: helpers de steps ────────────────────────────────────────────── */
-const STEP_LABELS = { pagespeed: 'PageSpeed', instagram: 'Instagram', screenshot: 'Screenshot' };
-const STEP_ORDER = ['pagespeed', 'instagram', 'screenshot'];
+const STEP_LABELS = { pagespeed: 'PageSpeed', instagram: 'Instagram', screenshot: 'Screenshot', ai: 'Qualificação IA' };
+const STEP_ORDER = ['pagespeed', 'instagram', 'screenshot', 'ai'];
 
 function StepRow({ stepKey, step }) {
   if (!step) return null;
   const label = STEP_LABELS[stepKey] || stepKey;
-  const { status, count, mobile, desktop, followers, error } = step;
+  const { status, count, mobile, desktop, followers, prioridade, error } = step;
 
   let detail = null;
   if (status === 'done') {
@@ -83,6 +83,7 @@ function StepRow({ stepKey, step }) {
     }
     if (stepKey === 'instagram')  detail = followers != null ? (followers >= 1000 ? (followers/1000).toFixed(1)+'k' : followers) + ' seguidores' : null;
     if (stepKey === 'screenshot') detail = 'Capturado';
+    if (stepKey === 'ai')         detail = prioridade ? `Prioridade ${prioridade}` : 'Qualificado';
   }
   if (status === 'skipped') detail = error || 'Ignorado';
   if (status === 'error')   detail = error || 'Erro';
@@ -186,6 +187,12 @@ function PreQualProgressModal({ modal, onClose }) {
           <span>{progressPct}%</span>
         </div>
 
+        {modal.aiLimitWarning && (
+          <div style={{ margin: '0 20px 12px', padding: '8px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', fontSize: 12, color: 'var(--amber)', fontWeight: 500 }}>
+            ⚠️ {modal.aiLimitWarning}
+          </div>
+        )}
+
         <div className="prequal-progress-list">
           {items.map(item => (
             <div key={item.id} className={"prequal-progress-item prequal-progress-item--" + item.status}>
@@ -225,6 +232,11 @@ function PreQualProgressModal({ modal, onClose }) {
                       <span className="prequal-tag prequal-tag--blue" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                         Screenshot
+                      </span>
+                    )}
+                    {item.result.aiPrioridade && (
+                      <span className={"prequal-tag prequal-tag--" + (item.result.aiPrioridade === 'alta' ? 'red' : item.result.aiPrioridade === 'media' ? 'amber' : 'green')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        ✨ IA ({item.result.aiPrioridade})
                       </span>
                     )}
                   </div>

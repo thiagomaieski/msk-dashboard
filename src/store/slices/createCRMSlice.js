@@ -2,7 +2,7 @@ import { db, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeB
 import { uDoc, uCol } from '../storeUtils';
 import { parseLeadLinks } from '../../utils/prequalUtils';
 import { fetchPageSpeed, fetchScreenshot, fetchInstagramData } from '../../utils/prequalApi';
-import { fetchAiUsage } from '../../utils/aiApi';
+import { fetchAiUsage, qualifyLeadWithAi } from '../../utils/aiApi';
 import { cleanMojibake, sanitizeObjectStrings } from '../../utils/textUtils';
 
 // ── Tipos de interação válidos (enum fixo) ───────────────────────────────────
@@ -107,7 +107,7 @@ export const createCRMSlice = (set, get) => ({
   setPrequalModal: (prequalModal) => set((state) => ({
     prequalModal: typeof prequalModal === 'function' ? prequalModal(state.prequalModal) : prequalModal
   })),
-  handlePreQualification: () => {
+  handlePreQualification: (options = { withAi: true }) => {
     const { selectedItems, data, setPrequalModal, runPreQualification } = get();
     const isPrequaling = get().prequalModal !== null && !get().prequalModal.done;
     if (!selectedItems.length || isPrequaling) return;
@@ -125,7 +125,7 @@ export const createCRMSlice = (set, get) => ({
       };
     });
 
-    setPrequalModal({ items: initialItems, done: false, processed: 0, skipped: 0 });
+    setPrequalModal({ items: initialItems, done: false, processed: 0, skipped: 0, aiLimitWarning: null });
 
     const onProgress = (event) => {
       setPrequalModal(prev => {
@@ -142,12 +142,14 @@ export const createCRMSlice = (set, get) => ({
             return { ...prev, items: updateItem(event.leadId, { status: 'success', site: event.site, result: event.result }) };
           case 'error':
             return { ...prev, items: updateItem(event.leadId, { status: 'error', reason: event.error }) };
+          case 'ai_limit_reached':
+            return { ...prev, aiLimitWarning: event.error || 'Teto diário de IA atingido. Qualificação interrompida.' };
           case 'step':
             return {
               ...prev,
               items: prev.items.map(it => it.id === event.leadId ? {
                 ...it,
-                steps: { ...it.steps, [event.step]: { status: event.status, count: event.count, mobile: event.mobile, desktop: event.desktop, followers: event.followers, error: event.error } },
+                steps: { ...it.steps, [event.step]: { status: event.status, count: event.count, mobile: event.mobile, desktop: event.desktop, followers: event.followers, prioridade: event.prioridade, error: event.error } },
               } : it),
             };
           case 'done':
@@ -158,7 +160,7 @@ export const createCRMSlice = (set, get) => ({
       });
     };
 
-    runPreQualification(selectedItems, onProgress);
+    runPreQualification(selectedItems, onProgress, options);
   },
 
   // ── Fase 1.1: logLeadContact — action unificada de registro de contato ──────
@@ -762,9 +764,10 @@ export const createCRMSlice = (set, get) => ({
     }
   },
 
-  // ── Pré-Qualificação ─────────────────────────────────────────────────────────
-  runPreQualification: async (leadIds, onProgress) => {
-    const { data, uploadFile, deleteFile } = get();
+  // ── Pré-Qualificação (T4.4: estendida com qualificação em massa por IA) ───────
+  runPreQualification: async (leadIds, onProgress, options = {}) => {
+    const { data, configData, uploadFile, deleteFile, setAiUsage, toast } = get();
+    const withAi = Boolean(options?.withAi);
     const emit = (event) => { if (onProgress) onProgress(event); };
 
     const leadsToProcess = leadIds.reduce((acc, id) => {
@@ -778,7 +781,7 @@ export const createCRMSlice = (set, get) => ({
       return [...acc, { lead, site, instagram }];
     }, []);
 
-    const skipped = leadIds.length - leadsToProcess.length;
+    let skipped = leadIds.length - leadsToProcess.length;
     emit({ type: 'start', total: leadsToProcess.length, skipped });
 
     if (!leadsToProcess.length) {
@@ -787,8 +790,22 @@ export const createCRMSlice = (set, get) => ({
     }
 
     let processed = 0;
+    let aiLimitHit = false;
 
-    for (const { lead, site, instagram } of leadsToProcess) {
+    for (let idx = 0; idx < leadsToProcess.length; idx++) {
+      const { lead, site, instagram } = leadsToProcess[idx];
+
+      if (aiLimitHit) {
+        skipped++;
+        emit({
+          type: 'skipped',
+          leadId: lead.id,
+          leadName: lead.nome || lead.id,
+          reason: 'Pausado: limite diário de IA atingido',
+        });
+        continue;
+      }
+
       const isMock = lead.id.toString().startsWith('m-');
 
       emit({ type: 'processing', leadId: lead.id, leadName: lead.nome || lead.id, site: site || instagram });
@@ -842,6 +859,7 @@ export const createCRMSlice = (set, get) => ({
           step('screenshot', 'skipped', { error: 'Sem site — apenas Instagram' });
         }
 
+        const nowISO = new Date().toISOString();
         const prequalData = {
           site,
           instagram: instagram || null,
@@ -849,24 +867,87 @@ export const createCRMSlice = (set, get) => ({
           instagramData: { followers: instaResult.followers, bio: instaResult.bio, lastPost: instaResult.lastPost, bioLink: instaResult.bioLink },
           screenshotUrl: screenshotResult.url || null,
           screenshotPath: screenshotResult.path || null,
-          prequalizedAt: new Date().toISOString(),
+          prequalizedAt: nowISO,
+        };
+
+        let aiQualificacao = lead.aiQualificacao || null;
+        let nextQualChips = Array.isArray(lead.qualChips) ? lead.qualChips : [];
+        let nextObservacoes = lead.observacoes || '';
+
+        if (withAi) {
+          if (lead.aiQualificacao?.resumo && !options.forceAi) {
+            step('ai', 'skipped', { error: 'Já qualificado com IA (reaproveitado)' });
+          } else {
+            step('ai', 'running');
+            const aiRes = await qualifyLeadWithAi(
+              { ...lead, prequalData },
+              {
+                aiProvider: configData?.aiProvider || 'gemini',
+                ollamaModel: configData?.ollamaModel || 'llama3.2',
+              }
+            );
+            if (aiRes.usage) setAiUsage(aiRes.usage);
+
+            if (!aiRes.ok) {
+              if (aiRes.code === 'DAILY_LIMIT_REACHED') {
+                aiLimitHit = true;
+                const warnMsg = aiRes.error || 'Limite diário de IA atingido. Qualificação em massa pausada.';
+                step('ai', 'error', { error: 'Limite diário atingido' });
+                emit({ type: 'ai_limit_reached', error: warnMsg });
+                toast(warnMsg, 'error');
+              } else {
+                step('ai', 'error', { error: aiRes.error || 'Falha na IA' });
+              }
+            } else {
+              nextQualChips = Array.from(new Set([...nextQualChips, ...(aiRes.chips || [])]));
+              aiQualificacao = {
+                chips: nextQualChips,
+                resumo: aiRes.resumo || '',
+                prioridade: aiRes.prioridade || 'media',
+                qualifiedAt: nowISO,
+              };
+              if (!nextObservacoes.trim() && aiRes.resumo) {
+                nextObservacoes = aiRes.resumo;
+              }
+              step('ai', 'done', { prioridade: aiQualificacao.prioridade });
+            }
+          }
+        }
+
+        const updatedFields = {
+          prequalData,
+          qualChips: nextQualChips,
+          ...(aiQualificacao ? { aiQualificacao } : {}),
+          observacoes: nextObservacoes,
         };
 
         set(s => ({
           ...(isMock
-            ? { mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === lead.id ? { ...l, prequalData, prequaling: false } : l) } }
-            : { realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === lead.id ? { ...l, prequalData, prequaling: false } : l) } }
+            ? { mockData: { ...s.mockData, leads: s.mockData.leads.map(l => l.id === lead.id ? { ...l, ...updatedFields, prequaling: false, modificadoEm: nowISO } : l) } }
+            : { realData: { ...s.realData, leads: s.realData.leads.map(l => l.id === lead.id ? { ...l, ...updatedFields, prequaling: false, modificadoEm: nowISO } : l) } }
           )
         }));
         get()._refreshData();
 
         if (!isMock) {
-          updateDoc(uDoc('leads', lead.id), { prequalData, modificadoEm: serverTimestamp() })
+          updateDoc(uDoc('leads', lead.id), { ...updatedFields, modificadoEm: serverTimestamp() })
             .catch(e => console.error('[runPreQualification] Firestore sync error:', e));
         }
 
         processed++;
-        emit({ type: 'success', leadId: lead.id, leadName: lead.nome || lead.id, site, result: { pagespeedMobile: prequalData.pagespeed.mobile, pagespeedDesktop: prequalData.pagespeed.desktop, hasScreenshot: !!prequalData.screenshotUrl, hasInstagram: instaResult.followers != null } });
+        emit({
+          type: 'success',
+          leadId: lead.id,
+          leadName: lead.nome || lead.id,
+          site,
+          result: {
+            pagespeedMobile: prequalData.pagespeed.mobile,
+            pagespeedDesktop: prequalData.pagespeed.desktop,
+            hasScreenshot: !!prequalData.screenshotUrl,
+            hasInstagram: instaResult.followers != null,
+            aiPrioridade: aiQualificacao?.prioridade || null,
+          },
+        });
       } catch (e) {
         console.error('[runPreQualification] Error for lead', lead.id, e);
         setLoading(false);
@@ -876,7 +957,7 @@ export const createCRMSlice = (set, get) => ({
     }
 
     emit({ type: 'done', processed, skipped });
-    return { processed, skipped };
+    return { processed, skipped, aiLimitHit };
   },
 
   deleteLeadScreenshot: async (leadId) => {
