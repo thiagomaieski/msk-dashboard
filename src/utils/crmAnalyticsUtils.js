@@ -541,3 +541,70 @@ export function getFollowUpQueue(leads) {
 
   return { novosSemAbordagem, respondeuSumiu, semContatoRecente, atrasados };
 }
+
+// ── 14. computeLoteSummary (T3.7) ─────────────────────────────────────────────
+/**
+ * Agrupa métricas de conversão por lote de importação (substitui o Analytics).
+ * @param {Array} leads
+ * @returns {Array<{
+ *   lote: string,
+ *   isSemLote: boolean,
+ *   total: number,
+ *   abordados: number,
+ *   respostas: number,
+ *   botBarreira: number,
+ *   emNegociacao: number,
+ *   fechados: number,
+ *   taxaAbordagem: number,
+ *   taxaResposta: number,
+ *   taxaBot: number,
+ *   taxaFechamento: number
+ * }>}
+ */
+export function computeLoteSummary(leads) {
+  const map = {};
+  for (const lead of (leads || [])) {
+    const rawLote = (lead.lote || '').trim();
+    const key = rawLote || '__SEM_LOTE__';
+    if (!map[key]) {
+      map[key] = {
+        lote: rawLote || 'Sem lote',
+        isSemLote: !rawLote,
+        total: 0,
+        abordados: 0,
+        respostas: 0,
+        botBarreira: 0,
+        emNegociacao: 0,
+        fechados: 0,
+      };
+    }
+    const row = map[key];
+    row.total++;
+
+    const foiAbordado =
+      (lead.status && lead.status !== 'Novo') ||
+      !!lead.dataAbordagem ||
+      (lead.interacoes || []).some(i => i.tipo === 'abordagem_inicial');
+    if (foiAbordado) row.abordados++;
+
+    const respondeu = (lead.interacoes || []).some(i => i.tipo === 'resposta_recebida');
+    if (respondeu) row.respostas++;
+
+    if (lead.botBarreira) row.botBarreira++;
+    if (lead.status === 'Em negociação') row.emNegociacao++;
+    if (lead.status === 'Fechado') row.fechados++;
+  }
+
+  return Object.values(map)
+    .map(r => ({
+      ...r,
+      taxaAbordagem: r.total > 0 ? Math.round((r.abordados / r.total) * 100) : 0,
+      taxaResposta: r.abordados > 0 ? Math.round((r.respostas / r.abordados) * 100) : 0,
+      taxaBot: r.abordados > 0 ? Math.round((r.botBarreira / r.abordados) * 100) : 0,
+      taxaFechamento: r.abordados > 0 ? Math.round((r.fechados / r.abordados) * 100) : 0,
+    }))
+    .sort((a, b) => {
+      if (a.isSemLote !== b.isSemLote) return a.isSemLote ? 1 : -1;
+      return b.total - a.total;
+    });
+}

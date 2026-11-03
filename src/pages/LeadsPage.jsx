@@ -5,7 +5,7 @@ import { getWaLink } from '../store/useStore';
 import { leadHasValidSite } from '../utils/prequalUtils';
 import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
 import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
-import { computePendingResponseLeads, computeTodayAbordagens, LEAD_STATUSES, QUAL_CHIP_LABELS } from '../utils/crmAnalyticsUtils';
+import { computePendingResponseLeads, computeTodayAbordagens, computeLoteSummary, LEAD_STATUSES, QUAL_CHIP_LABELS } from '../utils/crmAnalyticsUtils';
 import CustomSelect from '../components/CustomSelect';
 import { FEATURES } from '../config/features';
 
@@ -320,6 +320,9 @@ export default function LeadsPage() {
   const [undoAction, setUndoAction] = useState(null);
   const [savingFilterOpen, setSavingFilterOpen] = useState(false);
   const [savingFilterName, setSavingFilterName] = useState('');
+  const [showLoteSummary, setShowLoteSummary] = useState(false);
+
+  const loteSummary = useMemo(() => computeLoteSummary(data.leads), [data.leads]);
 
   useEffect(() => {
     if (!undoAction) return;
@@ -646,6 +649,23 @@ export default function LeadsPage() {
             </div>
           )}
 
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowLoteSummary(s => !s)}
+            title="Ver desempenho e taxas por lote"
+            style={{
+              borderColor: showLoteSummary ? 'var(--accent)' : undefined,
+              color: showLoteSummary ? 'var(--accent)' : undefined,
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span>Resumo por Lote</span>
+          </button>
+
           <button className="btn btn-secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span>Importar CSV</span>
@@ -702,6 +722,92 @@ export default function LeadsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ─── RESUMO POR LOTE (T3.7 - painel recolhível) ────────── */}
+      {effectiveViewMode === 'list' && showLoteSummary && (
+        <div
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Resumo por Lote</span>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                Clique em um lote para filtrar a lista
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setShowLoteSummary(false)}
+              style={{ fontSize: 11, padding: '3px 10px' }}
+            >
+              Recolher
+            </button>
+          </div>
+
+          <div className="table-wrap" style={{ margin: 0 }}>
+            <table style={{ fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>Lote</th>
+                  <th style={{ textAlign: 'right' }}>Leads</th>
+                  <th style={{ textAlign: 'right' }}>Abordados</th>
+                  <th style={{ textAlign: 'right' }}>Respostas</th>
+                  <th style={{ textAlign: 'right' }}>Bot no WhatsApp</th>
+                  <th style={{ textAlign: 'right' }}>Em negociação</th>
+                  <th style={{ textAlign: 'right' }}>Fechados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loteSummary.map(row => {
+                  const filterVal = row.isSemLote ? '__SEM_LOTE__' : row.lote;
+                  const isSelected = loteFilter === filterVal;
+                  return (
+                    <tr
+                      key={filterVal}
+                      onClick={() => {
+                        setLoteFilter(curr => curr === filterVal ? '' : filterVal);
+                        setPage(1);
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(99,102,241,0.12)' : undefined,
+                      }}
+                    >
+                      <td style={{ fontWeight: 600, color: isSelected ? 'var(--accent)' : 'var(--text)' }}>
+                        {row.lote}
+                        {isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)' }}>• filtrado</span>}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{row.total}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {row.abordados} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({row.taxaAbordagem}%)</span>
+                      </td>
+                      <td style={{ textAlign: 'right', color: row.respostas > 0 ? 'var(--green)' : 'var(--text2)', fontWeight: row.respostas > 0 ? 600 : 400 }}>
+                        {row.respostas} <span style={{ color: 'var(--text3)', fontSize: 11, fontWeight: 400 }}>({row.taxaResposta}%)</span>
+                      </td>
+                      <td style={{ textAlign: 'right', color: row.botBarreira > 0 ? 'var(--amber)' : 'var(--text2)' }}>
+                        {row.botBarreira} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({row.taxaBot}%)</span>
+                      </td>
+                      <td style={{ textAlign: 'right', color: row.emNegociacao > 0 ? '#a855f7' : 'var(--text2)' }}>
+                        {row.emNegociacao}
+                      </td>
+                      <td style={{ textAlign: 'right', color: row.fechados > 0 ? 'var(--green)' : 'var(--text2)', fontWeight: row.fechados > 0 ? 700 : 400 }}>
+                        {row.fechados} <span style={{ color: 'var(--text3)', fontSize: 11, fontWeight: 400 }}>({row.taxaFechamento}%)</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
