@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useDialogFocus } from './useDialogFocus';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 export function Drawer({
   isOpen,
@@ -8,38 +10,17 @@ export function Drawer({
   description,
   children,
   footer,
-  width = 480,
+  width = 460,
   className = '',
 }) {
+  const reducedMotion = useReducedMotion();
   const drawerRef = useRef(null);
 
-  // Esc key closes drawer
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose?.();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const titleId = useId();
+  const restoreFocus = useDialogFocus(isOpen, drawerRef, onClose);
 
-  // Prevent body scroll when drawer is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  return (
-    <AnimatePresence>
+  return createPortal(
+    <AnimatePresence onExitComplete={restoreFocus}>
       {isOpen && (
         <div
           className="ui-drawer-portal"
@@ -56,13 +37,13 @@ export function Drawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: reducedMotion ? 0 : 0.18 }}
             onClick={onClose}
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(3px)',
+              background: 'var(--scrim)',
+              backdropFilter: 'blur(8px)',
             }}
           />
 
@@ -72,15 +53,21 @@ export function Drawer({
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            transition={{ type: 'tween', duration: reducedMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
             className={`ui-drawer-panel ${className}`}
             style={{
               position: 'relative',
               width: '100%',
               maxWidth: width,
-              height: '100%',
-              background: 'var(--bg2)',
-              borderLeft: '1px solid var(--border)',
+              height: 'calc(100dvh - 24px)',
+              margin: 12,
+              background: 'var(--surface-floating)',
+              border: '1px solid var(--border-light)',
+              borderRadius: 'var(--radius-drawer)',
               boxShadow: 'var(--shadow-3)',
               display: 'flex',
               flexDirection: 'column',
@@ -101,8 +88,9 @@ export function Drawer({
             >
               <div>
                 <h2
+                  id={titleId}
                   style={{
-                    fontSize: 'var(--font-page, 18px)',
+                    fontSize: 22,
                     fontWeight: 600,
                     color: 'var(--text)',
                     margin: 0,
@@ -127,9 +115,9 @@ export function Drawer({
                 onClick={onClose}
                 aria-label="Fechar drawer"
                 style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 'var(--r-sm, 6px)',
+                  width: 40,
+                  height: 40,
+                  borderRadius: 'var(--radius-pill)',
                   border: 'none',
                   background: 'var(--bg3)',
                   color: 'var(--text3)',
@@ -180,7 +168,8 @@ export function Drawer({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

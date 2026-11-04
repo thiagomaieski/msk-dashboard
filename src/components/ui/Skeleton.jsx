@@ -24,7 +24,7 @@ export const Skeleton = forwardRef(function Skeleton(
         return {
           width: width || '100%',
           height: height || 120,
-          borderRadius: 'var(--r-md, 8px)',
+          borderRadius: 'var(--radius-tile)',
         };
       case 'line':
       default:

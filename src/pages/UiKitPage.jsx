@@ -18,7 +18,6 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
-  CardFooter,
   Drawer,
   Modal,
   EmptyState,
@@ -32,6 +31,7 @@ export default function UiKitPage() {
   const theme = useDash(s => s.theme);
   const toggleTheme = useDash(s => s.toggleTheme);
   const toast = useDash(s => s.toast);
+  const showConfirm = useDash(s => s.showConfirm);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,11 +40,11 @@ export default function UiKitPage() {
   const [loadingBtn, setLoadingBtn] = useState(false);
 
   return (
-    <div className="ui-kit-page" style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div className="ui-kit-page">
       <PageHeader
-        title="UI Kit — Design System"
+        title="Fundação visual"
         count="14 Primitivos"
-        subtitle="Catálogo de componentes padronizados com suporte aos temas Claro e Escuro"
+        subtitle="Maieski · Urbanist, superfícies de vidro e controles compartilhados"
         actions={
           <div style={{ display: 'flex', gap: 10 }}>
             <Button
@@ -56,7 +56,7 @@ export default function UiKitPage() {
             </Button>
             <Button
               variant="primary"
-              onClick={() => toast('UI Kit funcionando perfeitamente!', 'success')}
+              onClick={() => toast('Notificação de demonstração.', 'success')}
               icon={<Icon name="check" />}
             >
               Testar Toast
@@ -65,6 +65,28 @@ export default function UiKitPage() {
         }
       />
 
+      <div className="ui-kit-grid">
+        <Card>
+          <CardTitle>Vidro e luz</CardTitle>
+          <CardDescription>Superfície translúcida, borda iluminada e sombra suave.</CardDescription>
+          <div className="ui-kit-tile">
+            <strong>Urbanist 600</strong>
+            <span>Texto 500 · Detalhes 400 · Ênfase 700</span>
+          </div>
+        </Card>
+        <Card style={{ background: 'var(--accent-bg)' }}>
+          <CardTitle>Paleta de apoio</CardTitle>
+          <div className="ui-kit-row">
+            {[['Lima', '--color-accent'], ['Azul', '--color-blue'], ['Coral', '--color-coral']].map(([name, token]) => (
+              <div key={token} style={{ flex: 1 }}>
+                <div style={{ height: 44, borderRadius: 14, background: `var(${token})` }} />
+                <span>{name}</span>
+              </div>
+            ))}
+          </div>
+          <CardDescription>Cores de texto semânticas adaptadas ao contraste de cada tema.</CardDescription>
+        </Card>
+      </div>
       {/* ── BUTTONS ── */}
       <Card>
         <CardHeader>
@@ -132,7 +154,7 @@ export default function UiKitPage() {
             <StatusChip status="offline" />
           </div>
 
-          <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="ui-kit-row" style={{ marginTop: 12 }}>
             <span style={{ fontSize: 13, color: 'var(--text3)' }}>Variante Clicável (Avanço):</span>
             <StatusChip
               status="Abordado"
@@ -150,13 +172,14 @@ export default function UiKitPage() {
         <CardHeader>
           <div>
             <CardTitle>Input & Select</CardTitle>
-            <CardDescription>Altura padronizada de 36px com rótulo acima, erro abaixo e foco visível</CardDescription>
+            <CardDescription>Campos de 44px, erro, seleção controlada e foco visível</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <div className="ui-kit-grid">
             <Input
               label="Nome do Lead"
+              name="demo-lead"
               placeholder="Ex: Dra. Mariana Costa"
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
@@ -165,11 +188,13 @@ export default function UiKitPage() {
             />
             <Input
               label="Campo com Erro"
+              name="demo-email"
               placeholder="Digite o e-mail"
               defaultValue="email-invalido"
               error="Informe um e-mail válido com @"
               icon={<Icon name="alert-circle" />}
             />
+            <Input label="Campo desabilitado" name="demo-disabled" disabled defaultValue="Somente demonstração" />
             <Select
               label="Categoria"
               value={selectValue}
@@ -186,7 +211,7 @@ export default function UiKitPage() {
         <CardHeader>
           <div>
             <CardTitle>Table</CardTitle>
-            <CardDescription>Linhas de 40px, hover sutil, cabeçalho fixo e alinhamento numérico</CardDescription>
+            <CardDescription>Células com padding de 12px, seleção, hover e números tabulares</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -225,13 +250,13 @@ export default function UiKitPage() {
       </Card>
 
       {/* ── KBD, COPY BUTTON, SKELETON ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+      <div className="ui-kit-grid">
         <Card>
           <CardHeader>
             <CardTitle>Kbd & CopyButton</CardTitle>
           </CardHeader>
           <CardContent>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)' }}>
+            <div className="ui-kit-row" style={{ fontSize: 13, color: 'var(--text2)' }}>
               <span>Atalhos:</span>
               <Kbd>Ctrl</Kbd> + <Kbd>K</Kbd> para busca rápida, <Kbd>Ctrl</Kbd> + <Kbd>B</Kbd> para sidebar, <Kbd>Esc</Kbd> para fechar.
             </div>
@@ -271,11 +296,12 @@ export default function UiKitPage() {
         <CardContent>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Button variant="secondary" onClick={() => setDrawerOpen(true)} icon={<Icon name="layout" />}>
-              Abrir Drawer (480px)
+              Abrir Drawer (460px)
             </Button>
             <Button variant="secondary" onClick={() => setModalOpen(true)} icon={<Icon name="grid" />}>
               Abrir Modal (560px)
             </Button>
+            <Button onClick={async () => { if (await showConfirm('Confirmar demonstração?', 'Nenhum dado será alterado.', false)) toast('Demonstração confirmada.', 'info'); }}>Testar confirmação</Button>
           </div>
 
           <div style={{ marginTop: 16, border: '1px dashed var(--border)', borderRadius: 'var(--r-md, 8px)' }}>

@@ -9,14 +9,14 @@ export const Card = forwardRef(function Card(
       ref={ref}
       className={`ui-card ${hover ? 'ui-card-hover' : ''} ${className}`}
       style={{
-        background: 'var(--bg2)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--r-lg, 12px)',
+        background: 'var(--surface-glass)',
+        border: '1px solid var(--border-light)',
+        borderRadius: 'var(--radius-card)',
         boxShadow: 'var(--shadow-1)',
-        padding: '20px',
+        padding: 'var(--card-padding)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 'var(--grid-gap)',
         transition: 'transform var(--t-fast, 120ms) ease, box-shadow var(--t-fast, 120ms) ease',
         ...style,
       }}
@@ -107,6 +107,7 @@ export const CardContent = forwardRef(function CardContent(
         flexDirection: 'column',
         gap: 12,
         flex: 1,
+        minWidth: 0,
         ...style,
       }}
       {...props}

@@ -101,7 +101,7 @@ export const Badge = forwardRef(function Badge(
         color: cfg.color,
         fontSize: isSmall ? 11 : 12,
         fontWeight: 600,
-        letterSpacing: '.02em',
+        letterSpacing: 'normal',
         border: `1px solid color-mix(in srgb, ${cfg.color} 22%, transparent)`,
         cursor: clickable ? 'pointer' : 'default',
         userSelect: 'none',

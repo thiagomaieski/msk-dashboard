@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useDialogFocus } from './useDialogFocus';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 export function Modal({
   isOpen,
@@ -11,19 +13,12 @@ export function Modal({
   size = 'md',
   className = '',
 }) {
+  const reducedMotion = useReducedMotion();
   const overlayClickRef = useRef(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose?.();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const titleId = useId();
+  const panelRef = useRef(null);
+  const restoreFocus = useDialogFocus(isOpen, panelRef, onClose);
 
   const sizeWidths = {
     sm: 420,
@@ -33,8 +28,8 @@ export function Modal({
 
   const maxWidth = sizeWidths[size] || sizeWidths.md;
 
-  return (
-    <AnimatePresence>
+  return createPortal(
+    <AnimatePresence onExitComplete={restoreFocus}>
       {isOpen && (
         <div
           className="ui-modal-portal"
@@ -60,12 +55,13 @@ export function Modal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: reducedMotion ? 0 : 0.18 }}
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0, 0, 0, 0.65)',
-              backdropFilter: 'blur(4px)',
+              background: 'var(--scrim)',
+              backdropFilter: 'blur(8px)',
+              pointerEvents: 'none',
             }}
           />
 
@@ -74,16 +70,21 @@ export function Modal({
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: reducedMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
             className={`ui-modal-container ${className}`}
             style={{
               position: 'relative',
               width: '100%',
               maxWidth,
-              maxHeight: 'calc(100vh - 32px)',
-              background: 'var(--bg2)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r-xl, 16px)',
+              maxHeight: 'calc(100dvh - 32px)',
+              background: 'var(--surface-floating)',
+              border: '1px solid var(--border-light)',
+              borderRadius: 'var(--radius-modal)',
               boxShadow: 'var(--shadow-3)',
               display: 'flex',
               flexDirection: 'column',
@@ -104,8 +105,9 @@ export function Modal({
             >
               <div>
                 <h3
+                  id={titleId}
                   style={{
-                    fontSize: 'var(--font-page, 18px)',
+                    fontSize: 20,
                     fontWeight: 600,
                     color: 'var(--text)',
                     margin: 0,
@@ -130,9 +132,9 @@ export function Modal({
                 onClick={onClose}
                 aria-label="Fechar"
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 'var(--r-sm, 6px)',
+                  width: 40,
+                  height: 40,
+                  borderRadius: 'var(--radius-pill)',
                   border: 'none',
                   background: 'var(--bg3)',
                   color: 'var(--text3)',
@@ -181,7 +183,8 @@ export function Modal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
+import { useId, useRef, useState, useEffect } from 'react';
+import { useDialogFocus } from './ui/useDialogFocus';
 import { useDash } from '../store/useStore';
 
 export default function ConfirmModal() {
@@ -6,6 +7,9 @@ export default function ConfirmModal() {
   const closeConfirm = useDash(s => s.closeConfirm);
   const overlayClickRef = useRef(false);
   const [inputText, setInputText] = useState('');
+  const panelRef = useRef(null);
+  const titleId = useId();
+  useDialogFocus(Boolean(confirm), panelRef, () => closeConfirm(false));
 
   // Reset input when modal opens/changes
   useEffect(() => {
@@ -35,7 +39,7 @@ export default function ConfirmModal() {
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
     >
-      <div className="confirm-box">
+      <div className="confirm-box" ref={panelRef} role="alertdialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <div
           className="confirm-icon"
           style={{ background: danger ? 'var(--red-bg)' : 'var(--accent-bg)', color: danger ? 'var(--red)' : 'var(--accent)' }}
@@ -47,7 +51,7 @@ export default function ConfirmModal() {
           </svg>
         </div>
         
-        <div className="confirm-msg">{msg}</div>
+        <div id={titleId} className="confirm-msg">{msg}</div>
         {sub && <div className="confirm-sub">{sub}</div>}
 
         {requiredText && (
@@ -72,8 +76,8 @@ export default function ConfirmModal() {
             className="btn"
             disabled={!isMatch}
             style={{ 
-              background: danger ? 'var(--red)' : 'var(--accent)', 
-              color: '#fff', 
+              background: danger ? 'var(--red)' : 'var(--color-accent)',
+              color: danger ? 'var(--bg)' : 'var(--on-accent)',
               border: 'none',
               opacity: isMatch ? 1 : 0.5,
               cursor: isMatch ? 'pointer' : 'not-allowed'

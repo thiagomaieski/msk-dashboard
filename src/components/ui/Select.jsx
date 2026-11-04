@@ -14,7 +14,7 @@ export const Select = forwardRef(function Select(
   ref
 ) {
   return (
-    <div className={`ui-select-wrapper ${className}`} style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', ...wrapperStyle }}>
+    <div className={`ui-select-wrapper ${error ? 'has-error' : ''} ${className}`} style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', ...wrapperStyle }}>
       {label && (
         <label
           style={{
@@ -33,6 +33,7 @@ export const Select = forwardRef(function Select(
 
       <CustomSelect
         ref={ref}
+        ariaLabel={props.ariaLabel || label}
         required={required}
         {...props}
       />

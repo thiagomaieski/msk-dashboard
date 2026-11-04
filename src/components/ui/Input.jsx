@@ -62,19 +62,20 @@ export const Input = forwardRef(function Input(
           name={name}
           disabled={disabled}
           required={required}
+          aria-invalid={error ? true : undefined}
           className={`form-input ui-input ${error ? 'has-error' : ''}`}
           style={{
-            height: size === 'sm' ? 28 : 36,
-            minHeight: size === 'sm' ? 28 : 36,
+            height: size === 'sm' ? 34 : 44,
+            minHeight: size === 'sm' ? 34 : 44,
             paddingLeft: icon ? 34 : 12,
             paddingRight: iconRight ? 34 : 12,
-            fontSize: size === 'sm' ? 12 : 13,
-            background: 'var(--bg3)',
+            fontSize: size === 'sm' ? 'var(--font-control-sm)' : 'var(--font-control)',
+            background: 'var(--surface-control)',
             color: 'var(--text)',
             border: error
               ? '1px solid var(--red)'
               : '1px solid var(--border-strong, rgba(255, 255, 255, 0.08))',
-            borderRadius: 'var(--r-md, 8px)',
+            borderRadius: 'var(--radius-control)',
             width: '100%',
             outline: 'none',
             transition: 'border-color var(--t-fast, 120ms) ease, box-shadow var(--t-fast, 120ms) ease',

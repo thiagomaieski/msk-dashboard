@@ -304,8 +304,8 @@ export default function LembretesCalendar() {
                     fontWeight: 700,
                     padding: '1px 4px',
                     borderRadius: 4,
-                    background: 'var(--accent)',
-                    color: '#ffffff',
+                    background: 'var(--color-accent)',
+                    color: 'var(--on-accent)',
                     lineHeight: 1,
                   }}>
                     HOJE

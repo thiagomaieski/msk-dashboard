@@ -10,9 +10,9 @@ export const Table = forwardRef(function Table(
       style={{
         width: '100%',
         overflowX: 'auto',
-        borderRadius: 'var(--r-lg, 12px)',
+        borderRadius: 'var(--radius-tile)',
         border: '1px solid var(--border)',
-        background: 'var(--bg2)',
+        background: 'var(--surface-glass)',
         ...containerStyle,
       }}
     >
@@ -71,7 +71,7 @@ export const TableRow = forwardRef(function TableRow({ children, className = '',
         borderBottom: '1px solid var(--border2, rgba(255,255,255,0.04))',
         transition: 'background var(--t-fast, 120ms) ease',
         background: active ? 'var(--accent-bg)' : undefined,
-        height: 40,
+
         ...style,
       }}
       {...props}
@@ -91,12 +91,12 @@ export const TableHead = forwardRef(function TableHead(
       onClick={sortable && onSort ? onSort : undefined}
       className={`ui-table-head ${sortable ? 'sortable' : ''} ${className}`}
       style={{
-        padding: '10px 14px',
+        padding: '10px 12px',
         fontSize: 'var(--font-meta, 12px)',
         fontWeight: 600,
         color: sorted ? 'var(--text)' : 'var(--text3)',
-        textTransform: 'uppercase',
-        letterSpacing: '.06em',
+        textTransform: 'none',
+        letterSpacing: 'normal',
         cursor: sortable ? 'pointer' : 'default',
         userSelect: 'none',
         whiteSpace: 'nowrap',
@@ -122,7 +122,7 @@ export const TableCell = forwardRef(function TableCell({ children, align = 'left
       ref={ref}
       className={className}
       style={{
-        padding: '9px 14px',
+        padding: '12px',
         color: 'var(--text)',
         textAlign: align,
         fontFamily: mono ? 'var(--font-mono, JetBrains Mono, monospace)' : 'inherit',

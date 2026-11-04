@@ -108,7 +108,7 @@ function ToastItem({ msg, type = 'success', duration = 3400 }) {
 export default function Toast() {
   const toasts = useDash(s => s.toasts);
   return (
-    <div id="toast">
+    <div id="toast" role="status" aria-live="polite" aria-atomic="false">
       {toasts.map(t => <ToastItem key={t.id} msg={t.msg} type={t.type} duration={t.duration} />)}
     </div>
   );

@@ -261,8 +261,8 @@ const ICON_PATHS = {
 export const Icon = forwardRef(function Icon(
   {
     name,
-    size = 16,
-    strokeWidth = 1.75,
+    size = 18,
+    strokeWidth = 1.7,
     className = '',
     style = {},
     color = 'currentColor',

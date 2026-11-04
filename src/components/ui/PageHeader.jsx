@@ -23,9 +23,9 @@ export const PageHeader = forwardRef(function PageHeader(
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16,
-        paddingBottom: 16,
-        borderBottom: '1px solid var(--border)',
-        marginBottom: 20,
+        paddingBottom: 0,
+        borderBottom: 'none',
+        marginBottom: 24,
         flexWrap: 'wrap',
         ...style,
       }}
@@ -38,9 +38,9 @@ export const PageHeader = forwardRef(function PageHeader(
               fontSize: 'var(--font-page, 20px)',
               fontWeight: 600,
               color: 'var(--text)',
-              letterSpacing: '-.02em',
+              letterSpacing: '-.025em',
               margin: 0,
-              lineHeight: 1.2,
+              lineHeight: 1.04,
             }}
           >
             {title}
