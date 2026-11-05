@@ -1,0 +1,2526 @@
+diff --git a/index.html b/index.html
+index 8675da6..65e97c0 100644
+--- a/index.html
++++ b/index.html
+@@ -11,6 +11,8 @@
+   <title>MSK Dashboard</title>
+   <meta name="robots" content="noindex, nofollow" />
+   <link rel="icon" type="image/png" href="/favicon-dashboard.png" />
++  <link rel="preload" href="/src/assets/fonts/Urbanist-Variable.ttf" as="font" type="font/ttf" crossorigin />
++  <link rel="license" href="/src/assets/fonts/Urbanist-OFL.txt" />
+   
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+diff --git a/src/components/ConfirmModal.jsx b/src/components/ConfirmModal.jsx
+index 6c6e58b..d79b0c3 100644
+--- a/src/components/ConfirmModal.jsx
++++ b/src/components/ConfirmModal.jsx
+@@ -1,4 +1,5 @@
+-import { useRef, useState, useEffect } from 'react';
++import { useId, useRef, useState, useEffect } from 'react';
++import { useDialogFocus } from './ui/useDialogFocus';
+ import { useDash } from '../store/useStore';
+ 
+ export default function ConfirmModal() {
+@@ -6,6 +7,9 @@ export default function ConfirmModal() {
+   const closeConfirm = useDash(s => s.closeConfirm);
+   const overlayClickRef = useRef(false);
+   const [inputText, setInputText] = useState('');
++  const panelRef = useRef(null);
++  const titleId = useId();
++  useDialogFocus(Boolean(confirm), panelRef, () => closeConfirm(false));
+ 
+   // Reset input when modal opens/changes
+   useEffect(() => {
+@@ -35,7 +39,7 @@ export default function ConfirmModal() {
+       onMouseDown={handleMouseDown}
+       onMouseUp={handleMouseUp}
+     >
+-      <div className="confirm-box">
++      <div className="confirm-box" ref={panelRef} role="alertdialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+         <div
+           className="confirm-icon"
+           style={{ background: danger ? 'var(--red-bg)' : 'var(--accent-bg)', color: danger ? 'var(--red)' : 'var(--accent)' }}
+@@ -47,7 +51,7 @@ export default function ConfirmModal() {
+           </svg>
+         </div>
+         
+-        <div className="confirm-msg">{msg}</div>
++        <div id={titleId} className="confirm-msg">{msg}</div>
+         {sub && <div className="confirm-sub">{sub}</div>}
+ 
+         {requiredText && (
+@@ -72,8 +76,8 @@ export default function ConfirmModal() {
+             className="btn"
+             disabled={!isMatch}
+             style={{ 
+-              background: danger ? 'var(--red)' : 'var(--accent)', 
+-              color: '#fff', 
++              background: danger ? 'var(--red)' : 'var(--color-accent)',
++              color: danger ? 'var(--bg)' : 'var(--on-accent)',
+               border: 'none',
+               opacity: isMatch ? 1 : 0.5,
+               cursor: isMatch ? 'pointer' : 'not-allowed'
+diff --git a/src/components/LembretesCalendar.jsx b/src/components/LembretesCalendar.jsx
+index 96cd13a..dcf7166 100644
+--- a/src/components/LembretesCalendar.jsx
++++ b/src/components/LembretesCalendar.jsx
+@@ -304,8 +304,8 @@ export default function LembretesCalendar() {
+                     fontWeight: 700,
+                     padding: '1px 4px',
+                     borderRadius: 4,
+-                    background: 'var(--accent)',
+-                    color: '#ffffff',
++                    background: 'var(--color-accent)',
++                    color: 'var(--on-accent)',
+                     lineHeight: 1,
+                   }}>
+                     HOJE
+diff --git a/src/components/NotificationCenter.jsx b/src/components/NotificationCenter.jsx
+index 2445442..45bf0d4 100644
+--- a/src/components/NotificationCenter.jsx
++++ b/src/components/NotificationCenter.jsx
+@@ -77,7 +77,7 @@ export default function NotificationCenter({ onClose, toggleRef }) {
+   return (
+     <div className="notif-dropdown" ref={dropdownRef}>
+       <div className="notif-header">
+-        <h3>Notificações {sortedNotifs.filter(n => !n.lida).length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 99, padding: '1px 7px', marginLeft: 6 }}>{sortedNotifs.filter(n => !n.lida).length}</span>}</h3>
++        <h3>Notificações {sortedNotifs.filter(n => !n.lida).length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'var(--color-accent)', color: 'var(--on-accent)', borderRadius: 99, padding: '1px 7px', marginLeft: 6 }}>{sortedNotifs.filter(n => !n.lida).length}</span>}</h3>
+         <button className="btn-icon" onClick={onClose} style={{ padding: 4 }}>
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
+             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+diff --git a/src/components/Toast.jsx b/src/components/Toast.jsx
+index 5389fb5..d886c2e 100644
+--- a/src/components/Toast.jsx
++++ b/src/components/Toast.jsx
+@@ -108,7 +108,7 @@ function ToastItem({ msg, type = 'success', duration = 3400 }) {
+ export default function Toast() {
+   const toasts = useDash(s => s.toasts);
+   return (
+-    <div id="toast">
++    <div id="toast" role="status" aria-live="polite" aria-atomic="false">
+       {toasts.map(t => <ToastItem key={t.id} msg={t.msg} type={t.type} duration={t.duration} />)}
+     </div>
+   );
+diff --git a/src/components/Topbar.jsx b/src/components/Topbar.jsx
+index 06fc080..71ad550 100644
+--- a/src/components/Topbar.jsx
++++ b/src/components/Topbar.jsx
+@@ -111,8 +111,8 @@ export default function Topbar({ onOpenMobile }) {
+                 minWidth: 16,
+                 height: 16,
+                 borderRadius: 999,
+-                background: 'var(--accent)',
+-                color: '#ffffff',
++                background: 'var(--color-accent)',
++                color: 'var(--on-accent)',
+                 fontSize: 10,
+                 fontWeight: 700,
+                 display: 'flex',
+diff --git a/src/components/ui/Badge.jsx b/src/components/ui/Badge.jsx
+index 4c7d72f..87ff2c8 100644
+--- a/src/components/ui/Badge.jsx
++++ b/src/components/ui/Badge.jsx
+@@ -101,7 +101,7 @@ export const Badge = forwardRef(function Badge(
+         color: cfg.color,
+         fontSize: isSmall ? 11 : 12,
+         fontWeight: 600,
+-        letterSpacing: '.02em',
++        letterSpacing: 'normal',
+         border: `1px solid color-mix(in srgb, ${cfg.color} 22%, transparent)`,
+         cursor: clickable ? 'pointer' : 'default',
+         userSelect: 'none',
+diff --git a/src/components/ui/Button.jsx b/src/components/ui/Button.jsx
+index a7f989a..ce7fd29 100644
+--- a/src/components/ui/Button.jsx
++++ b/src/components/ui/Button.jsx
+@@ -3,7 +3,7 @@ import { forwardRef } from 'react';
+ /**
+  * Button - Design System Primitive
+  * Variants: primary | secondary | ghost | danger
+- * Sizes: sm (28px) | md (36px)
++ * Sizes: sm (34px) | md (42px)
+  */
+ export const Button = forwardRef(function Button(
+   {
+@@ -28,13 +28,13 @@ export const Button = forwardRef(function Button(
+     display: 'inline-flex',
+     alignItems: 'center',
+     justifyContent: 'center',
+-    gap: 7,
++    gap: 8,
+     fontFamily: 'inherit',
+-    fontWeight: 500,
+-    borderRadius: 'var(--r-md, 8px)',
++    fontWeight: 600,
++    borderRadius: 'var(--radius-pill)',
+     border: '1px solid transparent',
+     cursor: disabled || loading ? 'not-allowed' : 'pointer',
+-    opacity: disabled || loading ? 0.6 : 1,
++    opacity: disabled || loading ? 0.45 : 1,
+     transition: 'all var(--t-base, 180ms) var(--ease-out, ease-out)',
+     textDecoration: 'none',
+     whiteSpace: 'nowrap',
+@@ -45,26 +45,26 @@ export const Button = forwardRef(function Button(
+ 
+   const sizeStyles = {
+     sm: {
+-      height: 28,
+-      minHeight: 28,
++      height: 34,
++      minHeight: 34,
+       padding: isIconOnly ? '0 6px' : '0 10px',
+-      fontSize: 12,
+-      minWidth: isIconOnly ? 28 : undefined,
++      fontSize: 'var(--font-control-sm)',
++      minWidth: isIconOnly ? 34 : undefined,
+     },
+     md: {
+-      height: 36,
+-      minHeight: 36,
++      height: 42,
++      minHeight: 42,
+       padding: isIconOnly ? '0 9px' : '0 14px',
+-      fontSize: 13,
+-      minWidth: isIconOnly ? 36 : undefined,
++      fontSize: 'var(--font-control)',
++      minWidth: isIconOnly ? 42 : undefined,
+     },
+   };
+ 
+   const variantStyles = {
+     primary: {
+-      background: 'var(--accent)',
+-      color: '#ffffff',
+-      border: '1px solid var(--accent)',
++      background: 'var(--color-accent)',
++      color: 'var(--on-accent)',
++      border: '1px solid var(--color-accent)',
+       boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+     },
+     secondary: {
+@@ -80,7 +80,7 @@ export const Button = forwardRef(function Button(
+     danger: {
+       background: 'var(--red-bg, rgba(239, 68, 68, 0.12))',
+       color: 'var(--red)',
+-      border: '1px solid rgba(239, 68, 68, 0.3)',
++      border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)',
+     },
+   };
+ 
+@@ -92,6 +92,7 @@ export const Button = forwardRef(function Button(
+       ref={ref}
+       type={type}
+       disabled={disabled || loading}
++      aria-busy={loading || undefined}
+       aria-label={ariaLabel || (typeof children === 'string' ? children : undefined)}
+       className={`ui-button ui-button-${variant} ui-button-${size} ${isIconOnly ? 'ui-button-icon-only' : ''} ${className}`}
+       style={{
+diff --git a/src/components/ui/Card.jsx b/src/components/ui/Card.jsx
+index 9369c84..4cf1200 100644
+--- a/src/components/ui/Card.jsx
++++ b/src/components/ui/Card.jsx
+@@ -9,14 +9,14 @@ export const Card = forwardRef(function Card(
+       ref={ref}
+       className={`ui-card ${hover ? 'ui-card-hover' : ''} ${className}`}
+       style={{
+-        background: 'var(--bg2)',
+-        border: '1px solid var(--border)',
+-        borderRadius: 'var(--r-lg, 12px)',
++        background: 'var(--surface-glass)',
++        border: '1px solid var(--border-light)',
++        borderRadius: 'var(--radius-card)',
+         boxShadow: 'var(--shadow-1)',
+-        padding: '20px',
++        padding: 'var(--card-padding)',
+         display: 'flex',
+         flexDirection: 'column',
+-        gap: 16,
++        gap: 'var(--grid-gap)',
+         transition: 'transform var(--t-fast, 120ms) ease, box-shadow var(--t-fast, 120ms) ease',
+         ...style,
+       }}
+@@ -107,6 +107,7 @@ export const CardContent = forwardRef(function CardContent(
+         flexDirection: 'column',
+         gap: 12,
+         flex: 1,
++        minWidth: 0,
+         ...style,
+       }}
+       {...props}
+diff --git a/src/components/ui/Drawer.jsx b/src/components/ui/Drawer.jsx
+index 41df629..76b383c 100644
+--- a/src/components/ui/Drawer.jsx
++++ b/src/components/ui/Drawer.jsx
+@@ -1,5 +1,7 @@
+-import { useEffect, useRef } from 'react';
+-import { motion, AnimatePresence } from 'framer-motion';
++import { useId, useRef } from 'react';
++import { createPortal } from 'react-dom';
++import { useDialogFocus } from './useDialogFocus';
++import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+ 
+ export function Drawer({
+   isOpen,
+@@ -8,38 +10,17 @@ export function Drawer({
+   description,
+   children,
+   footer,
+-  width = 480,
++  width = 460,
+   className = '',
+ }) {
++  const reducedMotion = useReducedMotion();
+   const drawerRef = useRef(null);
+ 
+-  // Esc key closes drawer
+-  useEffect(() => {
+-    if (!isOpen) return;
+-    const handleKeyDown = (e) => {
+-      if (e.key === 'Escape') {
+-        e.preventDefault();
+-        onClose?.();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-    return () => window.removeEventListener('keydown', handleKeyDown);
+-  }, [isOpen, onClose]);
++  const titleId = useId();
++  const restoreFocus = useDialogFocus(isOpen, drawerRef, onClose);
+ 
+-  // Prevent body scroll when drawer is open
+-  useEffect(() => {
+-    if (isOpen) {
+-      document.body.style.overflow = 'hidden';
+-    } else {
+-      document.body.style.overflow = '';
+-    }
+-    return () => {
+-      document.body.style.overflow = '';
+-    };
+-  }, [isOpen]);
+-
+-  return (
+-    <AnimatePresence>
++  return createPortal(
++    <AnimatePresence onExitComplete={restoreFocus}>
+       {isOpen && (
+         <div
+           className="ui-drawer-portal"
+@@ -56,13 +37,13 @@ export function Drawer({
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+-            transition={{ duration: 0.18 }}
++            transition={{ duration: reducedMotion ? 0 : 0.18 }}
+             onClick={onClose}
+             style={{
+               position: 'fixed',
+               inset: 0,
+-              background: 'rgba(0, 0, 0, 0.5)',
+-              backdropFilter: 'blur(3px)',
++              background: 'var(--scrim)',
++              backdropFilter: 'blur(8px)',
+             }}
+           />
+ 
+@@ -72,15 +53,21 @@ export function Drawer({
+             initial={{ x: '100%' }}
+             animate={{ x: 0 }}
+             exit={{ x: '100%' }}
+-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
++            transition={{ type: 'tween', duration: reducedMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
++            role="dialog"
++            aria-modal="true"
++            aria-labelledby={titleId}
++            tabIndex={-1}
+             className={`ui-drawer-panel ${className}`}
+             style={{
+               position: 'relative',
+               width: '100%',
+               maxWidth: width,
+-              height: '100%',
+-              background: 'var(--bg2)',
+-              borderLeft: '1px solid var(--border)',
++              height: 'calc(100dvh - 24px)',
++              margin: 12,
++              background: 'var(--surface-floating)',
++              border: '1px solid var(--border-light)',
++              borderRadius: 'var(--radius-drawer)',
+               boxShadow: 'var(--shadow-3)',
+               display: 'flex',
+               flexDirection: 'column',
+@@ -101,8 +88,9 @@ export function Drawer({
+             >
+               <div>
+                 <h2
++                  id={titleId}
+                   style={{
+-                    fontSize: 'var(--font-page, 18px)',
++                    fontSize: 22,
+                     fontWeight: 600,
+                     color: 'var(--text)',
+                     margin: 0,
+@@ -127,9 +115,9 @@ export function Drawer({
+                 onClick={onClose}
+                 aria-label="Fechar drawer"
+                 style={{
+-                  width: 30,
+-                  height: 30,
+-                  borderRadius: 'var(--r-sm, 6px)',
++                  width: 40,
++                  height: 40,
++                  borderRadius: 'var(--radius-pill)',
+                   border: 'none',
+                   background: 'var(--bg3)',
+                   color: 'var(--text3)',
+@@ -180,7 +168,8 @@ export function Drawer({
+           </motion.div>
+         </div>
+       )}
+-    </AnimatePresence>
++    </AnimatePresence>,
++    document.body
+   );
+ }
+ 
+diff --git a/src/components/ui/Icon.jsx b/src/components/ui/Icon.jsx
+index 3fc6c91..5dc7c62 100644
+--- a/src/components/ui/Icon.jsx
++++ b/src/components/ui/Icon.jsx
+@@ -261,8 +261,8 @@ const ICON_PATHS = {
+ export const Icon = forwardRef(function Icon(
+   {
+     name,
+-    size = 16,
+-    strokeWidth = 1.75,
++    size = 18,
++    strokeWidth = 1.7,
+     className = '',
+     style = {},
+     color = 'currentColor',
+diff --git a/src/components/ui/Input.jsx b/src/components/ui/Input.jsx
+index cc1bd60..c6246e0 100644
+--- a/src/components/ui/Input.jsx
++++ b/src/components/ui/Input.jsx
+@@ -62,19 +62,20 @@ export const Input = forwardRef(function Input(
+           name={name}
+           disabled={disabled}
+           required={required}
++          aria-invalid={error ? true : undefined}
+           className={`form-input ui-input ${error ? 'has-error' : ''}`}
+           style={{
+-            height: size === 'sm' ? 28 : 36,
+-            minHeight: size === 'sm' ? 28 : 36,
++            height: size === 'sm' ? 34 : 44,
++            minHeight: size === 'sm' ? 34 : 44,
+             paddingLeft: icon ? 34 : 12,
+             paddingRight: iconRight ? 34 : 12,
+-            fontSize: size === 'sm' ? 12 : 13,
+-            background: 'var(--bg3)',
++            fontSize: size === 'sm' ? 'var(--font-control-sm)' : 'var(--font-control)',
++            background: 'var(--surface-control)',
+             color: 'var(--text)',
+             border: error
+               ? '1px solid var(--red)'
+               : '1px solid var(--border-strong, rgba(255, 255, 255, 0.08))',
+-            borderRadius: 'var(--r-md, 8px)',
++            borderRadius: 'var(--radius-control)',
+             width: '100%',
+             outline: 'none',
+             transition: 'border-color var(--t-fast, 120ms) ease, box-shadow var(--t-fast, 120ms) ease',
+diff --git a/src/components/ui/Kbd.jsx b/src/components/ui/Kbd.jsx
+index 82957c7..8ce4fed 100644
+--- a/src/components/ui/Kbd.jsx
++++ b/src/components/ui/Kbd.jsx
+@@ -21,8 +21,8 @@ export const Kbd = forwardRef(function Kbd(
+         color: 'var(--text3)',
+         background: 'var(--bg3)',
+         border: '1px solid var(--border-strong, rgba(255, 255, 255, 0.12))',
+-        borderRadius: 4,
+-        boxShadow: '0 1px 0 rgba(0, 0, 0, 0.25)',
++        borderRadius: 'var(--radius-xs)',
++        boxShadow: 'inset 0 -1px 0 var(--border-strong)',
+         lineHeight: 1,
+         userSelect: 'none',
+         ...style,
+diff --git a/src/components/ui/Modal.jsx b/src/components/ui/Modal.jsx
+index 5023f63..a841d29 100644
+--- a/src/components/ui/Modal.jsx
++++ b/src/components/ui/Modal.jsx
+@@ -1,5 +1,7 @@
+-import { useEffect, useRef } from 'react';
+-import { motion, AnimatePresence } from 'framer-motion';
++import { useId, useRef } from 'react';
++import { createPortal } from 'react-dom';
++import { useDialogFocus } from './useDialogFocus';
++import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+ 
+ export function Modal({
+   isOpen,
+@@ -11,19 +13,12 @@ export function Modal({
+   size = 'md',
+   className = '',
+ }) {
++  const reducedMotion = useReducedMotion();
+   const overlayClickRef = useRef(false);
+ 
+-  useEffect(() => {
+-    if (!isOpen) return;
+-    const handleKeyDown = (e) => {
+-      if (e.key === 'Escape') {
+-        e.preventDefault();
+-        onClose?.();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-    return () => window.removeEventListener('keydown', handleKeyDown);
+-  }, [isOpen, onClose]);
++  const titleId = useId();
++  const panelRef = useRef(null);
++  const restoreFocus = useDialogFocus(isOpen, panelRef, onClose);
+ 
+   const sizeWidths = {
+     sm: 420,
+@@ -33,8 +28,8 @@ export function Modal({
+ 
+   const maxWidth = sizeWidths[size] || sizeWidths.md;
+ 
+-  return (
+-    <AnimatePresence>
++  return createPortal(
++    <AnimatePresence onExitComplete={restoreFocus}>
+       {isOpen && (
+         <div
+           className="ui-modal-portal"
+@@ -60,12 +55,13 @@ export function Modal({
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+-            transition={{ duration: 0.15 }}
++            transition={{ duration: reducedMotion ? 0 : 0.18 }}
+             style={{
+               position: 'fixed',
+               inset: 0,
+-              background: 'rgba(0, 0, 0, 0.65)',
+-              backdropFilter: 'blur(4px)',
++              background: 'var(--scrim)',
++              backdropFilter: 'blur(8px)',
++              pointerEvents: 'none',
+             }}
+           />
+ 
+@@ -74,16 +70,21 @@ export function Modal({
+             initial={{ opacity: 0, scale: 0.96, y: 8 }}
+             animate={{ opacity: 1, scale: 1, y: 0 }}
+             exit={{ opacity: 0, scale: 0.96, y: 8 }}
+-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
++            transition={{ duration: reducedMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
++            ref={panelRef}
++            role="dialog"
++            aria-modal="true"
++            aria-labelledby={titleId}
++            tabIndex={-1}
+             className={`ui-modal-container ${className}`}
+             style={{
+               position: 'relative',
+               width: '100%',
+               maxWidth,
+-              maxHeight: 'calc(100vh - 32px)',
+-              background: 'var(--bg2)',
+-              border: '1px solid var(--border)',
+-              borderRadius: 'var(--r-xl, 16px)',
++              maxHeight: 'calc(100dvh - 32px)',
++              background: 'var(--surface-floating)',
++              border: '1px solid var(--border-light)',
++              borderRadius: 'var(--radius-modal)',
+               boxShadow: 'var(--shadow-3)',
+               display: 'flex',
+               flexDirection: 'column',
+@@ -104,8 +105,9 @@ export function Modal({
+             >
+               <div>
+                 <h3
++                  id={titleId}
+                   style={{
+-                    fontSize: 'var(--font-page, 18px)',
++                    fontSize: 20,
+                     fontWeight: 600,
+                     color: 'var(--text)',
+                     margin: 0,
+@@ -130,9 +132,9 @@ export function Modal({
+                 onClick={onClose}
+                 aria-label="Fechar"
+                 style={{
+-                  width: 28,
+-                  height: 28,
+-                  borderRadius: 'var(--r-sm, 6px)',
++                  width: 40,
++                  height: 40,
++                  borderRadius: 'var(--radius-pill)',
+                   border: 'none',
+                   background: 'var(--bg3)',
+                   color: 'var(--text3)',
+@@ -181,7 +183,8 @@ export function Modal({
+           </motion.div>
+         </div>
+       )}
+-    </AnimatePresence>
++    </AnimatePresence>,
++    document.body
+   );
+ }
+ 
+diff --git a/src/components/ui/PageHeader.jsx b/src/components/ui/PageHeader.jsx
+index 0fb44b9..d8949ea 100644
+--- a/src/components/ui/PageHeader.jsx
++++ b/src/components/ui/PageHeader.jsx
+@@ -23,9 +23,9 @@ export const PageHeader = forwardRef(function PageHeader(
+         alignItems: 'center',
+         justifyContent: 'space-between',
+         gap: 16,
+-        paddingBottom: 16,
+-        borderBottom: '1px solid var(--border)',
+-        marginBottom: 20,
++        paddingBottom: 0,
++        borderBottom: 'none',
++        marginBottom: 24,
+         flexWrap: 'wrap',
+         ...style,
+       }}
+@@ -38,9 +38,9 @@ export const PageHeader = forwardRef(function PageHeader(
+               fontSize: 'var(--font-page, 20px)',
+               fontWeight: 600,
+               color: 'var(--text)',
+-              letterSpacing: '-.02em',
++              letterSpacing: '-.025em',
+               margin: 0,
+-              lineHeight: 1.2,
++              lineHeight: 1.04,
+             }}
+           >
+             {title}
+diff --git a/src/components/ui/Select.jsx b/src/components/ui/Select.jsx
+index 044f7b6..a36e43e 100644
+--- a/src/components/ui/Select.jsx
++++ b/src/components/ui/Select.jsx
+@@ -14,7 +14,7 @@ export const Select = forwardRef(function Select(
+   ref
+ ) {
+   return (
+-    <div className={`ui-select-wrapper ${className}`} style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', ...wrapperStyle }}>
++    <div className={`ui-select-wrapper ${error ? 'has-error' : ''} ${className}`} style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', ...wrapperStyle }}>
+       {label && (
+         <label
+           style={{
+@@ -33,6 +33,7 @@ export const Select = forwardRef(function Select(
+ 
+       <CustomSelect
+         ref={ref}
++        ariaLabel={props.ariaLabel || label}
+         required={required}
+         {...props}
+       />
+diff --git a/src/components/ui/Skeleton.jsx b/src/components/ui/Skeleton.jsx
+index 27195f7..b1d1712 100644
+--- a/src/components/ui/Skeleton.jsx
++++ b/src/components/ui/Skeleton.jsx
+@@ -24,7 +24,7 @@ export const Skeleton = forwardRef(function Skeleton(
+         return {
+           width: width || '100%',
+           height: height || 120,
+-          borderRadius: 'var(--r-md, 8px)',
++          borderRadius: 'var(--radius-tile)',
+         };
+       case 'line':
+       default:
+diff --git a/src/components/ui/Table.jsx b/src/components/ui/Table.jsx
+index 8ddc9ea..73825c5 100644
+--- a/src/components/ui/Table.jsx
++++ b/src/components/ui/Table.jsx
+@@ -10,9 +10,9 @@ export const Table = forwardRef(function Table(
+       style={{
+         width: '100%',
+         overflowX: 'auto',
+-        borderRadius: 'var(--r-lg, 12px)',
++        borderRadius: 'var(--radius-tile)',
+         border: '1px solid var(--border)',
+-        background: 'var(--bg2)',
++        background: 'var(--surface-glass)',
+         ...containerStyle,
+       }}
+     >
+@@ -71,7 +71,7 @@ export const TableRow = forwardRef(function TableRow({ children, className = '',
+         borderBottom: '1px solid var(--border2, rgba(255,255,255,0.04))',
+         transition: 'background var(--t-fast, 120ms) ease',
+         background: active ? 'var(--accent-bg)' : undefined,
+-        height: 40,
++
+         ...style,
+       }}
+       {...props}
+@@ -91,12 +91,12 @@ export const TableHead = forwardRef(function TableHead(
+       onClick={sortable && onSort ? onSort : undefined}
+       className={`ui-table-head ${sortable ? 'sortable' : ''} ${className}`}
+       style={{
+-        padding: '10px 14px',
++        padding: '10px 12px',
+         fontSize: 'var(--font-meta, 12px)',
+         fontWeight: 600,
+         color: sorted ? 'var(--text)' : 'var(--text3)',
+-        textTransform: 'uppercase',
+-        letterSpacing: '.06em',
++        textTransform: 'none',
++        letterSpacing: 'normal',
+         cursor: sortable ? 'pointer' : 'default',
+         userSelect: 'none',
+         whiteSpace: 'nowrap',
+@@ -122,7 +122,7 @@ export const TableCell = forwardRef(function TableCell({ children, align = 'left
+       ref={ref}
+       className={className}
+       style={{
+-        padding: '9px 14px',
++        padding: '12px',
+         color: 'var(--text)',
+         textAlign: align,
+         fontFamily: mono ? 'var(--font-mono, JetBrains Mono, monospace)' : 'inherit',
+diff --git a/src/index.css b/src/index.css
+index 42c5d5b..14867d5 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -1,77 +1,59 @@
+ @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap');
+ 
+ @font-face {
+-  font-family: 'Satoshi Variable';
+-  src: url('./assets/fonts/Satoshi-Variable.woff2') format('woff2');
+-  font-weight: 300 500;
++  font-family: 'Urbanist';
++  src: url('./assets/fonts/Urbanist-Variable.ttf') format('truetype');
++  font-weight: 100 900;
+   font-display: swap;
+   font-style: normal;
+ }
+ 
++/* R1 semantic foundation. Legacy public tokens remain aliases. */
+ :root {
++  color-scheme: dark;
+   --sidebar-width: 232px;
+   --topbar-height: 56px;
+-
+-  /* Surfaces — Preto Fosco e Carvão Neutro (Deep Matte Black & Neutral Charcoal) */
+-  --bg: #121212;
+-  --bg-gradient: linear-gradient(180deg, #141414 0%, #121212 100%);
+-  --bg2: #171717;
+-  --bg2-hover: #1e1e1e;
+-  --bg3: #242424;
+-  --bg4: #2a2a2a;
+-  --bg-card-subtle: rgba(23, 23, 23, 0.85);
+-  
+-  /* BORDAS REMOVIDAS: O contraste é dado pela hierarquia de backgrounds */
+-  --border: transparent;
+-  --border2: rgba(255, 255, 255, 0.04);
+-  --border-focus: rgba(0, 197, 115, 0.4);
+-  --text: #fcfcfa;
+-  --text2: #9f9f9f;
+-  --text3: #737373;
+-
+-  /* Brand Palette (Rigorosamente Preservada!) */
+-  --accent: #00C573;
+-  --accent2: #009e5b;
+-  --accent-glow: rgba(0, 197, 115, 0.25);
+-  --accent-bg: rgba(0, 197, 115, 0.12);
+-  --green: #22c55e;
+-  --green-bg: rgba(34, 197, 94, 0.12);
+-  --red: #ef4444;
+-  --red-bg: rgba(239, 68, 68, 0.12);
+-  --amber: #f59e0b;
+-  --amber-bg: rgba(245, 158, 11, 0.12);
+-  --blue: #3b82f6;
+-  --blue-bg: rgba(59, 130, 246, 0.12);
+-  --purple: #8b5cf6;
+-  --purple-bg: rgba(139, 92, 246, 0.12);
+-  --cyan: #38bdf8;
+-  --cyan-bg: rgba(56, 189, 248, 0.12);
+-  --yellow: var(--amber);
+-
+-  /* Radii — Generosos e Arredondados (Donezo / Crextio / DAO) */
+-  --radius-xs: 6px;
+-  --radius-sm: 10px;
+-  --radius: 16px;
+-  --radius-lg: 22px;
+-  --radius-xl: 28px;
+-  --radius-pill: 999px;
+-
+-  /* Sombras Suaves para Elevação Natural sem Bordas */
+-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.2);
+-  --shadow-md: 0 6px 24px -2px rgba(0, 0, 0, 0.3);
+-  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.4);
+-  --shadow-glow: 0 0 24px rgba(0, 197, 115, 0.2);
+-
+-  --sans: 'Satoshi Variable', sans-serif;
+-  --serif: 'Instrument Serif', serif;
+-
+-  /* Tooltip Tokens */
+-  --tooltip-bg: rgba(18, 18, 18, 0.98);
+-  --tooltip-border: rgba(255, 255, 255, 0.08);
+-  --tooltip-text: #fcfcfa;
+-
+-  /* ── Design System Tokens (docs/plano/01-design-system.md) ── */
+-  /* Espaçamento (base 4px) */
++  --color-accent: #c4ef4f;
++  --color-blue: #5aa6ec;
++  --color-coral: #f27d5f;
++  --on-accent: #13171a;
++  --bg: #111513;
++  --text: #f2f4f0;
++  --text2: #c2c7c1;
++  --text3: #9ca29c;
++  --surface-glass: #14171775;
++  --surface-solid: #1a1e1d;
++  --surface-floating: #1f2423;
++  --surface-control: #ffffff0d;
++  --surface-hover: #ffffff14;
++  --border: #ffffff1a;
++  --border-light: #ffffff26;
++  --border-strong: #ffffff38;
++  --accent: #c4ef4f;
++  --accent2: #cdf06a;
++  --accent-bg: #c4ef4f1a;
++  --accent-glow: #c4ef4f26;
++  --green: #b8e65a;
++  --red: #ff9a7c;
++  --amber: #efc36f;
++  --blue: #8cc4ff;
++  --purple: #c4afff;
++  --cyan: #8dd5e7;
++  --scrim: #050908a8;
++  --shadow-card: inset 0 1px 0 #ffffff0d, 0 30px 60px -32px #00000099;
++  --shadow-overlay: inset 0 1px 0 #ffffff12, 0 24px 64px -20px #00000099;
++  --bg-gradient: radial-gradient(ellipse at 5% 0%, #36536599, transparent 58%), radial-gradient(ellipse at 90% 18%, #60647155, transparent 48%), radial-gradient(ellipse at 64% 65%, #75462b33, transparent 55%), radial-gradient(ellipse at 8% 100%, #63732629, transparent 55%);
++  --sans: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
++  --serif: 'Instrument Serif', Georgia, serif;
++  --font-mono: 'Cascadia Code', Consolas, monospace;
++  --font-meta: 12px;
++  --font-table: 13.5px;
++  --font-body: 14px;
++  --font-sub: 15px;
++  --font-page: clamp(28px, 2.6vw, 38px);
++  --font-kpi: 28px;
++  --font-control: 13.5px;
++  --font-control-sm: 12.5px;
+   --sp-1: 4px;
+   --sp-2: 8px;
+   --sp-3: 12px;
+@@ -79,96 +61,94 @@
+   --sp-6: 24px;
+   --sp-8: 32px;
+   --sp-12: 48px;
+-
+-  /* Raio */
+-  --r-sm: 6px;
+-  --r-md: 8px;
+-  --r-lg: 12px;
+-  --r-xl: 16px;
+-
+-  /* Borda forte para foco/seleção */
+-  --border-strong: rgba(255, 255, 255, 0.16);
+-
+-  /* Sombras padronizadas */
+-  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+-  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
+-  --shadow-3: 0 12px 32px -4px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+-
+-  /* Tipografia */
+-  --font-meta: 12px;
+-  --font-table: 13px;
+-  --font-body: 14px;
+-  --font-sub: 16px;
+-  --font-page: 20px;
+-  --font-kpi: 28px;
+-  --font-mono: 'JetBrains Mono', monospace;
+-
+-  /* Movimento */
+-  --t-fast: 120ms;
++  --card-padding: 18px;
++  --grid-gap: 16px;
++  --radius-xs: 6px;
++  --radius-sm: 10px;
++  --radius-control: 14px;
++  --radius-tile: 18px;
++  --radius-card: 22px;
++  --radius-modal: 26px;
++  --radius-drawer: 28px;
++  --radius-pill: 999px;
++  --radius: var(--radius-tile);
++  --radius-md: var(--radius-control);
++  --radius-lg: var(--radius-card);
++  --radius-xl: var(--radius-drawer);
++  --r-sm: var(--radius-xs);
++  --r-md: var(--radius-control);
++  --r-lg: var(--radius-tile);
++  --r-xl: var(--radius-card);
++  --glass-filter: blur(22px) saturate(150%);
++  --t-fast: 150ms;
+   --t-base: 180ms;
+   --t-slow: 240ms;
+   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+-
+-  /* Camadas (z-index) */
++  /* Above the legacy shell (90/100) and existing dialogs. */
+   --z-base: 0;
+   --z-sticky: 10;
+-  --z-dropdown: 50;
+-  --z-drawer: 60;
+-  --z-modal: 70;
+-  --z-toast: 90;
+-
+-  /* Foco */
+-  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
++  --z-drawer: 6000;
++  --z-modal: 7000;
++  --z-confirm: 8000;
++  --z-dropdown: 9000;
++  --z-toast: 11000;
+ }
+-
+ body.light {
+   color-scheme: light;
+-
+-  /* Surfaces — Clean Slate / Soft White */
+-  --bg: #f8fafc;
+-  --bg-gradient: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+-  --bg2: #ffffff;
+-  --bg2-hover: #f1f5f9;
+-  --bg3: #f1f5f9;
+-  --bg4: #e2e8f0;
+-  --bg-card-subtle: rgba(255, 255, 255, 0.95);
+-  
+-  /* Bordas nítidas e elegantes no light para contornos refinados */
+-  --border: rgba(15, 23, 42, 0.08);
+-  --border2: rgba(15, 23, 42, 0.05);
+-  --border-focus: rgba(0, 138, 80, 0.5);
+-  --text: #0f172a;
+-  --text2: #334155;
+-  --text3: #64748b;
+-  --accent: #008a50;
+-  --accent2: #006639;
+-  --accent-glow: rgba(0, 138, 80, 0.18);
+-  --accent-bg: rgba(0, 138, 80, 0.1);
+-  --green: #16a34a;
+-  --green-bg: rgba(22, 163, 74, 0.1);
+-  --red: #dc2626;
+-  --red-bg: rgba(220, 38, 38, 0.1);
+-  --amber: #d97706;
+-  --amber-bg: rgba(217, 119, 6, 0.1);
+-  --blue: #2563eb;
+-  --blue-bg: rgba(37, 99, 235, 0.1);
+-  --purple: #7c3aed;
+-  --purple-bg: rgba(124, 58, 237, 0.1);
+-
+-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.05);
+-  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+-  --shadow-lg: 0 12px 32px -6px rgba(0, 0, 0, 0.10);
+-  --shadow-glow: 0 0 20px rgba(0, 138, 80, 0.15);
+-
+-  --tooltip-bg: rgba(15, 23, 42, 0.95);
+-  --tooltip-border: rgba(0, 0, 0, 0.08);
+-  --tooltip-text: #ffffff;
+-
+-  /* ── Design System Light Tokens ── */
+-  --border-strong: rgba(15, 23, 42, 0.2);
+-  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+-  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+-  --shadow-3: 0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
++  --bg: #e9ece7;
++  --text: #13171a;
++  --text2: #4b524e;
++  --text3: #575e59;
++  --surface-glass: #ffffff80;
++  --surface-solid: #f4f6f2;
++  --surface-floating: #f8faf6;
++  --surface-control: #ffffff80;
++  --surface-hover: #13171a0a;
++  --border: #1216141a;
++  --border-light: #ffffffb8;
++  --border-strong: #12161440;
++  /* Legacy accent also colors small text; CTA fills use color-accent. */
++  --accent: #466315;
++  --accent2: #354b10;
++  --accent-bg: #a9d63626;
++  --accent-glow: #a9d63626;
++  --green: #32650f;
++  --red: #9f351b;
++  --amber: #80520c;
++  --blue: #1d588c;
++  --purple: #604294;
++  --cyan: #1d5b6d;
++  --scrim: #18201b66;
++  --shadow-card: inset 0 1px 0 #ffffffb8, 0 24px 50px -28px #26342b40;
++  --shadow-overlay: inset 0 1px 0 #ffffffb8, 0 24px 64px -20px #26342b4d;
++  --bg-gradient: radial-gradient(ellipse at 5% 0%, #98b8cc80, transparent 58%), radial-gradient(ellipse at 90% 18%, #d0d9e199, transparent 48%), radial-gradient(ellipse at 64% 65%, #d0b3a255, transparent 55%), radial-gradient(ellipse at 8% 100%, #b0c68c55, transparent 55%);
++}
++/* Resolve aliases in both scopes, including light-theme inheritance. */
++:root, body.light {
++  --bg2: var(--surface-solid);
++  --bg2-hover: var(--surface-hover);
++  --bg3: var(--surface-control);
++  --bg4: var(--surface-hover);
++  --bg-card-subtle: var(--surface-glass);
++  --border2: var(--border);
++  --border-focus: var(--accent);
++  --green-bg: color-mix(in srgb, var(--green) 12%, transparent);
++  --red-bg: color-mix(in srgb, var(--red) 12%, transparent);
++  --amber-bg: color-mix(in srgb, var(--amber) 12%, transparent);
++  --blue-bg: color-mix(in srgb, var(--blue) 12%, transparent);
++  --purple-bg: color-mix(in srgb, var(--purple) 12%, transparent);
++  --cyan-bg: color-mix(in srgb, var(--cyan) 12%, transparent);
++  --yellow: var(--amber);
++  --shadow-sm: var(--shadow-card);
++  --shadow-md: var(--shadow-card);
++  --shadow-lg: var(--shadow-overlay);
++  --shadow-1: var(--shadow-sm);
++  --shadow-2: var(--shadow-md);
++  --shadow-3: var(--shadow-lg);
++  --shadow-glow: 0 0 24px var(--accent-glow);
++  --tooltip-bg: var(--surface-floating);
++  --tooltip-border: var(--border-strong);
++  --tooltip-text: var(--text);
+   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+ }
+ 
+@@ -246,26 +226,14 @@ html {
+   zoom: var(--app-scale, 1.0);
+ }
+ 
+-html::before {
+-  content: "";
+-  position: fixed;
+-  top: 0;
+-  left: 0;
+-  width: calc(100vw * var(--dpr, 1));
+-  height: calc(100vh * var(--dpr, 1));
+-  background-image: radial-gradient(at 20% 80%, #fff 1px, transparent 0);
+-  background-size: 2px 2px;
+-  pointer-events: none !important;
+-  z-index: 9999;
+-  opacity: .05;
+-  mix-blend-mode: plus-lighter;
+-  transform: scale(calc(1 / var(--dpr, 1)));
+-  transform-origin: top left;
+-}
+ 
+ body {
+   font-family: var(--sans);
+-  background: var(--bg);
++  background: var(--bg-gradient), var(--bg);
++  background-attachment: fixed;
++  font-size: var(--font-body);
++  font-weight: 500;
++  line-height: 1.45;
+   color: var(--text);
+   min-height: 100vh;
+   display: flex;
+@@ -3121,8 +3089,8 @@ body.light ::-webkit-calendar-picker-indicator {
+ }
+ 
+ .pagination-btn.active {
+-  background: var(--accent);
+-  color: #fff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+   border-color: var(--accent);
+ }
+ 
+@@ -5283,8 +5251,8 @@ body.light .status-badge-mini {
+ 
+ /* ─── Icon-only accent button ───────────────────────────────────── */
+ .btn-icon-accent {
+-  background: var(--accent) !important;
+-  color: #fff !important;
++  background: var(--color-accent) !important;
++  color: var(--on-accent) !important;
+   border-radius: var(--radius-sm) !important;
+   width: 36px;
+   height: 36px;
+@@ -6423,16 +6391,7 @@ body.light .status-badge-mini {
+ }
+ 
+ /* ── Cores semânticas ───────────────────────────────────────────────────── */
+-:root {
+-  --amber: #f59e0b;
+-  --red-bg: rgba(239, 68, 68, 0.08);
+-  --blue-bg: rgba(59, 130, 246, 0.08);
+-}
+-body.light {
+-  --amber: #d97706;
+-  --red-bg: rgba(239, 68, 68, 0.06);
+-  --blue-bg: rgba(59, 130, 246, 0.06);
+-}
++/* Semantic colors are defined once in the R1 foundation above. */
+ 
+ /* ═══════════════════════════════════════════════════════════════════════════
+    NOVO DESIGN SYSTEM — Layout Estrutural & Componentes Modernos
+@@ -6691,8 +6650,8 @@ body.light {
+ }
+ 
+ .sidebar-link.active .sidebar-badge {
+-  background: var(--accent);
+-  color: #ffffff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+   border-color: transparent;
+ }
+ 
+@@ -7060,8 +7019,8 @@ body.light {
+   display: inline-flex;
+   align-items: center;
+   gap: 7px;
+-  background: var(--accent);
+-  color: #ffffff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+   border: none;
+   padding: 8px 16px;
+   border-radius: var(--radius-pill);
+@@ -7186,8 +7145,8 @@ body.light {
+ }
+ 
+ .modern-kpi-card:hover .modern-kpi-arrow-btn {
+-  background: var(--accent);
+-  color: #ffffff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+   transform: scale(1.08);
+ }
+ 
+@@ -7729,8 +7688,8 @@ body.light {
+ }
+ 
+ .leads-quick-btn.active .leads-quick-badge {
+-  background: var(--accent);
+-  color: #ffffff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+ }
+ 
+ .leads-page-size-wrap {
+@@ -8262,8 +8221,8 @@ button.custom-select-filter:focus-visible {
+ }
+ 
+ .leads-pagination-btn.active {
+-  background: var(--accent);
+-  color: #ffffff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+   font-weight: 700;
+   box-shadow: 0 2px 8px var(--accent-bg);
+ }
+@@ -8481,8 +8440,8 @@ button.custom-select-filter:focus-visible {
+   line-height: 1.4;
+ }
+ .mes-nav-hoje:hover {
+-  background: var(--accent);
+-  color: #fff;
++  background: var(--color-accent);
++  color: var(--on-accent);
+ }
+ 
+ /* KPIs de consumo mensal */
+@@ -8699,4 +8658,96 @@ body.light .manutencao-mes-nav {
+   }
+ }
+ 
++
++/* R1 shared components: scoped overrides for the legacy global cascade. */
++.ui-card, .ui-card-content, .ui-card-header { min-width: 0; }
++.ui-card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-overlay); }
++.ui-button:not(:disabled):hover { filter: brightness(1.06); box-shadow: var(--shadow-card); }
++.ui-button:not(:disabled):active { transform: translateY(1px); }
++.ui-button:disabled { filter: none; }
++.ui-badge-clickable:hover { filter: brightness(1.1); }
++.ui-input::placeholder { color: var(--text3); opacity: 1; }
++.ui-input, body.light .ui-input { box-shadow: none; }
++.ui-input:focus, body.light .ui-input:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
++.ui-input.has-error:focus { border-color: var(--red); }
++.ui-table-wrap, body.light .ui-table-wrap { box-shadow: none; }
++.ui-table thead th, body.light .ui-table thead th { background: var(--surface-control); }
++.ui-table tbody tr:hover, body.light .ui-table tbody tr:hover { background: var(--surface-hover); }
++.ui-table tbody tr.active:hover { background: var(--accent-bg); }
++
++.custom-select-trigger, body.light .custom-select-trigger {
++  min-height: 42px;
++  border: 1px solid var(--border-strong);
++  border-radius: var(--radius-pill);
++  background: var(--surface-control);
++  color: var(--text);
++  box-shadow: none;
++  padding: 10px 14px;
++  transition: background var(--t-fast), border-color var(--t-fast);
++}
++.custom-select-form, body.light .custom-select-form { min-height: 44px; border-radius: var(--radius-control); }
++.custom-select-trigger:hover:not(:disabled) { background: var(--surface-hover); }
++.custom-select-trigger:disabled { opacity: .45; cursor: not-allowed; }
++.custom-select-trigger:focus-visible { border-color: var(--accent); }
++.custom-select-value { font-size: var(--font-control); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
++.filter-chip.active .custom-select-value { color: var(--text); }
++.ui-select-wrapper.has-error .custom-select-trigger { border-color: var(--red); }
++.custom-select-content {
++  background: var(--surface-floating);
++  border-color: var(--border-light);
++  border-radius: var(--radius-tile);
++  box-shadow: var(--shadow-overlay);
++  z-index: var(--z-dropdown);
++  padding: 6px;
++  max-width: calc(100vw - 24px);
++  max-height: var(--radix-select-content-available-height);
++  backdrop-filter: var(--glass-filter);
++}
++.custom-select-item { min-height: 36px; border-radius: var(--radius-sm); }
++.custom-select-scroll-btn { background: var(--surface-floating); }
++.ui-modal-container > div, .ui-drawer-panel > div { flex-shrink: 0; }
++.ui-modal-container > div:nth-child(2), .ui-drawer-panel > div:nth-child(2) { flex-shrink: 1; min-height: 0; }
++.ui-modal-container > div:last-child, .ui-drawer-panel > div:last-child { flex-wrap: wrap; }
++#confirm-overlay { background: var(--scrim); backdrop-filter: blur(8px); z-index: var(--z-confirm); }
++.confirm-box { background: var(--surface-floating); border-color: var(--border-light); border-radius: var(--radius-modal); box-shadow: var(--shadow-overlay); max-height: calc(100dvh - 32px); overflow-y: auto; }
++.confirm-msg { font-size: 20px; font-weight: 700; }
++.confirm-btns .btn { min-height: 42px; border-radius: var(--radius-pill); }
++#toast { left: 50%; right: auto; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(440px, calc(100vw - 28px)); align-items: center; z-index: var(--z-toast); }
++.toast-item { width: 100%; min-width: 0; max-width: 100%; background: var(--surface-floating); border-color: var(--border-light); border-radius: var(--radius-pill); box-shadow: var(--shadow-overlay); backdrop-filter: var(--glass-filter); transform: translateY(16px); }
++.toast-item.show { transform: translateY(0); }
++.toast-icon { border-radius: var(--radius-pill); }
++.toast-progress-track { left: 24px; right: 24px; }
++.ui-kit-page { width: 100%; padding: 32px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--grid-gap); }
++.ui-kit-page .ui-page-header { margin-bottom: 8px !important; }
++.ui-kit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--grid-gap); }
++.ui-kit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
++.ui-kit-tile { padding: 18px; border-radius: var(--radius-tile); border: 1px solid var(--border-light); background: var(--surface-control); }
++.ui-kit-tile strong { display: block; font-size: 24px; font-weight: 600; }
++@keyframes ui-spin { to { transform: rotate(360deg); } }
++@keyframes ui-skeleton-shimmer { to { background-position: -200% 0; } }
++@media (max-width: 600px) {
++  :root { --font-control: 16px; --font-control-sm: 16px; }
++  .ui-kit-page { padding: 24px 14px; }
++  .ui-kit-page .ui-page-header > div { max-width: 100%; }
++  .ui-kit-page .ui-page-header h1 { overflow-wrap: anywhere; }
++  .ui-modal-portal { align-items: flex-end !important; padding: 12px !important; }
++  .ui-modal-container { max-height: 92dvh !important; }
++  .ui-drawer-portal { align-items: flex-end; }
++  .ui-drawer-panel { max-width: none !important; height: 88dvh !important; }
++  .custom-select-form .custom-select-value { font-size: 16px; }
++}
++@media (pointer: coarse) {
++  .ui-button, .custom-select-trigger { min-height: 44px !important; }
++  .ui-button-icon-only { min-width: 44px !important; }
++}
++@media (prefers-reduced-transparency: reduce) {
++  :root, body.light { --surface-glass: var(--surface-solid); --glass-filter: none; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .ui-card-hover:hover, .ui-button:not(:disabled):active { transform: none; }
++}
++@media (forced-colors: active) {
++  :focus-visible { outline: 2px solid Highlight !important; }
++  .ui-button, .ui-card, .custom-select-trigger { border: 1px solid ButtonText !important; }
++}
+ 
+\ No newline at end of file
+diff --git a/src/pages/UiKitPage.jsx b/src/pages/UiKitPage.jsx
+index 1ff72b7..2741457 100644
+--- a/src/pages/UiKitPage.jsx
++++ b/src/pages/UiKitPage.jsx
+@@ -18,7 +18,6 @@ import {
+   CardTitle,
+   CardDescription,
+   CardContent,
+-  CardFooter,
+   Drawer,
+   Modal,
+   EmptyState,
+@@ -32,6 +31,7 @@ export default function UiKitPage() {
+   const theme = useDash(s => s.theme);
+   const toggleTheme = useDash(s => s.toggleTheme);
+   const toast = useDash(s => s.toast);
++  const showConfirm = useDash(s => s.showConfirm);
+ 
+   const [drawerOpen, setDrawerOpen] = useState(false);
+   const [modalOpen, setModalOpen] = useState(false);
+@@ -40,11 +40,11 @@ export default function UiKitPage() {
+   const [loadingBtn, setLoadingBtn] = useState(false);
+ 
+   return (
+-    <div className="ui-kit-page" style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
++    <div className="ui-kit-page">
+       <PageHeader
+-        title="UI Kit — Design System"
++        title="Fundação visual"
+         count="14 Primitivos"
+-        subtitle="Catálogo de componentes padronizados com suporte aos temas Claro e Escuro"
++        subtitle="Maieski · Urbanist, superfícies de vidro e controles compartilhados"
+         actions={
+           <div style={{ display: 'flex', gap: 10 }}>
+             <Button
+@@ -56,7 +56,7 @@ export default function UiKitPage() {
+             </Button>
+             <Button
+               variant="primary"
+-              onClick={() => toast('UI Kit funcionando perfeitamente!', 'success')}
++              onClick={() => toast('Notificação de demonstração.', 'success')}
+               icon={<Icon name="check" />}
+             >
+               Testar Toast
+@@ -65,6 +65,28 @@ export default function UiKitPage() {
+         }
+       />
+ 
++      <div className="ui-kit-grid">
++        <Card>
++          <CardTitle>Vidro e luz</CardTitle>
++          <CardDescription>Superfície translúcida, borda iluminada e sombra suave.</CardDescription>
++          <div className="ui-kit-tile">
++            <strong>Urbanist 600</strong>
++            <span>Texto 500 · Detalhes 400 · Ênfase 700</span>
++          </div>
++        </Card>
++        <Card style={{ background: 'var(--accent-bg)' }}>
++          <CardTitle>Paleta de apoio</CardTitle>
++          <div className="ui-kit-row">
++            {[['Lima', '--color-accent'], ['Azul', '--color-blue'], ['Coral', '--color-coral']].map(([name, token]) => (
++              <div key={token} style={{ flex: 1 }}>
++                <div style={{ height: 44, borderRadius: 14, background: `var(${token})` }} />
++                <span>{name}</span>
++              </div>
++            ))}
++          </div>
++          <CardDescription>Cores de texto semânticas adaptadas ao contraste de cada tema.</CardDescription>
++        </Card>
++      </div>
+       {/* ── BUTTONS ── */}
+       <Card>
+         <CardHeader>
+@@ -132,7 +154,7 @@ export default function UiKitPage() {
+             <StatusChip status="offline" />
+           </div>
+ 
+-          <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
++          <div className="ui-kit-row" style={{ marginTop: 12 }}>
+             <span style={{ fontSize: 13, color: 'var(--text3)' }}>Variante Clicável (Avanço):</span>
+             <StatusChip
+               status="Abordado"
+@@ -150,13 +172,14 @@ export default function UiKitPage() {
+         <CardHeader>
+           <div>
+             <CardTitle>Input & Select</CardTitle>
+-            <CardDescription>Altura padronizada de 36px com rótulo acima, erro abaixo e foco visível</CardDescription>
++            <CardDescription>Campos de 44px, erro, seleção controlada e foco visível</CardDescription>
+           </div>
+         </CardHeader>
+         <CardContent>
+-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
++          <div className="ui-kit-grid">
+             <Input
+               label="Nome do Lead"
++              name="demo-lead"
+               placeholder="Ex: Dra. Mariana Costa"
+               value={inputValue}
+               onChange={e => setInputValue(e.target.value)}
+@@ -165,11 +188,13 @@ export default function UiKitPage() {
+             />
+             <Input
+               label="Campo com Erro"
++              name="demo-email"
+               placeholder="Digite o e-mail"
+               defaultValue="email-invalido"
+               error="Informe um e-mail válido com @"
+               icon={<Icon name="alert-circle" />}
+             />
++            <Input label="Campo desabilitado" name="demo-disabled" disabled defaultValue="Somente demonstração" />
+             <Select
+               label="Categoria"
+               value={selectValue}
+@@ -186,7 +211,7 @@ export default function UiKitPage() {
+         <CardHeader>
+           <div>
+             <CardTitle>Table</CardTitle>
+-            <CardDescription>Linhas de 40px, hover sutil, cabeçalho fixo e alinhamento numérico</CardDescription>
++            <CardDescription>Células com padding de 12px, seleção, hover e números tabulares</CardDescription>
+           </div>
+         </CardHeader>
+         <CardContent>
+@@ -225,13 +250,13 @@ export default function UiKitPage() {
+       </Card>
+ 
+       {/* ── KBD, COPY BUTTON, SKELETON ── */}
+-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
++      <div className="ui-kit-grid">
+         <Card>
+           <CardHeader>
+             <CardTitle>Kbd & CopyButton</CardTitle>
+           </CardHeader>
+           <CardContent>
+-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)' }}>
++            <div className="ui-kit-row" style={{ fontSize: 13, color: 'var(--text2)' }}>
+               <span>Atalhos:</span>
+               <Kbd>Ctrl</Kbd> + <Kbd>K</Kbd> para busca rápida, <Kbd>Ctrl</Kbd> + <Kbd>B</Kbd> para sidebar, <Kbd>Esc</Kbd> para fechar.
+             </div>
+@@ -271,11 +296,12 @@ export default function UiKitPage() {
+         <CardContent>
+           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+             <Button variant="secondary" onClick={() => setDrawerOpen(true)} icon={<Icon name="layout" />}>
+-              Abrir Drawer (480px)
++              Abrir Drawer (460px)
+             </Button>
+             <Button variant="secondary" onClick={() => setModalOpen(true)} icon={<Icon name="grid" />}>
+               Abrir Modal (560px)
+             </Button>
++            <Button onClick={async () => { if (await showConfirm('Confirmar demonstração?', 'Nenhum dado será alterado.', false)) toast('Demonstração confirmada.', 'info'); }}>Testar confirmação</Button>
+           </div>
+ 
+           <div style={{ marginTop: 16, border: '1px dashed var(--border)', borderRadius: 'var(--r-md, 8px)' }}>
+diff --git a/src/components/ui/useDialogFocus.js b/src/components/ui/useDialogFocus.js
+new file mode 100644
+index 0000000..05b2e10
+--- /dev/null
++++ b/src/components/ui/useDialogFocus.js
+@@ -0,0 +1,66 @@
++import { useEffect, useRef } from 'react';
++
++const layers = [];
++let previousOverflow;
++const focusable = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])';
++
++// Shared by existing dialogs only. Radix retains ownership of its portaled menu.
++export function useDialogFocus(isOpen, panelRef, onClose) {
++  const closeRef = useRef(onClose);
++  const openerRef = useRef(null);
++  useEffect(() => { closeRef.current = onClose; }, [onClose]);
++  useEffect(() => {
++    if (!isOpen) return;
++    const layer = {};
++    const previousFocus = document.activeElement;
++    openerRef.current = { element: previousFocus, parent: layers.at(-1) };
++    if (!layers.length) {
++      previousOverflow = document.body.style.overflow;
++      document.body.style.overflow = 'hidden';
++    }
++    layers.push(layer);
++    const frame = requestAnimationFrame(() => {
++      const panel = panelRef.current;
++      (panel?.querySelector('[autofocus]') || panel?.querySelector(focusable) || panel)?.focus();
++    });
++    const handleKey = (event) => {
++      if (layers.at(-1) !== layer || event.defaultPrevented || document.querySelector('.custom-select-content')) return;
++      const panel = panelRef.current;
++      if (event.key === 'Escape') {
++        event.preventDefault();
++        closeRef.current?.();
++      }
++      if (event.key !== 'Tab' || !panel) return;
++      const items = [...panel.querySelectorAll(focusable)].filter(el => el.getClientRects().length);
++      const first = items[0];
++      const last = items.at(-1);
++      if (!first) { event.preventDefault(); panel.focus(); }
++      else if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
++        event.preventDefault(); last.focus();
++      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
++        event.preventDefault(); first.focus();
++      }
++    };
++    window.addEventListener('keydown', handleKey);
++    return () => {
++      cancelAnimationFrame(frame);
++      window.removeEventListener('keydown', handleKey);
++      const wasTop = layers.at(-1) === layer;
++      layers.splice(layers.indexOf(layer), 1);
++      const parentLayer = layers.at(-1);
++      if (!layers.length) document.body.style.overflow = previousOverflow;
++      // Radix restores its trigger during portal cleanup. Restore our opener
++      // on the next frame, after that cleanup, without stealing a new dialog's focus.
++      if (wasTop && previousFocus?.isConnected) {
++        requestAnimationFrame(() => {
++          if (layers.at(-1) === parentLayer) previousFocus.focus();
++        });
++      }
++    };
++  }, [isOpen, panelRef]);
++  // Animated panels can retain a Radix focus scope until exit completes.
++  return () => {
++    const opener = openerRef.current;
++    if (opener?.element?.isConnected && layers.at(-1) === opener.parent) opener.element.focus();
++  };
++}
+diff --git a/src/assets/fonts/Urbanist-Variable.ttf b/src/assets/fonts/Urbanist-Variable.ttf
+new file mode 100644
+index 0000000000000000000000000000000000000000..a867bdd9cbfb5a0cd30a7c5a06f0d71c3db62192
+GIT binary patch
+literal 84840
+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
+Id5}l`7qT1ZWB>pF
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/assets/fonts/Urbanist-OFL.txt b/src/assets/fonts/Urbanist-OFL.txt
+new file mode 100644
+index 0000000..828d6f7
+--- /dev/null
++++ b/src/assets/fonts/Urbanist-OFL.txt
+@@ -0,0 +1,93 @@
++Copyright 2021 The Urbanist Project Authors (https://github.com/coreyhu/Urbanist)
++
++This Font Software is licensed under the SIL Open Font License, Version 1.1.
++This license is copied below, and is also available with a FAQ at:
++http://scripts.sil.org/OFL
++
++
++-----------------------------------------------------------
++SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
++-----------------------------------------------------------
++
++PREAMBLE
++The goals of the Open Font License (OFL) are to stimulate worldwide
++development of collaborative font projects, to support the font creation
++efforts of academic and linguistic communities, and to provide a free and
++open framework in which fonts may be shared and improved in partnership
++with others.
++
++The OFL allows the licensed fonts to be used, studied, modified and
++redistributed freely as long as they are not sold by themselves. The
++fonts, including any derivative works, can be bundled, embedded, 
++redistributed and/or sold with any software provided that any reserved
++names are not used by derivative works. The fonts and derivatives,
++however, cannot be released under any other type of license. The
++requirement for fonts to remain under this license does not apply
++to any document created using the fonts or their derivatives.
++
++DEFINITIONS
++"Font Software" refers to the set of files released by the Copyright
++Holder(s) under this license and clearly marked as such. This may
++include source files, build scripts and documentation.
++
++"Reserved Font Name" refers to any names specified as such after the
++copyright statement(s).
++
++"Original Version" refers to the collection of Font Software components as
++distributed by the Copyright Holder(s).
++
++"Modified Version" refers to any derivative made by adding to, deleting,
++or substituting -- in part or in whole -- any of the components of the
++Original Version, by changing formats or by porting the Font Software to a
++new environment.
++
++"Author" refers to any designer, engineer, programmer, technical
++writer or other person who contributed to the Font Software.
++
++PERMISSION & CONDITIONS
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of the Font Software, to use, study, copy, merge, embed, modify,
++redistribute, and sell modified and unmodified copies of the Font
++Software, subject to the following conditions:
++
++1) Neither the Font Software nor any of its individual components,
++in Original or Modified Versions, may be sold by itself.
++
++2) Original or Modified Versions of the Font Software may be bundled,
++redistributed and/or sold with any software, provided that each copy
++contains the above copyright notice and this license. These can be
++included either as stand-alone text files, human-readable headers or
++in the appropriate machine-readable metadata fields within text or
++binary files as long as those fields can be easily viewed by the user.
++
++3) No Modified Version of the Font Software may use the Reserved Font
++Name(s) unless explicit written permission is granted by the corresponding
++Copyright Holder. This restriction only applies to the primary font name as
++presented to the users.
++
++4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
++Software shall not be used to promote, endorse or advertise any
++Modified Version, except to acknowledge the contribution(s) of the
++Copyright Holder(s) and the Author(s) or with their explicit written
++permission.
++
++5) The Font Software, modified or unmodified, in part or in whole,
++must be distributed entirely under this license, and must not be
++distributed under any other license. The requirement for fonts to
++remain under this license does not apply to any document created
++using the Font Software.
++
++TERMINATION
++This license becomes null and void if any of the above conditions are
++not met.
++
++DISCLAIMER
++THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
++OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
++COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
++DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
++OTHER DEALINGS IN THE FONT SOFTWARE.
+diff --git a/src/assets/fonts/Urbanist-SOURCE.md b/src/assets/fonts/Urbanist-SOURCE.md
+new file mode 100644
+index 0000000..777f5e7
+--- /dev/null
++++ b/src/assets/fonts/Urbanist-SOURCE.md
+@@ -0,0 +1,16 @@
++# Urbanist
++
++Original, unmodified variable font from Google Fonts:
++https://github.com/google/fonts/tree/main/ofl/urbanist
++
++Downloaded on 2026-11-04 from:
++https://raw.githubusercontent.com/google/fonts/main/ofl/urbanist/Urbanist%5Bwght%5D.ttf
++
++Copyright 2021 The Urbanist Project Authors (https://github.com/coreyhu/Urbanist).
++License: SIL Open Font License 1.1, included in `Urbanist-OFL.txt`.
++The HTML license link includes that license in the Vite production output.
++
++SHA256: `748362d51eb276840e9f0023cd2d98299bf709a95fb3a5ae4ffcb624c638ebb9`
++
++The file supports weights 100 through 900. R1 shared components use 400,
++500, 600 and 700; the full axis also supports existing page weights.

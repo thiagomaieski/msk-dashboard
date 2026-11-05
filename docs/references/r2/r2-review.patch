@@ -1,0 +1,290 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 56ddb70..eeca6a9 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -9,6 +9,7 @@ import SetupScreen from './components/SetupScreen';
+ import Sidebar from './components/Sidebar';
+ import Topbar from './components/Topbar';
+ import NavBar from './components/NavBar';
++import DesktopShell from './components/DesktopShell';
+ import Toast, { GlobalLoader } from './components/Toast';
+ import { Suspense, lazy } from 'react';
+ 
+@@ -74,6 +75,7 @@ class ErrorBoundary extends Component {
+ function AppInner() {
+   const [fullyReady, setFullyReady] = useState(false);
+   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
++  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1025px)').matches);
+   const initAuth = useDash(s => s.initAuth);
+   const authReady = useDash(s => s.authReady);
+   const appReady = useDash(s => s.appReady);
+@@ -88,6 +90,13 @@ function AppInner() {
+   const checkNotifications = useDash(s => s.checkNotifications);
+   const sidebarCollapsed = useDash(s => s.sidebarCollapsed);
+ 
++  useEffect(() => {
++    const media = window.matchMedia('(min-width: 1025px)');
++    const update = () => setDesktop(media.matches);
++    media.addEventListener('change', update);
++    return () => media.removeEventListener('change', update);
++  }, []);
++
+   useEffect(() => {
+     initAuth();
+     const unbindRouteSync = initRouteSync((page) => {
+@@ -144,13 +153,13 @@ function AppInner() {
+   );
+ 
+   return (
+-    <div id="app" className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
++    <div id="app" className={`app-shell ${desktop ? 'desktop-shell' : ''} ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
+       {/* Sidebar Lateral Moderna (Desktop & Drawer Mobile) */}
+-      <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
++      {!desktop && <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />}
+ 
+       {/* Área Principal com Header Utilitário e Conteúdo */}
+       <div className="app-content">
+-        <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />
++        {desktop ? <DesktopShell /> : <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />}
+         <Suspense fallback={<GlobalLoader forced />}>
+           <main className="main">
+             {activePage === 'dashboard' && <DashboardPage />}
+@@ -169,7 +178,7 @@ function AppInner() {
+       </div>
+ 
+       {/* Navegação Mobile Inferior */}
+-      <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />
++      {!desktop && <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />}
+       
+       <Suspense fallback={null}>
+         {!!activeProjectView && <ProjectView />}
+diff --git a/src/components/DesktopShell.jsx b/src/components/DesktopShell.jsx
+new file mode 100644
+index 0000000..71084eb
+--- /dev/null
++++ b/src/components/DesktopShell.jsx
+@@ -0,0 +1,165 @@
++import { useEffect, useRef, useState } from 'react';
++import { useDash } from '../store/useStore';
++import { getHrefForPage } from '../utils/routes';
++import { FEATURES } from '../config/features';
++import { Icon } from './ui';
++import CommandPalette from './CommandPalette';
++import NotificationCenter from './NotificationCenter';
++import logoLight from '../assets/dashboard-logo-light-theme.svg';
++import logoDark from '../assets/dashboard-logo.svg';
++import avatarFallback from '../assets/non-profile-photo.png';
++import './DesktopShell.css';
++
++const MODULES = [
++  ['dashboard', 'Dashboard'], ['leads', 'Leads'], ['projetos', 'Projetos'],
++  ['clientes', 'Clientes'], ['recorrencia', 'Recorrência'],
++  ['financas-negocio', 'Finanças Negócio'], ['financas-pessoais', 'Finanças Pessoais'], ['uptime', 'Uptime'],
++];
++const CREATE = [
++  ['leads', 'lead', 'Novo Lead'], ['projetos', 'projeto', 'Novo Projeto'],
++  ['clientes', 'cliente', 'Novo Cliente'], ['recorrencia', 'recorrencia', 'Nova Recorrência'],
++  ['financas-negocio', 'negocioReceita', 'Nova Receita Negócio'],
++  ['financas-pessoais', 'pessoalDespesa', 'Nova Despesa Pessoal'],
++  [null, 'novoFechamento', 'Novo Fechamento'],
++  [null, 'negocioDespesa', 'Nova Despesa Negócio'],
++];
++const SETTINGS = [
++  ['cfg-conta', 'Conta'], ['cfg-empresa', 'Empresa e Fiscal'],
++  ['cfg-financas', 'Categorias e Finanças'], ['cfg-sistema', 'Sistema'],
++];
++const SETTINGS_ALIASES = {
++  'cfg-seguranca': 'cfg-conta', 'cfg-negocios': 'cfg-financas',
++  'cfg-dados': 'cfg-sistema', 'cfg-prefs': 'cfg-sistema',
++  'cfg-notificacoes': 'cfg-sistema', 'cfg-sobre': 'cfg-sistema',
++};
++
++export default function DesktopShell() {
++  const activePage = useDash(s => s.activePage);
++  const goTo = useDash(s => s.goTo);
++  const openModal = useDash(s => s.openModal);
++  const theme = useDash(s => s.theme);
++  const toggleTheme = useDash(s => s.toggleTheme);
++  const profile = useDash(s => s.profile);
++  const signOut = useDash(s => s.signOut);
++  const data = useDash(s => s.data);
++  const configActiveTab = useDash(s => s.configActiveTab);
++  const setConfigTab = useDash(s => s.setConfigTab);
++  const previousPage = useDash(s => s.previousPage);
++  const userRole = useDash(s => s.userRole);
++  const [popover, setPopover] = useState(null);
++  const [searchOpen, setSearchOpen] = useState(false);
++  const accountRef = useRef(null);
++  const createRef = useRef(null);
++  const notifRef = useRef(null);
++  const tabsRef = useRef(null);
++  const unread = (data.notificacoes || []).filter(n => !n.lida).length;
++  const currentCreate = CREATE.find(([page]) => page === activePage);
++
++  useEffect(() => {
++    const onKey = e => {
++      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
++        e.preventDefault();
++        setPopover(null);
++        setSearchOpen(open => !open);
++      }
++      if (e.key === 'Escape' && popover) {
++        setPopover(null);
++        (popover === 'create' ? createRef : popover === 'notifications' ? notifRef : accountRef).current?.focus();
++      }
++    };
++    const onOutside = e => {
++      if (!e.target.closest('.desktop-popover-anchor')) setPopover(null);
++    };
++    document.addEventListener('keydown', onKey);
++    document.addEventListener('mousedown', onOutside);
++    return () => {
++      document.removeEventListener('keydown', onKey);
++      document.removeEventListener('mousedown', onOutside);
++    };
++  }, [popover]);
++
++  useEffect(() => {
++    // Scroll only the tab strip; never move the page or its scroll position.
++    const strip = tabsRef.current;
++    const revealActive = () => {
++      const active = strip?.querySelector('[aria-current="page"]');
++      if (active) strip.scrollLeft = active.offsetLeft - strip.clientWidth / 2 + active.offsetWidth / 2;
++    };
++    revealActive();
++    const observer = new ResizeObserver(revealActive);
++    observer.observe(strip);
++    return () => observer.disconnect();
++  }, [activePage]);
++
++  const navigate = (e, page) => {
++    if (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
++    e?.preventDefault();
++    setPopover(null);
++    goTo(page);
++  };
++  const togglePopover = name => setPopover(value => value === name ? null : name);
++  const openSearch = () => { setPopover(null); setSearchOpen(true); };
++  const normalizedTab = SETTINGS_ALIASES[configActiveTab] || configActiveTab;
++
++  return <>
++    <header className="desktop-header">
++      <a className="desktop-brand" href="/" onClick={e => navigate(e, 'dashboard')} aria-label="Maieski Dashboard">
++        <img src={theme === 'light' ? logoLight : logoDark} alt="Maieski Dashboard" />
++      </a>
++      <nav className="desktop-tabs" aria-label="Módulos" ref={tabsRef}>
++        {MODULES.map(([id, label]) => <a key={id} href={getHrefForPage(id)}
++          aria-current={activePage === id ? 'page' : undefined} onClick={e => navigate(e, id)}>{label}</a>)}
++      </nav>
++      <div className="desktop-utilities">
++        <div className="desktop-popover-anchor">
++          <button className="desktop-icon-button" ref={notifRef} aria-label="Notificações" title="Notificações"
++            aria-expanded={popover === 'notifications'} onClick={() => togglePopover('notifications')}>
++            <Icon name="bell" size={18} />{unread > 0 && <span className="desktop-unread" aria-label={`${unread} não lidas`} />}
++          </button>
++          {popover === 'notifications' && <NotificationCenter toggleRef={notifRef} onClose={() => setPopover(null)} />}
++        </div>
++        <div className="desktop-popover-anchor">
++          <button ref={accountRef} className="desktop-account" aria-label="Menu de conta" aria-expanded={popover === 'account' || popover === 'logout'}
++            onClick={() => togglePopover('account')}><img src={profile?.photoURL || avatarFallback} alt="" /></button>
++          {(popover === 'account' || popover === 'logout') && <div className="desktop-popover desktop-account-menu" aria-label="Conta">
++            <div className="desktop-account-name">{profile?.name || 'Minha conta'}</div>
++            <a href="/configuracoes" onClick={e => navigate(e, 'configuracoes')}>Configurações</a>
++            <a href="/lixeira" onClick={e => navigate(e, 'lixeira')}>Lixeira</a>
++            {import.meta.env.DEV && <a href="/ui-kit" onClick={e => navigate(e, 'ui-kit')}>UI Kit</a>}
++            <button onClick={toggleTheme}>Usar tema {theme === 'dark' ? 'claro' : 'escuro'}</button>
++            <div className="desktop-menu-divider" />
++            {popover === 'logout' ? <div className="desktop-logout-confirm">
++              <p>Deseja mesmo sair?</p>
++              <button onClick={() => setPopover('account')}>Cancelar</button>
++              <button className="desktop-danger" onClick={() => { setPopover(null); signOut(); }}>Confirmar saída</button>
++            </div> : <button className="desktop-danger" onClick={() => setPopover('logout')}>Sair do sistema</button>}
++          </div>}
++        </div>
++      </div>
++    </header>
++
++    <aside className="desktop-action-dock" aria-label="Ações rápidas">
++      <button className="desktop-dock-button" onClick={openSearch} aria-label="Busca global" data-tip="Buscar (Ctrl+K)"><Icon name="search" size={18} /></button>
++      <div className="desktop-popover-anchor">
++        <button ref={createRef} className="desktop-dock-button" aria-label={currentCreate ? `Criar: ${currentCreate[2]}` : 'Criar'} data-tip={currentCreate?.[2] || 'Criar'}
++          aria-expanded={popover === 'create'} onClick={() => togglePopover('create')}><Icon name="plus" size={18} /></button>
++        {popover === 'create' && <div className="desktop-popover desktop-create-menu" aria-label="Criar">
++          {currentCreate && <><button onClick={() => { setPopover(null); openModal(currentCreate[1]); }}>{currentCreate[2]}<span>Atual</span></button><div className="desktop-menu-divider" /></>}
++          {CREATE.filter(item => item !== currentCreate).map(([, modal, label]) => <button key={modal} onClick={() => { setPopover(null); openModal(modal); }}>{label}</button>)}
++        </div>}
++      </div>
++      <a className="desktop-dock-button" href="/lixeira" aria-label="Lixeira" data-tip="Lixeira" aria-current={activePage === 'lixeira' ? 'page' : undefined} onClick={e => navigate(e, 'lixeira')}><Icon name="trash" size={18} /></a>
++      {FEATURES.FEEDBACK && <button className="desktop-dock-button" aria-label="Feedback e suporte" data-tip="Feedback e suporte" onClick={() => openModal('feedback')}><Icon name="help-circle" size={18} /></button>}
++      <div className="desktop-dock-divider" />
++      <a className="desktop-dock-button" href="/configuracoes" aria-label="Configurações" data-tip="Configurações" aria-current={activePage === 'configuracoes' ? 'page' : undefined} onClick={e => navigate(e, 'configuracoes')}><Icon name="settings" size={18} /></a>
++      <button className="desktop-dock-button" aria-label={`Usar tema ${theme === 'dark' ? 'claro' : 'escuro'}`} data-tip={`Tema ${theme === 'dark' ? 'claro' : 'escuro'}`} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} /></button>
++    </aside>
++
++    {activePage === 'configuracoes' && <nav className="desktop-settings-nav" aria-label="Seções de configurações">
++      <a href={getHrefForPage(previousPage)} onClick={e => navigate(e, previousPage || 'dashboard')}>Voltar ao sistema</a>
++      {SETTINGS.map(([id, label]) => <button key={id} aria-current={normalizedTab === id ? 'page' : undefined} onClick={() => setConfigTab(id)}>{label}</button>)}
++      {FEATURES.SAAS_ADMIN && userRole === 'admin' && <button onClick={() => setConfigTab('cfg-admin')}>Administração</button>}
++    </nav>}
++    <CommandPalette isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
++  </>;
++}
+diff --git a/src/components/DesktopShell.css b/src/components/DesktopShell.css
+new file mode 100644
+index 0000000..674f274
+--- /dev/null
++++ b/src/components/DesktopShell.css
+@@ -0,0 +1,53 @@
++/* Desktop only. The existing mobile shell keeps its original breakpoint. */
++@media (min-width: 1025px) {
++  .app-shell.desktop-shell { background: transparent; }
++  .desktop-shell > .app-content {
++    margin-left: 0; background: transparent; max-width: 1840px; width: 100%;
++    margin-inline: auto; padding: 22px clamp(16px, 1.6vw, 28px) 48px;
++    padding-left: calc(80px + clamp(16px, 1.6vw, 28px));
++  }
++  .desktop-shell .main { padding: 0; margin: 0; max-width: none; width: 100%; }
++  .desktop-shell .dash-fab-container { display: none; }
++  .desktop-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin-bottom: 26px; min-height: 50px; position: relative; z-index: 90; }
++  .desktop-brand { width: 146px; display: flex; align-items: center; }
++  .desktop-brand img { display: block; width: 100%; max-height: 44px; }
++  .desktop-tabs { position: relative; display: flex; justify-self: center; max-width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px; gap: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-glass); backdrop-filter: blur(22px) saturate(150%); }
++  .desktop-tabs::-webkit-scrollbar { display: none; }
++  .desktop-tabs a { flex-shrink: 0; padding: 10px 17px; border-radius: 999px; font-size: 13.5px; line-height: 20px; font-weight: 600; color: var(--text2); text-decoration: none; white-space: nowrap; transition: background 180ms, color 180ms; }
++  .desktop-tabs a:hover { color: var(--text); background: var(--surface-hover); }
++  .desktop-tabs a[aria-current="page"] { background: rgba(255,255,255,.16); color: var(--text); }
++  body.light .desktop-tabs a[aria-current="page"] { background: #171b19; color: #fff; }
++  .desktop-utilities { display: flex; align-items: center; gap: 10px; }
++  .desktop-popover-anchor { position: relative; }
++  .desktop-icon-button, .desktop-account { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-light); color: var(--text2); background: var(--surface-glass); cursor: pointer; position: relative; }
++  .desktop-account { width: 44px; height: 44px; padding: 3px; }
++  .desktop-account img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
++  .desktop-unread { width: 8px; height: 8px; position: absolute; top: 6px; right: 6px; border-radius: 50%; background: var(--coral, #ff9a7c); box-shadow: 0 0 0 2px var(--surface-floating); }
++  .desktop-action-dock { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); width: 62px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border: 1px solid var(--border-light); border-radius: 999px; background: var(--surface-glass); backdrop-filter: blur(22px) saturate(150%); box-shadow: var(--shadow-card); z-index: 90; }
++  .desktop-dock-button { position: relative; display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; border: none; color: var(--text2); background: transparent; cursor: pointer; text-decoration: none; }
++  .desktop-dock-button:hover, .desktop-dock-button[aria-expanded="true"] { background: var(--surface-hover); color: var(--text); }
++  .desktop-dock-button[aria-current="page"]::before { content: ''; position: absolute; width: 5px; height: 5px; left: 0; border-radius: 50%; background: var(--accent); }
++  .desktop-dock-button::after { content: attr(data-tip); position: absolute; left: 56px; padding: 7px 10px; border-radius: 10px; background: var(--surface-floating); color: var(--text); border: 1px solid var(--border); font-size: 12.5px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 180ms; }
++  .desktop-dock-button:hover::after, .desktop-dock-button:focus-visible::after { opacity: 1; }
++  .desktop-dock-button[aria-expanded="true"]::after { opacity: 0; }
++  .desktop-dock-divider { width: 24px; height: 1px; background: var(--border-light); margin: 8px 0; }
++  .desktop-popover { position: absolute; padding: 6px; width: 250px; border: 1px solid var(--border-light); border-radius: 18px; background: var(--surface-floating); box-shadow: var(--shadow-overlay); color: var(--text); }
++  .desktop-account-menu { right: 0; top: calc(100% + 10px); }
++  .desktop-create-menu { left: 56px; top: 0; }
++  .desktop-popover a, .desktop-popover button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 12px; border: none; border-radius: 12px; text-align: left; text-decoration: none; font: inherit; font-size: 13.5px; background: transparent; color: var(--text); cursor: pointer; }
++  .desktop-popover a:hover, .desktop-popover button:hover { background: var(--surface-hover); }
++  .desktop-popover button span { font-size: 11px; color: var(--accent); }
++  .desktop-account-name { padding: 10px 12px; font-weight: 600; overflow-wrap: anywhere; }
++  .desktop-menu-divider { height: 1px; margin: 6px; background: var(--border); }
++  .desktop-popover .desktop-danger { color: var(--red); }
++  .desktop-logout-confirm p { margin: 10px 12px; font-size: 13px; }
++  .desktop-settings-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
++  .desktop-settings-nav a, .desktop-settings-nav button { padding: 10px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-glass); color: var(--text2); text-decoration: none; cursor: pointer; font: inherit; font-size: 13.5px; }
++  .desktop-settings-nav [aria-current="page"] { color: var(--text); background: var(--surface-hover); border-color: var(--border-light); }
++  .desktop-header .notif-dropdown { top: calc(100% + 10px); right: 0; }
++}
++@media (min-width: 1025px) and (max-width: 1180px) {
++  .desktop-header { grid-template-columns: 1fr auto; position: sticky; top: 0; padding-block: 10px; background: var(--surface-glass); backdrop-filter: blur(22px); border-radius: 18px; }
++  .desktop-tabs { grid-row: 2; grid-column: 1 / -1; }
++  .desktop-utilities { grid-column: 2; grid-row: 1; }
++}

@@ -9,6 +9,7 @@ import SetupScreen from './components/SetupScreen';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import NavBar from './components/NavBar';
+import DesktopShell from './components/DesktopShell';
 import Toast, { GlobalLoader } from './components/Toast';
 import { Suspense, lazy } from 'react';
 
@@ -74,6 +75,7 @@ class ErrorBoundary extends Component {
 function AppInner() {
   const [fullyReady, setFullyReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1025px)').matches);
   const initAuth = useDash(s => s.initAuth);
   const authReady = useDash(s => s.authReady);
   const appReady = useDash(s => s.appReady);
@@ -87,6 +89,13 @@ function AppInner() {
   const activeProjectView = useDash(s => s.activeProjectView);
   const checkNotifications = useDash(s => s.checkNotifications);
   const sidebarCollapsed = useDash(s => s.sidebarCollapsed);
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1025px)');
+    const update = () => setDesktop(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     initAuth();
@@ -144,13 +153,13 @@ function AppInner() {
   );
 
   return (
-    <div id="app" className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
+    <div id="app" className={`app-shell ${desktop ? 'desktop-shell' : ''} ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
       {/* Sidebar Lateral Moderna (Desktop & Drawer Mobile) */}
-      <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
+      {!desktop && <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />}
 
       {/* Área Principal com Header Utilitário e Conteúdo */}
       <div className="app-content">
-        <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />
+        {desktop ? <DesktopShell /> : <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />}
         <Suspense fallback={<GlobalLoader forced />}>
           <main className="main">
             {activePage === 'dashboard' && <DashboardPage />}
@@ -169,7 +178,7 @@ function AppInner() {
       </div>
 
       {/* Navegação Mobile Inferior */}
-      <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />
+      {!desktop && <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />}
       
       <Suspense fallback={null}>
         {!!activeProjectView && <ProjectView />}

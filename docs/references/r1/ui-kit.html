@@ -1,0 +1,11 @@
+﻿<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>R1 UiKit isolada</title><div id="root"></div><script type="module">
+import React from '/node_modules/.vite/deps/react.js';
+import ReactDOM from '/node_modules/.vite/deps/react-dom_client.js';
+import '/src/index.css';
+import UiKit from '/src/pages/UiKitPage.jsx';
+import Toast from '/src/components/Toast.jsx';
+import ConfirmModal from '/src/components/ConfirmModal.jsx';
+document.body.classList.toggle('light', localStorage.getItem('theme') === 'light');
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(React.Fragment,null,React.createElement(UiKit),React.createElement(Toast),React.createElement(ConfirmModal)));
+</script></html>
+

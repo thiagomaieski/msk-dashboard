@@ -1,0 +1,65 @@
+async page => {
+  const base = 'C:/Users/thi5x/Downloads/Dashboard Maieski/react-app/docs/references/r2/';
+  const options = [
+    ['Novo Lead', 'lead'], ['Novo Projeto', 'projeto'], ['Novo Cliente', 'cliente'],
+    ['Nova Recorrência', 'recorrencia'], ['Nova Receita Negócio', 'negocioReceita'],
+    ['Nova Despesa Pessoal', 'pessoalDespesa'], ['Novo Fechamento', 'novoFechamento'],
+    ['Nova Despesa Negócio', 'negocioDespesa'],
+  ];
+  const results = [];
+  await page.keyboard.press('Escape');
+  await page.locator('.desktop-tabs').getByRole('link', { name: 'Dashboard', exact: true }).click();
+  for (const theme of ['dark', 'light']) {
+    if (await page.evaluate(() => window.r2Store.getState().theme) !== theme) {
+      await page.getByRole('button', { name: `Usar tema ${theme === 'dark' ? 'escuro' : 'claro'}`, exact: true }).click();
+    }
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.mouse.move(900, 850);
+    await page.waitForTimeout(800);
+    if (await page.locator('.dash-fab-container').isVisible()) throw Error('FAB visível no desktop');
+    await page.screenshot({ path: base + `create-adjusted-${theme}-1440.png` });
+    await page.getByRole('button', { name: 'Criar', exact: true }).click();
+    const labels = await page.locator('.desktop-create-menu button').allTextContents();
+    if (labels.length !== 8 || labels.includes('Nova Receita Pessoal')) throw Error(JSON.stringify(labels));
+    await page.mouse.move(900, 850);
+    await page.screenshot({ path: base + `create-adjusted-menu-${theme}-1440.png` });
+    await page.keyboard.press('Escape');
+    for (const [label, type] of options) {
+      await page.getByRole('button', { name: 'Criar', exact: true }).click();
+      await page.locator('.desktop-create-menu').getByRole('button', { name: label, exact: true }).click();
+      await page.waitForFunction(t => window.r2Store.getState().modalOpen && window.r2Store.getState().modalType === t, type);
+      const form = type === 'lead' ? page.getByRole('dialog') : page.locator('.modal-overlay.open');
+      await form.waitFor({ state: 'visible' });
+      await page.waitForTimeout(500);
+      if (type === 'pessoalDespesa') await form.getByText('Despesa no cartão de crédito', { exact: true }).waitFor();
+      if (type === 'negocioDespesa') await form.getByText('Saída de caixa', { exact: true }).waitFor();
+      await page.screenshot({ path: base + `create-adjusted-${type}-${theme}.png` });
+      results.push({ theme, label, type, rendered: true });
+      if (type === 'lead') await form.getByRole('button', { name: 'Cancelar', exact: true }).click();
+      else await page.locator('.modal-close').click();
+      await page.waitForFunction(() => !window.r2Store.getState().modalOpen);
+      await page.waitForTimeout(350);
+    }
+    await page.locator('.desktop-tabs').getByRole('link', { name: 'Finanças Pessoais', exact: true }).click();
+    await page.getByRole('button', { name: 'Criar: Nova Despesa Pessoal', exact: true }).click();
+    const menu = page.locator('.desktop-create-menu');
+    if (await menu.getByRole('button').count() !== 8) throw Error('Duplicidade contextual');
+    await menu.getByRole('button').first().click();
+    await page.waitForFunction(() => window.r2Store.getState().modalType === 'pessoalDespesa');
+    await page.locator('.modal-close').click();
+    await page.locator('.desktop-tabs').getByRole('link', { name: 'Dashboard', exact: true }).click();
+    results.push({ theme, contextualPersonalExpense: true, menuItems: 8 });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(600);
+  if (!await page.locator('.dash-fab-container').isVisible()) throw Error('FAB mobile ausente');
+  await page.locator('.dash-fab-container > button').click();
+  const mobileLabels = await page.locator('.dash-fab-menu').innerText();
+  if (!mobileLabels.includes('Novo Fechamento') || !mobileLabels.includes('Despesa')) throw Error(mobileLabels);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: base + 'create-adjusted-mobile-preserved-390.png' });
+  await page.locator('.dash-fab-container > button').click();
+  results.push({ mobileFabPreserved: true, mobileLabels });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  return results;
+}

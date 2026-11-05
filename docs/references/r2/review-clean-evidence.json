@@ -1,0 +1,15 @@
+{
+  "method": "Playwright MCP, App real com fixture local, 1440x900; networkidle, fonts.ready, fim das transicoes finitas e dois requestAnimationFrame; mouse em 900,850",
+  "dark": {
+    "url": "/", "activePage": "dashboard", "theme": "dark", "localStorageTheme": "dark", "bodyLight": false,
+    "modal": false, "confirm": false, "project": false, "menus": 0, "dialogs": 0,
+    "activeTabs": ["Dashboard"], "hoverTabs": [], "finiteRunningAnimations": 0, "fullScreenFixed": [],
+    "bodyBackground": "rgb(17, 21, 19)", "activeTabBackground": "rgba(255, 255, 255, 0.16)"
+  },
+  "light": {
+    "url": "/", "activePage": "dashboard", "theme": "light", "localStorageTheme": "light", "bodyLight": true,
+    "modal": false, "confirm": false, "project": false, "menus": 0, "dialogs": 0,
+    "activeTabs": ["Dashboard"], "hoverTabs": [], "finiteRunningAnimations": 0, "fullScreenFixed": [],
+    "bodyBackground": "rgb(233, 236, 231)", "activeTabBackground": "rgb(23, 27, 25)"
+  }
+}
