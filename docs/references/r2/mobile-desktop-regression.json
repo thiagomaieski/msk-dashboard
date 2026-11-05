@@ -1,0 +1,114 @@
+[
+  {
+    "theme": "dark",
+    "path": "/",
+    "active": "dashboard",
+    "tab": "Dashboard",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/leads",
+    "active": "leads",
+    "tab": "Leads",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/projetos",
+    "active": "projetos",
+    "tab": "Projetos",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/clientes",
+    "active": "clientes",
+    "tab": "Clientes",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/recorrencia",
+    "active": "recorrencia",
+    "tab": "Recorrência",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/financas-negocio",
+    "active": "financas-negocio",
+    "tab": "Finanças Negócio",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/financas-pessoais",
+    "active": "financas-pessoais",
+    "tab": "Finanças Pessoais",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "path": "/uptime",
+    "active": "uptime",
+    "tab": "Uptime",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/",
+    "active": "dashboard",
+    "tab": "Dashboard",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/leads",
+    "active": "leads",
+    "tab": "Leads",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/projetos",
+    "active": "projetos",
+    "tab": "Projetos",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/clientes",
+    "active": "clientes",
+    "tab": "Clientes",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/recorrencia",
+    "active": "recorrencia",
+    "tab": "Recorrência",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/financas-negocio",
+    "active": "financas-negocio",
+    "tab": "Finanças Negócio",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/financas-pessoais",
+    "active": "financas-pessoais",
+    "tab": "Finanças Pessoais",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "path": "/uptime",
+    "active": "uptime",
+    "tab": "Uptime",
+    "overflow": false
+  }
+]

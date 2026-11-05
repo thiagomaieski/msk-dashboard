@@ -9,6 +9,7 @@ import logoLight from '../assets/dashboard-logo-light-theme.svg';
 import logoDark from '../assets/dashboard-logo.svg';
 import avatarFallback from '../assets/non-profile-photo.png';
 import './DesktopShell.css';
+import './MobileShell.css';
 
 const MODULES = [
   ['dashboard', 'Dashboard'], ['leads', 'Leads'], ['projetos', 'Projetos'],
@@ -33,7 +34,8 @@ const SETTINGS_ALIASES = {
   'cfg-notificacoes': 'cfg-sistema', 'cfg-sobre': 'cfg-sistema',
 };
 
-export default function DesktopShell() {
+// One set of navigation and creation contracts, with separate mobile presentation.
+export default function DesktopShell({ mobile = false }) {
   const activePage = useDash(s => s.activePage);
   const goTo = useDash(s => s.goTo);
   const openModal = useDash(s => s.openModal);
@@ -51,6 +53,7 @@ export default function DesktopShell() {
   const accountRef = useRef(null);
   const createRef = useRef(null);
   const notifRef = useRef(null);
+  const moreRef = useRef(null);
   const tabsRef = useRef(null);
   const unread = (data.notificacoes || []).filter(n => !n.lida).length;
   const currentCreate = CREATE.find(([page]) => page === activePage);
@@ -58,25 +61,43 @@ export default function DesktopShell() {
   useEffect(() => {
     const onKey = e => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        if (mobile && (useDash.getState().modalOpen || useDash.getState().confirm || useDash.getState().activeProjectView)) return;
         e.preventDefault();
         setPopover(null);
         setSearchOpen(open => !open);
       }
       if (e.key === 'Escape' && popover) {
         setPopover(null);
-        (popover === 'create' ? createRef : popover === 'notifications' ? notifRef : accountRef).current?.focus();
+        (popover === 'create' ? createRef : popover === 'more' ? moreRef : popover === 'notifications' ? notifRef : accountRef).current?.focus();
       }
     };
     const onOutside = e => {
       if (!e.target.closest('.desktop-popover-anchor')) setPopover(null);
     };
     document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onOutside);
+    document.addEventListener('pointerdown', onOutside);
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('pointerdown', onOutside);
     };
-  }, [popover]);
+  }, [mobile, popover]);
+
+  useEffect(() => {
+    if (!mobile || !popover) return;
+    const trigger = popover === 'create' ? createRef : popover === 'more' ? moreRef : popover === 'notifications' ? notifRef : accountRef;
+    const panel = trigger.current?.parentElement.querySelector('.desktop-popover, .notif-dropdown');
+    panel?.querySelector('a, button')?.focus({ preventScroll: true });
+    const onFocus = e => {
+      if (!e.target.closest('.desktop-popover-anchor')) setPopover(null);
+    };
+    const onHistory = () => setPopover(null);
+    document.addEventListener('focusin', onFocus);
+    window.addEventListener('popstate', onHistory);
+    return () => {
+      document.removeEventListener('focusin', onFocus);
+      window.removeEventListener('popstate', onHistory);
+    };
+  }, [mobile, popover]);
 
   useEffect(() => {
     // Scroll only the tab strip; never move the page or its scroll position.
@@ -99,6 +120,11 @@ export default function DesktopShell() {
   };
   const togglePopover = name => setPopover(value => value === name ? null : name);
   const openSearch = () => { setPopover(null); setSearchOpen(true); };
+  const create = type => {
+    if (mobile) createRef.current?.focus({ preventScroll: true });
+    setPopover(null);
+    openModal(type);
+  };
   const normalizedTab = SETTINGS_ALIASES[configActiveTab] || configActiveTab;
 
   return <>
@@ -144,12 +170,24 @@ export default function DesktopShell() {
         <button ref={createRef} className="desktop-dock-button" aria-label={currentCreate ? `Criar: ${currentCreate[2]}` : 'Criar'} data-tip={currentCreate?.[2] || 'Criar'}
           aria-expanded={popover === 'create'} onClick={() => togglePopover('create')}><Icon name="plus" size={18} /></button>
         {popover === 'create' && <div className="desktop-popover desktop-create-menu" aria-label="Criar">
-          {currentCreate && <><button onClick={() => { setPopover(null); openModal(currentCreate[1]); }}>{currentCreate[2]}<span>Atual</span></button><div className="desktop-menu-divider" /></>}
-          {CREATE.filter(item => item !== currentCreate).map(([, modal, label]) => <button key={modal} onClick={() => { setPopover(null); openModal(modal); }}>{label}</button>)}
+          {currentCreate && <><button onClick={() => create(currentCreate[1])}>{currentCreate[2]}<span>Atual</span></button><div className="desktop-menu-divider" /></>}
+          {CREATE.filter(item => item !== currentCreate).map(([, modal, label]) => <button key={modal} onClick={() => create(modal)}>{label}</button>)}
         </div>}
       </div>
-      <a className="desktop-dock-button" href="/lixeira" aria-label="Lixeira" data-tip="Lixeira" aria-current={activePage === 'lixeira' ? 'page' : undefined} onClick={e => navigate(e, 'lixeira')}><Icon name="trash" size={18} /></a>
-      {FEATURES.FEEDBACK && <button className="desktop-dock-button" aria-label="Feedback e suporte" data-tip="Feedback e suporte" onClick={() => openModal('feedback')}><Icon name="help-circle" size={18} /></button>}
+      {mobile ? <div className="desktop-popover-anchor">
+        <button ref={moreRef} className="desktop-dock-button" aria-label="Mais opções" aria-expanded={popover === 'more'}
+          data-active={activePage === 'lixeira' || activePage === 'ui-kit' || undefined} onClick={() => togglePopover('more')}>
+          <Icon name="more-horizontal" size={18} />
+        </button>
+        {popover === 'more' && <div className="desktop-popover mobile-more-menu" aria-label="Mais opções">
+          <a href="/lixeira" aria-current={activePage === 'lixeira' ? 'page' : undefined} onClick={e => navigate(e, 'lixeira')}>Lixeira</a>
+          {FEATURES.FEEDBACK && <button onClick={() => { setPopover(null); openModal('feedback'); }}>Feedback e suporte</button>}
+          {import.meta.env.DEV && <a href="/ui-kit" onClick={e => navigate(e, 'ui-kit')}>UI Kit</a>}
+        </div>}
+      </div> : <>
+        <a className="desktop-dock-button" href="/lixeira" aria-label="Lixeira" data-tip="Lixeira" aria-current={activePage === 'lixeira' ? 'page' : undefined} onClick={e => navigate(e, 'lixeira')}><Icon name="trash" size={18} /></a>
+        {FEATURES.FEEDBACK && <button className="desktop-dock-button" aria-label="Feedback e suporte" data-tip="Feedback e suporte" onClick={() => openModal('feedback')}><Icon name="help-circle" size={18} /></button>}
+      </>}
       <div className="desktop-dock-divider" />
       <a className="desktop-dock-button" href="/configuracoes" aria-label="Configurações" data-tip="Configurações" aria-current={activePage === 'configuracoes' ? 'page' : undefined} onClick={e => navigate(e, 'configuracoes')}><Icon name="settings" size={18} /></a>
       <button className="desktop-dock-button" aria-label={`Usar tema ${theme === 'dark' ? 'claro' : 'escuro'}`} data-tip={`Tema ${theme === 'dark' ? 'claro' : 'escuro'}`} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} /></button>
@@ -160,6 +198,6 @@ export default function DesktopShell() {
       {SETTINGS.map(([id, label]) => <button key={id} aria-current={normalizedTab === id ? 'page' : undefined} onClick={() => setConfigTab(id)}>{label}</button>)}
       {FEATURES.SAAS_ADMIN && userRole === 'admin' && <button onClick={() => setConfigTab('cfg-admin')}>Administração</button>}
     </nav>}
-    <CommandPalette isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+    <CommandPalette mobile={mobile} isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
   </>;
 }

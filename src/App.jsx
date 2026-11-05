@@ -6,9 +6,6 @@ import { FEATURES } from './config/features';
 import LoadingScreen from './components/LoadingScreen';
 import AuthScreen from './components/AuthScreen';
 import SetupScreen from './components/SetupScreen';
-import Sidebar from './components/Sidebar';
-import Topbar from './components/Topbar';
-import NavBar from './components/NavBar';
 import DesktopShell from './components/DesktopShell';
 import Toast, { GlobalLoader } from './components/Toast';
 import { Suspense, lazy } from 'react';
@@ -74,7 +71,6 @@ class ErrorBoundary extends Component {
 
 function AppInner() {
   const [fullyReady, setFullyReady] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1025px)').matches);
   const initAuth = useDash(s => s.initAuth);
   const authReady = useDash(s => s.authReady);
@@ -153,13 +149,11 @@ function AppInner() {
   );
 
   return (
-    <div id="app" className={`app-shell ${desktop ? 'desktop-shell' : ''} ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
-      {/* Sidebar Lateral Moderna (Desktop & Drawer Mobile) */}
-      {!desktop && <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />}
+    <div id="app" className={`app-shell ${desktop ? 'desktop-shell' : 'mobile-shell'} ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
 
       {/* Área Principal com Header Utilitário e Conteúdo */}
       <div className="app-content">
-        {desktop ? <DesktopShell /> : <Topbar onOpenMobile={() => setMobileMenuOpen(true)} />}
+        <DesktopShell mobile={!desktop} />
         <Suspense fallback={<GlobalLoader forced />}>
           <main className="main">
             {activePage === 'dashboard' && <DashboardPage />}
@@ -177,12 +171,10 @@ function AppInner() {
         </Suspense>
       </div>
 
-      {/* Navegação Mobile Inferior */}
-      {!desktop && <NavBar onOpenDrawer={() => setMobileMenuOpen(true)} />}
       
       <Suspense fallback={null}>
         {!!activeProjectView && <ProjectView />}
-        {modalOpen && <Modal />}
+        {modalOpen && <Modal mobile={!desktop} />}
         {!!confirm && <ConfirmModal />}
       </Suspense>
       <GlobalLoader />

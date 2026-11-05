@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDash, fmtBRL } from '../store/useStore';
 import { FEATURES } from '../config/features';
 import { Kbd } from './ui/Kbd';
+import { useDialogFocus } from './ui/useDialogFocus';
 
 const ALL_PAGES = [
   { id: 'dashboard', label: 'Dashboard', group: 'Geral', icon: 'grid' },
@@ -38,11 +39,13 @@ function onlyDigits(str = '') {
   return (str || '').toString().replace(/\D/g, '');
 }
 
-export default function CommandPalette({ isOpen, onClose }) {
+export default function CommandPalette({ isOpen, onClose, mobile = false }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  const panelRef = useRef(null);
+  useDialogFocus(mobile && isOpen, panelRef, onClose);
 
   const goTo = useDash(s => s.goTo);
   const openModal = useDash(s => s.openModal);
@@ -319,7 +322,7 @@ export default function CommandPalette({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div
+    <div className={mobile ? 'mobile-command-overlay' : undefined}
       style={{
         position: 'fixed',
         inset: 0,
@@ -334,7 +337,7 @@ export default function CommandPalette({ isOpen, onClose }) {
       }}
       onClick={onClose}
     >
-      <div
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Busca global" tabIndex={-1}
         style={{
           width: '100%',
           maxWidth: 600,
@@ -390,7 +393,7 @@ export default function CommandPalette({ isOpen, onClose }) {
               </svg>
             </button>
           )}
-          <Kbd>ESC</Kbd>
+          {mobile ? <button type="button" className="mobile-command-close" aria-label="Fechar busca" onClick={onClose}><Kbd>ESC</Kbd></button> : <Kbd>ESC</Kbd>}
         </div>
 
         {/* Results List */}

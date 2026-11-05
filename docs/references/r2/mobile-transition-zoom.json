@@ -1,0 +1,161 @@
+[
+  {
+    "width": 768,
+    "desktop": false,
+    "headers": 1,
+    "old": 0,
+    "overflow": false,
+    "dock": {
+      "x": 248.5,
+      "y": 826,
+      "width": 267,
+      "height": 62,
+      "top": 826,
+      "right": 515.5,
+      "bottom": 888,
+      "left": 248.5
+    },
+    "header": {
+      "x": 14,
+      "y": 14,
+      "width": 736,
+      "height": 112,
+      "top": 14,
+      "right": 750,
+      "bottom": 126,
+      "left": 14
+    }
+  },
+  {
+    "width": 900,
+    "desktop": false,
+    "headers": 1,
+    "old": 0,
+    "overflow": false,
+    "dock": {
+      "x": 316.5,
+      "y": 826,
+      "width": 267,
+      "height": 62,
+      "top": 826,
+      "right": 583.5,
+      "bottom": 888,
+      "left": 316.5
+    },
+    "header": {
+      "x": 14,
+      "y": 14,
+      "width": 872,
+      "height": 112,
+      "top": 14,
+      "right": 886,
+      "bottom": 126,
+      "left": 14
+    }
+  },
+  {
+    "width": 1024,
+    "desktop": false,
+    "headers": 1,
+    "old": 0,
+    "overflow": false,
+    "dock": {
+      "x": 378.5,
+      "y": 826,
+      "width": 267,
+      "height": 62,
+      "top": 826,
+      "right": 645.5,
+      "bottom": 888,
+      "left": 378.5
+    },
+    "header": {
+      "x": 14,
+      "y": 14,
+      "width": 996,
+      "height": 112,
+      "top": 14,
+      "right": 1010,
+      "bottom": 126,
+      "left": 14
+    }
+  },
+  {
+    "width": 1025,
+    "desktop": true,
+    "headers": 1,
+    "old": 0,
+    "overflow": false,
+    "dock": {
+      "x": 20,
+      "y": 312.5,
+      "width": 62,
+      "height": 275,
+      "top": 312.5,
+      "right": 82,
+      "bottom": 587.5,
+      "left": 20
+    },
+    "header": {
+      "x": 96.390625,
+      "y": 22,
+      "width": 912.21875,
+      "height": 134,
+      "top": 22,
+      "right": 1008.609375,
+      "bottom": 156,
+      "left": 96.390625
+    }
+  },
+  {
+    "width": 1440,
+    "desktop": true,
+    "headers": 1,
+    "old": 0,
+    "overflow": false,
+    "dock": {
+      "x": 20,
+      "y": 312.5,
+      "width": 62,
+      "height": 275,
+      "top": 312.5,
+      "right": 82,
+      "bottom": 587.5,
+      "left": 20
+    },
+    "header": {
+      "x": 103.03125,
+      "y": 22,
+      "width": 1313.9375,
+      "height": 50,
+      "top": 22,
+      "right": 1416.96875,
+      "bottom": 72,
+      "left": 103.03125
+    }
+  },
+  {
+    "zoom": 125,
+    "overflow": false,
+    "dock": {
+      "x": 17.5,
+      "y": 708,
+      "width": 321,
+      "height": 77,
+      "top": 708,
+      "right": 338.5,
+      "bottom": 785,
+      "left": 17.5
+    },
+    "menu": {
+      "x": 15.5,
+      "y": 237,
+      "width": 325,
+      "height": 457,
+      "top": 237,
+      "right": 340.5,
+      "bottom": 694,
+      "left": 15.5
+    }
+  }
+]

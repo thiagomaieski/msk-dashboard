@@ -1,0 +1,92 @@
+async (page) => {
+
+  const dir = 'C:/Users/thi5x/Downloads/Dashboard Maieski/react-app/docs/references/r2/';
+  const { width, height } = page.viewportSize();
+  const theme = await page.evaluate(() => window.r2Store.getState().theme);
+  const results = { width, height, theme, routes: [], forms: [], utilities: [] };
+  const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
+  const shot = async name => { await page.mouse.move(0, height / 2); await page.waitForTimeout(450); await page.screenshot({ path: dir + name + '.png' }); };
+  const inViewport = async selector => page.locator(selector).evaluate(e => { const r=e.getBoundingClientRect(); return r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 && r.bottom <= innerHeight + 1; });
+  const nav = page.getByRole('navigation', { name: 'Módulos', exact: true });
+  const modules = [['Dashboard','dashboard','/'],['Leads','leads','/leads'],['Projetos','projetos','/projetos'],['Clientes','clientes','/clientes'],['Recorrência','recorrencia','/recorrencia'],['Finanças Negócio','financas-negocio','/financas-negocio'],['Finanças Pessoais','financas-pessoais','/financas-pessoais'],['Uptime','uptime','/uptime']];
+  for (const [label,id,path] of modules) {
+    await nav.getByRole('link', {name:label,exact:true}).click();
+    await page.locator('main > *').first().waitFor();
+    await page.waitForTimeout(500);
+    const state = await page.evaluate(() => {
+      const strip=document.querySelector('.desktop-tabs'), active=strip.querySelector('[aria-current="page"]');
+      const a=active.getBoundingClientRect(), s=strip.getBoundingClientRect();
+      return { path:location.pathname, active:window.r2Store.getState().activePage, label:active.textContent, tabVisible:a.left>=s.left-1&&a.right<=s.right+1, overflow:document.documentElement.scrollWidth>innerWidth, content:document.querySelector('main').innerText.slice(0,160), scroll:strip.scrollLeft };
+    });
+    assert(state.path===path && state.active===id && state.label===label && state.tabVisible && !state.overflow && state.content.length>0, JSON.stringify(state));
+    results.routes.push(state);
+    await shot(`mobile-route-${id}-${theme}-${width}`);
+  }
+  await page.goBack(); await page.waitForTimeout(200);
+  assert(await page.evaluate(()=>window.r2Store.getState().activePage==='financas-pessoais'&&location.pathname==='/financas-pessoais'), 'Back');
+  await page.goForward(); await page.waitForTimeout(200);
+  assert(await page.evaluate(()=>window.r2Store.getState().activePage==='uptime'&&location.pathname==='/uptime'), 'Forward');
+  results.utilities.push('history back/forward');
+  await nav.getByRole('link',{name:'Dashboard',exact:true}).click(); await page.waitForTimeout(500);
+  await shot(`mobile-${theme}-${width}`);
+  await page.getByRole('button',{name:'Mais opções',exact:true}).click();
+  assert(await inViewport('.mobile-more-menu'), 'More bounds');
+  await shot(`mobile-dock-open-${theme}-${width}`);
+  await page.locator('.mobile-more-menu').getByRole('link',{name:'Lixeira',exact:true}).click(); await page.waitForTimeout(400);
+  assert(await page.evaluate(()=>location.pathname==='/lixeira'&&window.r2Store.getState().activePage==='lixeira'), 'Trash');
+  await page.locator('.desktop-action-dock').getByRole('link',{name:'Configurações',exact:true}).click(); await page.waitForTimeout(400);
+  for (const [label,id] of [['Conta','cfg-conta'],['Empresa e Fiscal','cfg-empresa'],['Categorias e Finanças','cfg-financas'],['Sistema','cfg-sistema']]) {
+    await page.getByRole('navigation',{name:'Seções de configurações'}).getByRole('button',{name:label,exact:true}).click();
+    assert(await page.evaluate(id=>window.r2Store.getState().configActiveTab===id,id), 'Settings '+id);
+  }
+  await page.getByRole('link',{name:'Voltar ao sistema',exact:true}).click();
+  results.utilities.push('more, trash, settings four sections, return');
+  await nav.getByRole('link',{name:'Dashboard',exact:true}).click(); await page.waitForTimeout(350);
+  for (const name of ['Notificações','Menu de conta','Mais opções']) {
+    const button=page.getByRole('button',{name,exact:true}); await button.click();
+    const selector=name==='Notificações'?'.notif-dropdown':name==='Menu de conta'?'.desktop-account-menu':'.mobile-more-menu';
+    assert(await inViewport(selector), name+' bounds');
+    await shot(`mobile-${name==='Notificações'?'notifications':name==='Menu de conta'?'account':'more'}-${theme}-${width}`);
+    await page.keyboard.press('Escape');
+    assert(await button.evaluate(e=>document.activeElement===e&&e.getAttribute('aria-expanded')==='false'), name+' escape focus');
+    await button.click(); await page.locator('main').click({position:{x:5,y:5}});
+    assert(await button.getAttribute('aria-expanded')==='false', name+' outside');
+  }
+  results.utilities.push('notifications/account/more bounds, Escape focus, outside');
+  await page.getByRole('button',{name:'Busca global',exact:true}).click();
+  await page.getByPlaceholder('Buscar cliente (Enter copia CNPJ), meu cnpj, páginas, leads, projetos...').fill('Clientes');
+  assert(await inViewport('.mobile-command-overlay [role="dialog"]'), 'Search bounds');
+  await shot(`mobile-search-${theme}-${width}`);
+  await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+  assert(await page.evaluate(()=>location.pathname==='/clientes'), 'Search destination');
+  await page.keyboard.press('Control+k'); await page.getByRole('button',{name:'Fechar busca',exact:true}).click();
+  await page.keyboard.press('Control+k'); await page.keyboard.press('Escape');
+  results.utilities.push('search query, Enter, Ctrl+K, touch close, Escape');
+  await nav.getByRole('link',{name:'Dashboard',exact:true}).click(); await page.waitForTimeout(300);
+  const forms=[['Novo Lead','lead'],['Novo Projeto','projeto'],['Novo Cliente','cliente'],['Nova Recorrência','recorrencia'],['Nova Receita Negócio','negocioReceita'],['Nova Despesa Pessoal','pessoalDespesa'],['Novo Fechamento','novoFechamento'],['Nova Despesa Negócio','negocioDespesa']];
+  for (const [label,type] of forms) {
+    await page.locator('.desktop-action-dock').getByRole('button',{name:'Criar',exact:true}).click();
+    assert(await inViewport('.desktop-create-menu'), 'Create bounds');
+    assert(await page.locator('.desktop-create-menu button').count()===8, 'Eight creations');
+    if(type==='lead') await shot(`mobile-create-menu-${theme}-${width}`);
+    await page.locator('.desktop-create-menu').getByRole('button',{name:label,exact:true}).click();
+    const selector=type==='lead'?'.ui-drawer-panel':'.modal';
+    await page.locator(selector).waitFor(); await page.waitForTimeout(350);
+    assert(await page.evaluate(t=>window.r2Store.getState().modalType===t,type), 'Modal contract '+type);
+    assert(await inViewport(selector), 'Form bounds '+type);
+    const details=await page.locator(selector).evaluate(e=>({width:e.clientWidth,scrollWidth:e.scrollWidth,focusWithin:e.contains(document.activeElement),text:e.innerText.slice(0,100)}));
+    assert(details.focusWithin, 'Focus '+type);
+    await shot(`mobile-form-${type}-${theme}-${width}`);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    assert(await page.evaluate(()=>!window.r2Store.getState().modalOpen), 'Form Escape '+type);
+    assert(await page.getByRole('button',{name:'Criar',exact:true}).evaluate(e=>document.activeElement===e), 'Form return focus '+type);
+    results.forms.push({type,...details});
+  }
+  await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));
+  const clearance=await page.evaluate(()=>({mainBottom:document.querySelector('main').getBoundingClientRect().bottom,dockTop:document.querySelector('.desktop-action-dock').getBoundingClientRect().top}));
+  assert(clearance.mainBottom<=clearance.dockTop, 'Dock end clearance'); results.clearance=clearance;
+  await shot(`mobile-bottom-${theme}-${width}`);
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.evaluate(result => { window.r22Results = result; }, results);
+  return results;
+}

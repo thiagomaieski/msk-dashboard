@@ -1,0 +1,15 @@
+{
+  "clientVisible": true,
+  "noOverlap": true,
+  "trapped": true,
+  "box": {
+    "x": 20,
+    "y": 64,
+    "width": 320,
+    "height": 640
+  },
+  "scroll": {
+    "tabs": 489,
+    "window": 0
+  }
+}

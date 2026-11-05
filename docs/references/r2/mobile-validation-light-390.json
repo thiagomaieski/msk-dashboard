@@ -1,0 +1,147 @@
+{
+  "width": 390,
+  "height": 844,
+  "theme": "light",
+  "routes": [
+    {
+      "path": "/",
+      "active": "dashboard",
+      "label": "Dashboard",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Bom dia, usuário!\n\n5 de Novembro de 2026\n\nSistema Online\nABORDAGENS HOJE\n0/10\nFaltam 10\nFECHAMENTO DO MÊS\nEm dia ✓\n0 NF(s) • 0 mens.\nPendentes em Nov/2026\nDAS &",
+      "scroll": 0
+    },
+    {
+      "path": "/leads",
+      "active": "leads",
+      "label": "Leads",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Leads\n0/10 hoje\n0\n0\n0\n0\n0\n0\n0\n\tNOME / EMPRESA ↕\tTELEFONE ↕\tNICHO ↕\tSITE / SOCIAL ↕\tSTATUS ↕\tQUALIFICAÇÃO ↕\t\n\n\nNenhum lead encontrado\n\nNenhum lead encontrado",
+      "scroll": 0
+    },
+    {
+      "path": "/projetos",
+      "active": "projetos",
+      "label": "Projetos",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Projetos\nTodos os status\nTodos pagamentos\nTodos os tipos\nTodas as origens\nMais recentes\nComece seu primeiro projeto\nOrganize seu histórico, prazos e pagamentos ",
+      "scroll": 40
+    },
+    {
+      "path": "/clientes",
+      "active": "clientes",
+      "label": "Clientes",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Clientes\n0 cliente(s)\nNovo fechamento\nNovo Cliente\nAtivos\n0\nInativos\n0\nTodos\n0\nNome A-Z\nNenhum cliente cadastrado\nAdicione seus clientes para vincular projetos,",
+      "scroll": 124
+    },
+    {
+      "path": "/recorrencia",
+      "active": "recorrencia",
+      "label": "Recorrência",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Fechamento do Mês\nNovembro / 2026\nRECEITA MENSAL (MRR)\nR$ 0,00\nCLIENTES ATIVOS\n0\nRECEITA ANUAL ESTIMADA (ARR)\nR$ 0,00\nNovembro / 2026:\n0 de 0 NFs emitidas\n•\n0 p",
+      "scroll": 220
+    },
+    {
+      "path": "/financas-negocio",
+      "active": "financas-negocio",
+      "label": "Finanças Negócio",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Finanças Negócio\nImportar Dados\nExportar CSV\nPERÍODO:\n2026\nNovembro\nEste Mês\nMês Passado\nEste Ano\nRECEITA BRUTA\nR$ 0,00\nRECEITA LÍQUIDA REAL\nR$ 0,00\nTOTAL DESPE",
+      "scroll": 343
+    },
+    {
+      "path": "/financas-pessoais",
+      "active": "financas-pessoais",
+      "label": "Finanças Pessoais",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Finanças Pessoais\nImportar Dados\nExportar CSV\nPERÍODO:\n2026\nNovembro\nColunas\nExtrato\nTOTAL RECEITAS\nR$ 0,00\nSALDO\nR$ 0,00\nTOTAL DESPESAS\nR$ 0,00\nMETA DE INVESTI",
+      "scroll": 459
+    },
+    {
+      "path": "/uptime",
+      "active": "uptime",
+      "label": "Uptime",
+      "tabVisible": true,
+      "overflow": false,
+      "content": "Monitor de Uptime\nAcompanhe a disponibilidade dos seus sites em tempo real.\nAtualizar\nTOTAL MONITORADO\n0\nONLINE\n0\nOFFLINE\n0\nAGUARDANDO\n0\nAdicionar Site\nURL DO S",
+      "scroll": 459
+    }
+  ],
+  "forms": [
+    {
+      "type": "lead",
+      "width": 364,
+      "scrollWidth": 364,
+      "focusWithin": true,
+      "text": "Novo Lead\n\nPreencha os dados do novo lead\n\n1. RESUMO\nNOME / EMPRESA *\nTELEFONE / WHATSAPP\nSTATUS\nNov"
+    },
+    {
+      "type": "projeto",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Novo Projeto\nCLIENTE\n-- Selecione um cliente --\nCadastre clientes em Negócio → Clientes antes de cri"
+    },
+    {
+      "type": "cliente",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Novo Cliente\nNOME / EMPRESA *\nCNPJ / CPF\nE-MAIL\nTELEFONE\nCOMO CONHECEU\nInstagram\nSEGMENTO\nENDEREÇO C"
+    },
+    {
+      "type": "recorrencia",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Novo Cliente de Recorrência\nCLIENTE\n-- Selecione um cliente --\nCadastre clientes em Negócio → Client"
+    },
+    {
+      "type": "negocioReceita",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Nova Receita Negócio\nNova Receita — Negócio\nEntrada de caixa\nDATA\nVALOR BRUTO\nR$\nVALOR LÍQUIDO\nR$\nDE"
+    },
+    {
+      "type": "pessoalDespesa",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Nova Despesa Pessoal\nDATA\nVALOR\nR$\nDESCRIÇÃO\nCATEGORIA\nSelecione...\nGerenciar categorias\nDespesa no "
+    },
+    {
+      "type": "novoFechamento",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Novo Fechamento\n1. Cliente\n2. Projeto\n3. Recorrência\n4. Receita\n5. Revisão\n+ Criar novo cliente\nSele"
+    },
+    {
+      "type": "negocioDespesa",
+      "width": 388,
+      "scrollWidth": 388,
+      "focusWithin": true,
+      "text": "Nova Despesa Negócio\nNova Despesa — Negócio\nSaída de caixa\nDATA\nVALOR BRUTO\nR$\nVALOR LÍQUIDO\nR$\nDESC"
+    }
+  ],
+  "utilities": [
+    "history back/forward",
+    "more, trash, settings four sections, return",
+    "notifications/account/more bounds, Escape focus, outside",
+    "search query, Enter, Ctrl+K, touch close, Escape"
+  ],
+  "clearance": {
+    "mainBottom": 680.0625,
+    "dockTop": 770
+  }
+}

@@ -612,7 +612,7 @@ export function FinancasNegocioPage() {
         </div>
       </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px 300px', gap: 20, marginBottom: 20 }}>
+      <div className="shell-finance-summary" style={{ display: 'grid', gridTemplateColumns: '1fr 300px 300px', gap: 20, marginBottom: 20 }}>
         <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 0 }}>
           {/* Receita Bruta — seta para cima com cifrao: entrada bruta de caixa */}
           <div className="summary-card">

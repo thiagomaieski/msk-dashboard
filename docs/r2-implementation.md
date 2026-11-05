@@ -1,5 +1,7 @@
 # R2.1: Shell desktop para revisão
 
+**Atualização de 05/11/2026: R2.2 implementada para revisão.** O mobile antigo foi substituído pelo cabeçalho com abas e dock inferior. Resultado, arquivos, testes e limitações em [R2.2: Shell mobile](r2-mobile-implementation.md). As seções abaixo preservam o histórico da R2.1; as afirmações de que o mobile continua legado foram superadas pela R2.2. R3 não iniciada.
+
 Atualização posterior: [consolidação da criação desktop](r2-create-adjustment.md). Essa entrega substitui Nova Receita Pessoal por Nova Despesa Pessoal no dock, transfere Novo Fechamento e Despesa Negócio para ele e oculta o flutuante somente no desktop. As descrições e capturas abaixo registram a entrega original; consulte a atualização para o estado final do menu.
 
 Data: 05/11/2026. Implementação limitada ao Shell desktop. R2.2 não iniciada. Sem commit, push, instalação de dependências ou alterações no backend.

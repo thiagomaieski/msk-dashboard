@@ -78,7 +78,7 @@ export default function NotificationCenter({ onClose, toggleRef }) {
     <div className="notif-dropdown" ref={dropdownRef}>
       <div className="notif-header">
         <h3>Notificações {sortedNotifs.filter(n => !n.lida).length > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: 'var(--color-accent)', color: 'var(--on-accent)', borderRadius: 99, padding: '1px 7px', marginLeft: 6 }}>{sortedNotifs.filter(n => !n.lida).length}</span>}</h3>
-        <button className="btn-icon" onClick={onClose} style={{ padding: 4 }}>
+        <button className="btn-icon" aria-label="Fechar notificações" onClick={onClose} style={{ padding: 4 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}>
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>

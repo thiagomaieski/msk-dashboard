@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useDialogFocus } from './ui/useDialogFocus';
 import { useDash } from '../store/useStore';
 import ImportFinancasModal from './ImportFinancasModal';
 import ImportLeadsModal from './ImportLeadsModal';
@@ -16,7 +17,7 @@ import LembreteForm, { VerNotaModal } from './modals/LembreteForm';
 import { CsvProgressModal, ChangePasswordForm, PagarRecorrenciaForm, AtividadeManutencaoForm } from './modals/SupportForms';
 import NovoFechamentoModal from './modals/NovoFechamentoModal';
 
-export default function Modal() {
+export default function Modal({ mobile = false }) {
   const modalOpen = useDash(s => s.modalOpen);
   const modalType = useDash(s => s.modalType);
   const modalTitle = useDash(s => s.modalTitle);
@@ -25,6 +26,8 @@ export default function Modal() {
   const data = useDash(s => s.data);
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
+  const panelRef = useRef(null);
+  useDialogFocus(mobile && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 
@@ -50,7 +53,7 @@ export default function Modal() {
       onMouseDown={handleMouseDown} 
       onMouseUp={handleMouseUp}
     >
-      <div className={`modal ${modalSize ? 'modal-' + modalSize : ''} ${modalType === 'lead' ? 'modal-lead' : ''}`}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={modalTitle} tabIndex={-1} className={`modal ${modalSize ? 'modal-' + modalSize : ''} ${modalType === 'lead' ? 'modal-lead' : ''}`}>
         <div className="modal-header">
           <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <div className="modal-title">{modalTitle}</div>

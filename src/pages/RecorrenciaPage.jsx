@@ -206,7 +206,7 @@ export default function RecorrenciaPage() {
       </div>
 
       {/* KPIs Compactos */}
-      <div className="dash-kpi-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 16 }}>
+      <div className="dash-kpi-row shell-recurrence-summary" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 16 }}>
         <div className="recorrencia-kpi-card" style={{ padding: '14px 18px' }}>
           <div className="recorrencia-kpi-header" style={{ marginBottom: 6 }}>
             <span className="recorrencia-kpi-label">Receita Mensal (MRR)</span>

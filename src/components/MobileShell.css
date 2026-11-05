@@ -1,0 +1,103 @@
+/* R2.2: independent presentation below the approved desktop boundary. */
+@media (max-width: 1024px) {
+  .app-shell.mobile-shell { background: transparent; --mobile-dock-space: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .mobile-shell > .app-content {
+    margin: 0; min-width: 0; background: transparent;
+    padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) var(--mobile-dock-space) max(14px, env(safe-area-inset-left, 0px));
+  }
+  .mobile-shell .main { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 0; }
+  /* Only the two legacy outer wrappers with measured viewport overflow. */
+  .mobile-shell .shell-recurrence-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)) !important; }
+  .mobile-shell .shell-finance-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)) !important; }
+  .mobile-shell .dash-fab-container { display: none; }
+  .mobile-shell .desktop-header {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px;
+    margin-bottom: 22px; position: relative; z-index: 90;
+  }
+  .mobile-shell .desktop-brand { display: flex; align-items: center; width: 146px; min-height: 44px; max-width: 100%; }
+  .mobile-shell .desktop-brand img { display: block; width: 100%; max-height: 44px; }
+  .mobile-shell .desktop-utilities { display: flex; align-items: center; gap: 10px; grid-column: 2; grid-row: 1; }
+  .mobile-shell .desktop-icon-button, .mobile-shell .desktop-account {
+    display: grid; place-items: center; position: relative; width: 44px; height: 44px; padding: 3px;
+    border: 1px solid var(--border-light); border-radius: 50%; background: var(--surface-glass); color: var(--text2); cursor: pointer;
+  }
+  .mobile-shell .desktop-account img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+  .mobile-shell .desktop-unread { width: 8px; height: 8px; position: absolute; top: 6px; right: 6px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 2px var(--surface-floating); }
+  .mobile-shell .desktop-tabs {
+    position: relative; grid-column: 1 / -1; grid-row: 2; display: flex; min-width: 0;
+    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    gap: 2px; padding: 4px; border-block: 1px solid var(--border); background: var(--surface-glass);
+    backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%);
+  }
+  .mobile-shell .desktop-tabs::-webkit-scrollbar { display: none; }
+  .mobile-shell .desktop-tabs a {
+    flex: 0 0 auto; display: flex; align-items: center; min-height: 44px; padding: 10px 17px; border-radius: 999px;
+    font-size: 13.5px; line-height: 24px; font-weight: 600; color: var(--text2); text-decoration: none; white-space: nowrap;
+  }
+  .mobile-shell .desktop-tabs a[aria-current="page"] { background: rgba(255,255,255,.16); color: var(--text); }
+  body.light .mobile-shell .desktop-tabs a[aria-current="page"] { background: #171b19; color: #fff; }
+  .mobile-shell .desktop-action-dock {
+    position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; padding: 8px; width: max-content; max-width: calc(100% - 28px);
+    border: 1px solid var(--border-light); border-radius: 999px; background: var(--surface-glass); color: var(--text);
+    backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%); box-shadow: var(--shadow-card); z-index: 90;
+  }
+  .mobile-shell .desktop-dock-button {
+    display: grid; place-items: center; position: relative; flex: 0 0 44px; width: 44px; height: 44px;
+    border: 0; border-radius: 50%; background: transparent; color: var(--text2); text-decoration: none; cursor: pointer;
+  }
+  .mobile-shell .desktop-dock-button[aria-expanded="true"] { background: var(--surface-hover); color: var(--text); }
+  .mobile-shell .desktop-dock-button[aria-current="page"]::before, .mobile-shell .desktop-dock-button[data-active="true"]::before {
+    content: ''; position: absolute; bottom: 2px; left: calc(50% - 2.5px); width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  }
+  .mobile-shell .desktop-dock-divider { width: 1px; height: 24px; margin: 0 4px; background: var(--border-light); }
+  .mobile-shell .desktop-popover {
+    padding: 6px; border: 1px solid var(--border-light); border-radius: 18px; background: var(--surface-floating); color: var(--text); box-shadow: var(--shadow-overlay);
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  /* Anchored to the whole dock/header, never to an icon near a viewport edge. */
+  .mobile-shell .desktop-create-menu, .mobile-shell .mobile-more-menu {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 12px);
+    width: 280px; max-width: calc(100vw / var(--app-scale, 1) - 28px);
+    max-height: calc(100dvh / var(--app-scale, 1) - 120px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
+  }
+  .mobile-shell .desktop-account-menu, .mobile-shell .desktop-header .notif-dropdown {
+    position: absolute; top: 54px; right: 0; left: auto; width: min(360px, 100%);
+    max-height: calc(100dvh / var(--app-scale, 1) - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  .mobile-shell .desktop-account-menu { width: min(280px, 100%); }
+  .mobile-shell .desktop-popover a, .mobile-shell .desktop-popover button {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 10px 12px;
+    border: none; border-radius: 12px; text-align: left; text-decoration: none; font: inherit; font-size: 14px; background: transparent; color: var(--text); cursor: pointer;
+  }
+  .mobile-shell .desktop-popover button span { font-size: 12px; color: var(--accent); }
+  .mobile-shell .desktop-popover [aria-current="page"] { background: var(--surface-hover); }
+  .mobile-shell .desktop-account-name { padding: 10px 12px; font-weight: 600; overflow-wrap: anywhere; }
+  .mobile-shell .desktop-menu-divider { height: 1px; margin: 6px; background: var(--border); }
+  .mobile-shell .desktop-popover .desktop-danger { color: var(--red); }
+  .mobile-shell .desktop-logout-confirm p { margin: 10px 12px; }
+  .mobile-shell .desktop-settings-nav { display: flex; gap: 6px; overflow-x: auto; padding: 4px; margin: 0 0 20px; }
+  .mobile-shell .desktop-settings-nav a, .mobile-shell .desktop-settings-nav button {
+    flex-shrink: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface-glass); color: var(--text2); text-decoration: none; cursor: pointer; font: inherit;
+  }
+  .mobile-shell .desktop-settings-nav [aria-current="page"] { background: var(--surface-hover); color: var(--text); border-color: var(--border-light); }
+  .mobile-shell :is(.desktop-header, .desktop-action-dock, .desktop-settings-nav) :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .mobile-shell .notif-dropdown button { min-width: 44px; min-height: 44px; }
+  .mobile-shell #toast { bottom: var(--mobile-dock-space); }
+  .mobile-shell #bulk-bar { bottom: var(--mobile-dock-space) !important; }
+  .mobile-shell .modal-close { min-width: 44px; min-height: 44px; }
+  .mobile-shell .modal { max-height: calc(100dvh / var(--app-scale, 1) - env(safe-area-inset-top, 0px) - 16px); }
+  .mobile-shell .modal-body { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .mobile-command-overlay input { min-width: 0; min-height: 44px; font-size: 16px !important; }
+  .mobile-command-overlay { padding-top: max(env(safe-area-inset-top, 0px), calc(8dvh / var(--app-scale, 1))) !important; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important; }
+  .mobile-command-overlay [role="dialog"] { max-height: calc(80dvh / var(--app-scale, 1)) !important; }
+  .mobile-command-overlay button { min-width: 44px; min-height: 44px; }
+  .mobile-command-close { display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-glass); color: var(--text); cursor: pointer; }
+  body:has(.mobile-shell) .ui-drawer-panel { margin-top: max(12px, env(safe-area-inset-top, 0px)) !important; margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+  body:has(.mobile-shell) .ui-drawer-panel button[aria-label="Fechar drawer"] { min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 1024px) and (hover: hover) {
+  .mobile-shell :is(.desktop-dock-button, .desktop-tabs a, .desktop-popover a, .desktop-popover button):hover { background: var(--surface-hover); color: var(--text); }
+}
