@@ -1,0 +1,1534 @@
+/* eslint-disable */
+import { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Tooltip,
+  ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend
+} from 'recharts';
+import {
+  useDash,
+  fmtBRL,
+  fmtDate,
+  getRecorrenciaVencimento,
+  fmtDateISO,
+  isRecorrenciaEligibleInCompetencia,
+  isRecorrenciaPaidInCompetencia,
+} from '/src/store/useStore';
+import { Badge, CopyCell } from '/src/components/shared';
+import LembretesCalendar from '/src/components/LembretesCalendar';
+import { FEATURES } from '/src/config/features';
+
+// ─── Animation Variants ──────────────────────────────────────────────────────
+const fadeUp = {
+  hidden: { opacity: 0, y: 22 },
+  visible: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.96 },
+  visible: (i = 0) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.4, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MESES_COMPLETOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+const STATUS_LEAD_ORDER = ['Novo', 'Abordado', 'Follow-up', 'Em negociação', 'Fechado', 'Perdido'];
+const STATUS_COLORS = {
+  'Novo': '#38bdf8',
+  'Abordado': '#3b82f6',
+  'Follow-up': '#f59e0b',
+  'Em negociação': '#a855f7',
+  'Fechado': '#22c55e',
+  'Perdido': '#ef4444',
+};
+const PROJETO_STATUS_COLORS = {
+  'Em andamento': '#3b82f6',
+  'Concluído': '#22c55e',
+  'Aguardando cliente': '#f59e0b',
+  'Aguardando Aprovação': '#a855f7',
+  'Pausado': '#737373',
+  'Cancelado': '#ef4444',
+};
+
+// ─── Custom Tooltips (Theme Reative) ──────────────────────────────────────────
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: 'var(--tooltip-bg)',
+        border: '1px solid var(--tooltip-border)',
+        borderRadius: 10,
+        padding: '10px 14px',
+        backdropFilter: 'blur(12px)',
+        fontSize: 12,
+        color: 'var(--tooltip-text)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ color: 'var(--text3)', marginBottom: 6, fontWeight: 500 }}>{label}</div>
+        {payload.map(p => (
+          <div key={p.name} style={{ color: p.color, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, display: 'inline-block' }} />
+            <span style={{ color: 'var(--text2)' }}>{p.name}:</span>
+            <span style={{ color: 'var(--text)', fontWeight: 500 }}>{fmtBRL(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomPieTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const isLeadView = payload[0].name === 'Novo' || payload[0].name === 'Abordado' || payload[0].name === 'Follow-up' || payload[0].name === 'Em negociação' || payload[0].name === 'Fechado' || payload[0].name === 'Perdido';
+
+    return (
+      <div style={{
+        background: 'var(--tooltip-bg)',
+        border: '1px solid var(--tooltip-border)',
+        borderRadius: 10,
+        padding: '8px 14px',
+        backdropFilter: 'blur(12px)',
+        fontSize: 12,
+        color: 'var(--tooltip-text)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      }}>
+        <span style={{ color: payload[0].payload.fill, fontWeight: 600 }}>{payload[0].name}: </span>
+        <span style={{ color: 'var(--text)' }}>
+          {isLeadView ? `${payload[0].value} leads` : fmtBRL(payload[0].value)}
+        </span>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomBarTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: 'var(--tooltip-bg)',
+        border: '1px solid var(--tooltip-border)',
+        borderRadius: 8,
+        padding: '8px 12px',
+        backdropFilter: 'blur(12px)',
+        fontSize: 12,
+        color: 'var(--tooltip-text)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: payload[0].payload.fill, display: 'inline-block' }} />
+          <span>Projetos: {payload[0].value}</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// ─── Trend Indicator Moderno (Sem símbolos de texto) ─────────────────────────
+function Trend({ value, suffix = '', invert = false }) {
+  const isPositive = value >= 0;
+  const isGood = isPositive !== invert;
+
+  return (
+    <span className={`modern-trend-pill ${isGood ? 'positive' : 'negative'}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10, transform: isPositive ? 'none' : 'rotate(180deg)' }}>
+        <path d="m18 15-6-6-6 6" />
+      </svg>
+      <span>{Math.abs(value).toFixed(0)}%{suffix && ` ${suffix}`}</span>
+    </span>
+  );
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+function Sparkline({ data, color = '#00C573', id }) {
+  const gradientId = `spark-grad-${id}`;
+
+  return (
+    <ResponsiveContainer width="100%" height={36}>
+      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={2}
+          fill={`url(#${gradientId})`}
+          dot={false}
+          isAnimationActive={true}
+          animationDuration={600}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── KPI Card Moderno (Donezo & Beluga Style) ─────────────────────────────────
+function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData, sparkColor, accentColor, index, onClick }) {
+  return (
+    <motion.div
+      custom={index}
+      variants={scaleIn}
+      initial="hidden"
+      animate="visible"
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      className="modern-kpi-card"
+      style={{ '--kpi-accent': accentColor, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
+    >
+      <div className="modern-kpi-top">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            background: `color-mix(in srgb, ${accentColor}, transparent 88%)`,
+            color: accentColor,
+            width: 32,
+            height: 32,
+            borderRadius: 'var(--radius-sm, 10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {icon}
+          </div>
+          <span className="modern-kpi-label">{label}</span>
+        </div>
+        <div className="modern-kpi-arrow-btn" title="Ver detalhes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
+            <line x1="7" y1="17" x2="17" y2="7" />
+            <polyline points="7 7 17 7 17 17" />
+          </svg>
+        </div>
+      </div>
+
+      <div className="modern-kpi-value">{value}</div>
+
+      <div style={{ marginTop: 2, marginBottom: -4 }}>
+        <Sparkline data={sparkData} color={sparkColor || accentColor} id={index} />
+      </div>
+
+      {trend !== undefined && (
+        <div className="modern-kpi-footer">
+          <Trend value={trend} invert={trendInvert} suffix={trendLabel} />
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+const IconReceita = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+  </svg>
+);
+const IconDespesa = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+    <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+  </svg>
+);
+const IconRecorrencia = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+  </svg>
+);
+const IconLeads = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+  </svg>
+);
+const IconProjetos = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 18, height: 18 }}>
+    <rect x="2" y="3" width="20" height="14" rx="2" />
+    <path d="M8 21h8M12 17v4" />
+  </svg>
+);
+const IconCalendar = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+const IconClock = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+const IconNote = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+const IconEdit = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+    <path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+  </svg>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  // Use stable individual array selectors to avoid unnecessary re-renders
+  const negocio    = useDash(s => s.data.negocio);
+  const pessoal    = useDash(s => s.data.pessoal);
+  const leads      = useDash(s => s.data.leads);
+  const projetos   = useDash(s => s.data.projetos);
+  const recorrencia = useDash(s => s.data.recorrencia);
+  const despesasFixas = useDash(s => s.data.despesasFixas);
+  const lembretesRaw = useDash(s => s.data.lembretes);
+  const uptimeMonitors = useDash(s => s.uptimeMonitors);
+  const fetchUptimeData = useDash(s => s.fetchUptimeData);
+  const configData  = useDash(s => s.configData);
+  const modules     = configData.modules;
+  const currentUser = useDash(s => s.currentUser);
+  const openModal = useDash(s => s.openModal);
+  const openProjectView = useDash(s => s.openProjectView);
+  const toggleLembrete = useDash(s => s.toggleLembrete);
+  const deleteLembrete = useDash(s => s.deleteLembrete);
+  const goTo = useDash(s => s.goTo);
+
+  const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const hour = nowBRT.getHours();
+  const period = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const firstName = (currentUser?.displayName || '').split(' ')[0] || 'usuário';
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isFabOpen, setIsFabOpen] = useState(false);
+  const [lembretesView, setLembretesView] = useState('lista');
+  const [showCharts, setShowCharts] = useState(false);
+
+  useEffect(() => {
+    if (!uptimeMonitors || uptimeMonitors.length === 0) {
+      fetchUptimeData?.();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const now = useMemo(() => new Date(), []);
+  const dateStr = `${now.getDate()} de ${MESES_COMPLETOS[now.getMonth()]} de ${now.getFullYear()}`;
+  const mesAtual = now.getMonth();
+  const anoAtual = now.getFullYear();
+  const mesPrev = mesAtual === 0 ? 11 : mesAtual - 1;
+  const anoPrev = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+
+  // ─── Domain-Specific Memoization ─────────────────────────────────────────────
+  const isNegocioOn = !!modules?.negocio;
+  const isPessoalOn = !!modules?.pessoal;
+  const isLeadsOn   = !!modules?.leads;
+  const isProjetosOn = !!modules?.projetos;
+  const isRecorrenciaOn = !!modules?.recorrencia;
+
+  const financeStats = useMemo(() => {
+    const getMonthTotal = (arr, tipo, mes, ano) =>
+      arr
+        .filter(m => m.tipo === tipo && parseInt(m.data?.split('-')[1]) === mes + 1 && parseInt(m.data?.split('-')[0]) === ano)
+        .reduce((s, m) => s + (m.valor || 0), 0);
+
+    let recMesAtual = 0;
+    let recMesPrev  = 0;
+    if (isNegocioOn) {
+      recMesAtual = getMonthTotal(negocio, 'Receita', mesAtual, anoAtual);
+      recMesPrev  = getMonthTotal(negocio, 'Receita', mesPrev, anoPrev);
+    } else if (isPessoalOn) {
+      recMesAtual = getMonthTotal(pessoal, 'Receita', mesAtual, anoAtual);
+      recMesPrev  = getMonthTotal(pessoal, 'Receita', mesPrev, anoPrev);
+    }
+
+    const despMesAtual = getMonthTotal(pessoal, 'Despesa', mesAtual, anoAtual);
+    const despMesPrev  = getMonthTotal(pessoal, 'Despesa', mesPrev, anoPrev);
+
+    const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+    const mrr = recorrencia.reduce((acc, r) => {
+      if (r.status !== 'Ativo') return acc;
+      if (r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') {
+        const renovacaoMonth = r.renovacao?.substring(0, 7);
+        if (renovacaoMonth !== monthKey) return acc;
+      }
+      return acc + (r.valor || 0);
+    }, 0);
+
+    const trendRec  = recMesPrev  > 0 ? ((recMesAtual  - recMesPrev)  / recMesPrev)  * 100 : 0;
+    const trendDesp = despMesPrev > 0 ? ((despMesAtual - despMesPrev) / despMesPrev) * 100 : 0;
+
+    const personalExpByCatMap = {};
+    pessoal
+      .filter(m => m.tipo === 'Despesa' && parseInt(m.data?.split('-')[1]) === mesAtual + 1 && parseInt(m.data?.split('-')[0]) === anoAtual)
+      .forEach(m => {
+        const cat = m.categoria || 'Outros';
+        personalExpByCatMap[cat] = (personalExpByCatMap[cat] || 0) + (m.valor || 0);
+      });
+    const personalExpByCat = Object.entries(personalExpByCatMap)
+      .map(([name, value], i) => ({ name, value, fill: `hsl(${(i * 137) % 360}, 70%, 65%)` }))
+      .sort((a, b) => b.value - a.value);
+
+    const recorrenciasVencendo = recorrencia
+      .map(r => ({
+        ...r,
+        proximoVencimento: getRecorrenciaVencimento(r, negocio)
+      }))
+      .filter(r => {
+        if (r.status !== 'Ativo' || !r.proximoVencimento) return false;
+        const days = (r.proximoVencimento - new Date()) / (1000 * 60 * 60 * 24);
+        return days <= 5 && days >= -31;
+      });
+
+    const metaFaturamento = parseFloat(configData.metaFaturamento) || 0;
+    const isMetaActive = metaFaturamento > 0;
+    const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      let r = 0;
+      if (isNegocioOn) r = getMonthTotal(negocio, 'Receita', m, y);
+      else if (isPessoalOn) r = getMonthTotal(pessoal, 'Receita', m, y);
+
+      const mrrMes = recorrencia.filter(rc => new Date(parseInt(rc.id)).getMonth() === m && new Date(parseInt(rc.id)).getFullYear() === y).reduce((acc, rc) => acc + (rc.valor || 0), 0);
+
+      return { name: MESES_CURTOS[m], Receita: r, Despesas: getMonthTotal(pessoal, 'Despesa', m, y), MRR: mrrMes };
+    });
+
+    return { recMesAtual, recMesPrev, despMesAtual, despMesPrev, mrr, trendRec, trendDesp, personalExpByCat, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct, last6Months };
+  }, [negocio, pessoal, recorrencia, isNegocioOn, isPessoalOn, mesAtual, anoAtual, mesPrev, anoPrev, configData.metaFaturamento]);
+
+  const crmStats = useMemo(() => {
+    const leadsNovos = leads.filter(l => l.status === 'Novo').length;
+    const leadsFechados = leads.filter(l => l.status === 'Fechado').length;
+    const leadsTotal = leads.length;
+    const leadsTrabalhados = leads.filter(l => l.status !== 'Novo').length;
+    const conversionRate = leadsTrabalhados > 0 ? (leadsFechados / leadsTrabalhados) * 100 : 0;
+
+    const leadsByStatus = STATUS_LEAD_ORDER
+      .map(status => ({ name: status, value: leads.filter(l => l.status === status).length, fill: STATUS_COLORS[status] }))
+      .filter(s => s.value > 0);
+
+    const leadsParaAbordar  = leads.filter(l => l.status === 'Novo').slice(0, 5);
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const leadsMes = leads.filter(l => new Date(parseInt(l.id)).getMonth() === m && new Date(parseInt(l.id)).getFullYear() === y).length;
+      return { Leads: leadsMes };
+    });
+
+    return { leadsNovos, leadsTotal, conversionRate, leadsByStatus, leadsParaAbordar, last6Months };
+  }, [leads, mesAtual, anoAtual]);
+
+  const projectStats = useMemo(() => {
+    const projAtivos = projetos.filter(p => p.status === 'Em andamento').length;
+
+    const proyStatusMap = {};
+    projetos.forEach(p => {
+      const s = p.status || 'Sem status';
+      proyStatusMap[s] = (proyStatusMap[s] || 0) + 1;
+    });
+    const projetosByStatus = Object.entries(proyStatusMap).map(([name, value]) => ({ name, value, fill: PROJETO_STATUS_COLORS[name] || '#737373' }));
+
+    const projetosAndamento = projetos.filter(p => p.status === 'Em andamento');
+
+    const projetosAtrasados = projetos.filter(p => {
+      if (p.status === 'Concluído' || p.status === 'Cancelado' || p.status === 'Aguardando Aprovação') return false;
+      if (!p.prazo) return false;
+      return new Date(p.prazo + 'T12:00:00') < new Date();
+    });
+
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(anoAtual, mesAtual - (5 - i), 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const projMes = projetos.filter(p => new Date(parseInt(p.id)).getMonth() === m && new Date(parseInt(p.id)).getFullYear() === y).length;
+      return { Projetos: projMes };
+    });
+
+    return { projAtivos, projetosByStatus, projetosAndamento, projetosAtrasados, last6Months };
+  }, [projetos, mesAtual, anoAtual]);
+
+  const lembretes = useMemo(() => {
+    return [...lembretesRaw].sort((a, b) => {
+      if (a.concluido !== b.concluido) return a.concluido ? 1 : -1;
+      return new Date(a.prazo || '2999-01-01') - new Date(b.prazo || '2999-01-01');
+    });
+  }, [lembretesRaw]);
+
+  const last6Months = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => ({
+      name: financeStats.last6Months[i].name,
+      Receita: financeStats.last6Months[i].Receita,
+      Despesas: financeStats.last6Months[i].Despesas,
+      MRR: financeStats.last6Months[i].MRR,
+      Leads: crmStats.last6Months[i].Leads,
+      Projetos: projectStats.last6Months[i].Projetos
+    }));
+  }, [financeStats.last6Months, crmStats.last6Months, projectStats.last6Months]);
+
+  const sparkRec = useMemo(() => last6Months.map(m => ({ v: m.Receita })), [last6Months]);
+  const sparkDesp = useMemo(() => last6Months.map(m => ({ v: m.Despesas })), [last6Months]);
+  const sparkLeads = useMemo(() => last6Months.map(m => ({ v: m.Leads })), [last6Months]);
+  const sparkProj = useMemo(() => last6Months.map(m => ({ v: m.Projetos })), [last6Months]);
+  const sparkRecorr = useMemo(() => {
+    let cumMrr = 0;
+    return last6Months.map(m => { cumMrr += m.MRR; return { v: cumMrr }; });
+  }, [last6Months]);
+
+  const stats = {
+    ...financeStats,
+    ...crmStats,
+    ...projectStats,
+    lembretes,
+    last6Months,
+    sparkRec, sparkDesp, sparkLeads, sparkProj, sparkRecorr,
+    isNegocioOn, isPessoalOn, isLeadsOn, isProjetosOn, isRecorrenciaOn,
+    totalLeads: crmStats.leadsTotal
+  };
+
+  const hojeStats = useMemo(() => {
+    const todayISO = fmtDateISO(now);
+    const monthKey = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+    const metaAbordagens = parseInt(configData.metaAbordagensDia, 10) || 10;
+
+    const abordagensHoje = (leads || []).filter(l => {
+      if ((l.dataAbordagem || '').slice(0, 10) === todayISO) return true;
+      if (Array.isArray(l.interacoes) && l.interacoes.some(it => (it.data || '').slice(0, 10) === todayISO)) return true;
+      return false;
+    }).length;
+
+    const eligibleRecs = (recorrencia || []).filter(r => isRecorrenciaEligibleInCompetencia(r, monthKey));
+    const mensalidadesPendentes = eligibleRecs.filter(r => !isRecorrenciaPaidInCompetencia(r, monthKey, negocio || [])).length;
+    const nfsPendentes = eligibleRecs.filter(r => {
+      const nfState = r.competencias?.[monthKey]?.nf;
+      return nfState !== 'emitida' && nfState !== 'dispensada';
+    }).length;
+
+    const dasFixa = (despesasFixas || []).find(d => d.contexto === 'negocio' && (d.descricao || '').toUpperCase().includes('DAS'));
+    const dasLancamento = (negocio || []).find(n =>
+      n.tipo === 'Despesa' &&
+      (n.data || '').slice(0, 7) === monthKey &&
+      ((dasFixa && n.despesaFixaId === dasFixa.id) || (n.descricao || '').toUpperCase().includes('DAS'))
+    );
+    const dasPago = dasLancamento ? !!dasLancamento.pago : false;
+    const dasPendente = !!(dasFixa || dasLancamento) && !dasPago;
+    const despNegocioPendentes = (negocio || []).filter(n =>
+      n.tipo === 'Despesa' && !n.cartao && !n.pago && (n.data || '').slice(0, 7) === monthKey
+    ).length;
+
+    const monitors = uptimeMonitors || [];
+    const offlineSites = monitors.filter(m => !m.paused && m.status === 'offline').length;
+    const onlineSites = monitors.filter(m => !m.paused && m.status === 'online').length;
+
+    const limitValue = parseFloat(configData.limiteAnual) || 81000;
+    const metaMensal = parseFloat(configData.metaFaturamento) || Math.round((limitValue / 12) * 100) / 100;
+    const recGarantidoMes = eligibleRecs.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    const parcelasMes = (negocio || [])
+      .filter(n => n.tipo === 'Receita' && (n.data || '').slice(0, 7) === monthKey && !n.recorrenciaId && n.categoria !== 'Recorrência')
+      .reduce((s, n) => s + (Number(n.valor) || 0), 0);
+    const garantidoMes = recGarantidoMes + parcelasMes;
+    const faltaFecharMes = Math.max(0, metaMensal - garantidoMes);
+
+    const validProjs = (projetos || []).filter(p => p.status !== 'Cancelado' && (Number(p.valor) || 0) > 0);
+    const ticketMedio = validProjs.length > 0
+      ? validProjs.reduce((s, p) => s + (Number(p.valor) || 0), 0) / validProjs.length
+      : 0;
+    const projFaltantesMes = ticketMedio > 0 && faltaFecharMes > 0 ? Math.ceil(faltaFecharMes / ticketMedio) : 0;
+
+    return {
+      abordagensHoje,
+      metaAbordagens,
+      mensalidadesPendentes,
+      nfsPendentes,
+      eligibleRecCount: eligibleRecs.length,
+      dasPendente,
+      dasPago,
+      hasDasConfig: !!(dasFixa || dasLancamento),
+      despNegocioPendentes,
+      offlineSites,
+      onlineSites,
+      totalMonitors: monitors.length,
+      garantidoMes,
+      faltaFecharMes,
+      metaMensal,
+      projFaltantesMes,
+    };
+  }, [now, anoAtual, mesAtual, configData, leads, recorrencia, negocio, despesasFixas, uptimeMonitors, projetos]);
+
+
+  const mesLabel = MESES_CURTOS[mesPrev];
+  const activeModulesCount = [stats.isNegocioOn, stats.isPessoalOn, stats.isLeadsOn, stats.isProjetosOn, stats.isRecorrenciaOn].filter(Boolean).length;
+  const is5Cards = activeModulesCount === 5;
+
+  return (
+    <div className="dash-premium-wrap">
+      {/* ─── Header ──────────────────────────────────────────────────────── */}
+      <motion.div
+        className="dash-premium-header"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div>
+          <h2 className="dash-greeting-title">
+            {period}, <span className="serif">{firstName}!</span>
+          </h2>
+          <p className="dash-greeting-date">{dateStr}</p>
+        </div>
+        <motion.div
+          className={`dash-header-badge ${!isOnline ? 'offline' : ''}`}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          <span className="dash-header-badge-dot" />
+          {isOnline ? 'Sistema Online' : 'Sistema Offline'}
+        </motion.div>
+      </motion.div>
+
+      {/* ─── T2.6: Primeira Linha "Hoje" ─────────────────────────────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(195px, 1fr))',
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        {/* 1. Meta de abordagens do dia */}
+        <div
+          onClick={() => goTo('leads')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Abordagens Hoje
+            </span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green-bg)' : 'rgba(59,130,246,0.12)',
+              color: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green)' : 'var(--blue)',
+            }}>
+              {hojeStats.abordagensHoje}/{hojeStats.metaAbordagens}
+            </span>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+            {hojeStats.abordagensHoje >= hojeStats.metaAbordagens
+              ? 'Meta batida! 🎯'
+              : `Faltam ${Math.max(0, hojeStats.metaAbordagens - hojeStats.abordagensHoje)}`}
+          </div>
+          <div style={{ height: 5, background: 'var(--bg3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min(100, (hojeStats.abordagensHoje / hojeStats.metaAbordagens) * 100)}%`,
+              background: hojeStats.abordagensHoje >= hojeStats.metaAbordagens ? 'var(--green)' : 'var(--blue)',
+              borderRadius: 99,
+            }} />
+          </div>
+        </div>
+
+        {/* 2. NFs e mensalidades pendentes do mês */}
+        <div
+          onClick={() => goTo('recorrencia')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Fechamento do Mês
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: (hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'var(--green-bg)' : 'rgba(245,158,11,0.12)',
+              color: (hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'var(--green)' : 'var(--amber)',
+            }}>
+              {(hojeStats.nfsPendentes + hojeStats.mensalidadesPendentes) === 0 ? 'Em dia ✓' : 'Atenção'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+            {hojeStats.nfsPendentes} NF(s) • {hojeStats.mensalidadesPendentes} mens.
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            Pendentes em {MESES_CURTOS[mesAtual]}/{anoAtual}
+          </div>
+        </div>
+
+        {/* 3. DAS a vencer & despesas fixas */}
+        <div
+          onClick={() => goTo('financas-negocio')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              DAS & Impostos
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.dasPendente ? 'rgba(245,158,11,0.12)' : 'var(--green-bg)',
+              color: hojeStats.dasPendente ? 'var(--amber)' : 'var(--green)',
+            }}>
+              {hojeStats.dasPendente ? 'Vence dia 20' : hojeStats.dasPago ? 'DAS Pago ✓' : 'Ver fixas'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: hojeStats.dasPendente ? 'var(--amber)' : 'var(--text)' }}>
+            {hojeStats.dasPendente ? 'DAS MEI Pendente' : hojeStats.dasPago ? 'DAS MEI Quitado' : 'Sem DAS pendente'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.despNegocioPendentes} despesa(s) do negócio a pagar
+          </div>
+        </div>
+
+        {/* 4. Sites Offline (Uptime) */}
+        <div
+          onClick={() => goTo('uptime')}
+          style={{
+            background: 'var(--bg2)',
+            border: `1px solid ${hojeStats.offlineSites > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Uptime Sites
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: 99,
+              background: hojeStats.offlineSites > 0 ? 'var(--red-bg)' : 'var(--green-bg)',
+              color: hojeStats.offlineSites > 0 ? 'var(--red)' : 'var(--green)',
+            }}>
+              {hojeStats.offlineSites > 0 ? `${hojeStats.offlineSites} offline` : '100% online'}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: hojeStats.offlineSites > 0 ? 'var(--red)' : 'var(--text)' }}>
+            {hojeStats.offlineSites > 0 ? `${hojeStats.offlineSites} site(s) fora do ar` : `${hojeStats.onlineSites} online`}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.totalMonitors} monitorado(s) no total
+          </div>
+        </div>
+
+        {/* 5. Previsão resumida do mês */}
+        <div
+          onClick={() => goTo('financas-negocio')}
+          style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Previsão {MESES_CURTOS[mesAtual]}
+            </span>
+            {hojeStats.faltaFecharMes <= 0 ? (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: 'var(--green-bg)', color: 'var(--green)' }}>
+                Meta batida ✓
+              </span>
+            ) : hojeStats.projFaltantesMes > 0 ? (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)' }}>
+                ≈ {hojeStats.projFaltantesMes} proj.
+              </span>
+            ) : null}
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--green)' }}>
+            {fmtBRL(hojeStats.garantidoMes)} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)' }}>garantido</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {hojeStats.faltaFecharMes > 0 ? `Falta fechar ${fmtBRL(hojeStats.faltaFecharMes)}` : `Meta de ${fmtBRL(hojeStats.metaMensal)} superada`}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── T2.6: Faturamento do Mês em uma Linha Compacta ──────────────── */}
+      <div
+        style={{
+          background: 'var(--bg2)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '10px 16px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, cursor: 'pointer' }} onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}>
+            <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>Faturamento ({MESES_CURTOS[mesAtual]}):</span>
+            <strong style={{ fontSize: 16, color: 'var(--green)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong>
+            <Trend value={stats.trendRec} suffix={`vs ${mesLabel}`} />
+          </div>
+          {stats.isRecorrenciaOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('recorrencia')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>MRR:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{fmtBRL(stats.mrr)}</strong>
+            </div>
+          )}
+          {stats.isPessoalOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('financas-pessoais')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Desp. Pessoais:</span>
+              <strong style={{ fontSize: 14, color: 'var(--red)' }}>{fmtBRL(stats.despMesAtual)}</strong>
+            </div>
+          )}
+          {stats.isProjetosOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('projetos')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Projetos ativos:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{stats.projAtivos}</strong>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-secondary"
+          onClick={() => setShowCharts(v => !v)}
+          style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, transform: showCharts ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          {showCharts ? 'Recolher gráficos e KPIs' : 'Expandir gráficos e KPIs'}
+        </button>
+      </div>
+
+      {/* ─── KPI Row (Recolhido por padrão, expansível) ──────────────────── */}
+      {showCharts && (
+      <div className={`dash-kpi-row ${is5Cards ? 'is-5-cards' : ''}`}>
+        {(stats.isNegocioOn || stats.isPessoalOn) && (
+          <KpiCard
+            index={0}
+            icon={<IconReceita />}
+            label={stats.isNegocioOn ? "Receita Negócio" : "Receita Pessoal"}
+            value={fmtBRL(stats.recMesAtual)}
+            trend={stats.trendRec}
+            trendLabel={`vs ${mesLabel}`}
+            sparkData={stats.sparkRec}
+            accentColor="var(--accent)"
+            onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}
+          />
+        )}
+        {stats.isPessoalOn && (
+          <KpiCard
+            index={1}
+            icon={<IconDespesa />}
+            label="Despesas Pessoais"
+            value={fmtBRL(stats.despMesAtual)}
+            trend={stats.trendDesp}
+            trendInvert={true}
+            trendLabel={`vs ${mesLabel}`}
+            sparkData={stats.sparkDesp}
+            sparkColor="var(--red)"
+            accentColor="var(--red)"
+            onClick={() => goTo('financas-pessoais')}
+          />
+        )}
+        {stats.isLeadsOn && (
+          <KpiCard
+            index={2}
+            icon={<IconLeads />}
+            label="Novos Leads"
+            value={stats.leadsNovos}
+            trend={stats.leadsNovos > 0 ? 8 : 0}
+            trendLabel="este mês"
+            sparkData={stats.sparkLeads}
+            accentColor="var(--blue)"
+            onClick={() => goTo('leads')}
+          />
+        )}
+        {stats.isProjetosOn && (
+          <KpiCard
+            index={3}
+            icon={<IconProjetos />}
+            label="Projetos Ativos"
+            value={stats.projAtivos}
+            trend={stats.projAtivos > 0 ? 5 : 0}
+            trendLabel="em andamento"
+            sparkData={stats.sparkProj}
+            accentColor="var(--amber)"
+            onClick={() => goTo('projetos')}
+          />
+        )}
+        {stats.isRecorrenciaOn && (
+          <KpiCard
+            index={4}
+            icon={<IconRecorrencia />}
+            label="Recorrência (MRR)"
+            value={fmtBRL(stats.mrr)}
+            trendLabel="Serviços ativos"
+            sparkData={stats.sparkRecorr}
+            accentColor="#a855f7"
+            onClick={() => goTo('recorrencia')}
+          />
+        )}
+      </div>
+      )}
+
+      <div className="dash-bento-grid">
+
+        {/* F4: Meta de Faturamento — Segmentada (Salesforce / Crextio Style) */}
+        {stats.isMetaActive && (
+          <motion.div
+            className="segmented-metric-container full-width"
+            custom={0}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="segmented-metric-header">
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>Meta de Faturamento — {mesLabel}</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Progresso acumulado e projeção do período</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>
+                  <strong style={{ color: 'var(--accent)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong> de {fmtBRL(stats.metaFaturamento)}
+                </span>
+                <span className="sidebar-brand-tag" style={{ fontSize: 12, padding: '3px 9px' }}>
+                  {stats.metaPct.toFixed(1)}% atingido
+                </span>
+              </div>
+            </div>
+
+            {/* Segmented Track Bar */}
+            <div className="segmented-metric-track">
+              <div
+                className="segmented-metric-bar"
+                style={{
+                  width: `${Math.min(100, stats.metaPct)}%`,
+                  background: stats.metaPct >= 100 ? 'var(--green)' : 'linear-gradient(90deg, #00C573, #3ECF8E)',
+                }}
+                title={`Faturamento Realizado: ${fmtBRL(stats.recMesAtual)}`}
+              />
+            </div>
+
+            <div className="segmented-metric-legend">
+              <div className="segmented-legend-item">
+                <span className="segmented-legend-dot" style={{ background: 'var(--accent)' }} />
+                <span>Realizado ({fmtBRL(stats.recMesAtual)})</span>
+              </div>
+              <div className="segmented-legend-item">
+                <span className="segmented-legend-dot" style={{ background: 'var(--text3)' }} />
+                <span>Restante ({fmtBRL(Math.max(0, stats.metaFaturamento - stats.recMesAtual))})</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* F3: Alertas Críticos */}
+        {(stats.projetosAtrasados.length > 0 || stats.recorrenciasVencendo.length > 0) && (
+          <motion.div
+            className="dash-glass-card full-width"
+            custom={1}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.03)' }}
+          >
+            <div className="dash-glass-card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--red)' }}><IconNote /></span>
+                <div className="dash-glass-card-title" style={{ color: 'var(--red)' }}>Alertas Críticos</div>
+              </div>
+            </div>
+            <div className="dash-glass-card-body" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {stats.projetosAtrasados.map(p => (
+                <div
+                  key={p.id}
+                  className="card-in"
+                  onClick={() => useDash.getState().openProjectView(p.id)}
+                  style={{ background: 'var(--bg1)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', flex: 1, minWidth: 200, cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 600, marginBottom: 4 }}>Projeto Atrasado</div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{p.cliente}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Prazo era: {fmtDate(p.prazo)}</div>
+                </div>
+              ))}
+              {stats.recorrenciasVencendo.map(r => (
+                <div
+                  key={r.id}
+                  className="card-in"
+                  onClick={() => { useDash.getState().goTo('recorrencia'); }}
+                  style={{ background: 'var(--bg1)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', flex: 1, minWidth: 200, cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, marginBottom: 4 }}>Recorrência Vencendo</div>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{r.cliente}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Vence: {fmtDate(fmtDateISO(r.proximoVencimento))}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Receita vs Despesas (large) */}
+        {showCharts && (stats.isNegocioOn || stats.isPessoalOn) && (
+          <motion.div
+            className={`dash-glass-card dash-bento-chart-main ${(!stats.isLeadsOn && !stats.isPessoalOn) ? 'full-width' : ''}`}
+            custom={0}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="dash-glass-card-header">
+              <div>
+                <div className="dash-glass-card-title">
+                  {stats.isNegocioOn ? 'Receita Negócio vs Despesas' : 'Receita Pessoal vs Despesas'}
+                </div>
+                <div className="dash-glass-card-sub">Últimos 6 meses</div>
+              </div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
+                  Receita
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--red)', display: 'inline-block' }} />
+                  Despesas
+                </div>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={stats.last6Months} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00C573" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#00C573" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradDespesa" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#737373' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#737373' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} width={50} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="Receita" stroke="#00C573" strokeWidth={2} fill="url(#gradReceita)" dot={false} activeDot={{ r: 4, fill: '#00C573', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} />
+                <Area type="monotone" dataKey="Despesas" stroke="#ef4444" strokeWidth={2} fill="url(#gradDespesa)" dot={false} activeDot={{ r: 4, fill: '#ef4444', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} animationBegin={200} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
+
+        {/* Dynamic Donut (Leads OR Personal Expenses) */}
+        {showCharts && (stats.isLeadsOn || stats.isPessoalOn) && (
+          <motion.div
+            className={`dash-glass-card dash-bento-donut ${!(stats.isNegocioOn || stats.isPessoalOn) ? 'full-width' : ''}`}
+            custom={1}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="dash-glass-card-header">
+              <div>
+                <div className="dash-glass-card-title">
+                  {stats.isLeadsOn ? 'Pipeline de Leads' : 'Despesas por Categoria'}
+                </div>
+                <div className="dash-glass-card-sub">
+                  {stats.isLeadsOn ? `${stats.totalLeads} leads no total` : 'Distribuição mensal'}
+                </div>
+              </div>
+              {stats.isLeadsOn && (
+                <span className="status-badge-mini">
+                  {stats.conversionRate.toFixed(2)}% Conversão
+                </span>
+              )}
+            </div>
+            {(stats.isLeadsOn ? stats.leadsByStatus.length : stats.personalExpByCat.length) > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={stats.isLeadsOn ? stats.leadsByStatus : stats.personalExpByCat}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="value"
+                      animationBegin={200}
+                      animationDuration={900}
+                    >
+                      {(stats.isLeadsOn ? stats.leadsByStatus : stats.personalExpByCat).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="transparent" />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="dash-donut-legend">
+                  {(stats.isLeadsOn ? stats.leadsByStatus : stats.personalExpByCat).map(s => (
+                    <div key={s.name} className="dash-donut-legend-item">
+                      <span className="dash-donut-legend-dot" style={{ background: s.fill }} />
+                      <span className="dash-donut-legend-name">{s.name}</span>
+                      <span className="dash-donut-legend-val">
+                        {stats.isLeadsOn ? s.value : fmtBRL(s.value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="dash-empty" style={{ padding: '40px 0', textAlign: 'center' }}>
+                {stats.isLeadsOn ? 'Nenhum lead cadastrado.' : 'Nenhuma despesa este mês.'}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Lembretes & Tarefas */}
+        <motion.div
+          className={`dash-glass-card dash-bento-lembretes ${!stats.isLeadsOn ? 'full-width' : ''}`}
+          custom={2}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+        >
+          <div className="dash-glass-card-header">
+            <div>
+              <div className="dash-glass-card-title">Lembretes & Tarefas</div>
+              <div className="dash-glass-card-sub">
+                {stats.lembretes.filter(l => !l.concluido).length} pendente{stats.lembretes.filter(l => !l.concluido).length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Segmented View Switcher */}
+              <div style={{
+                display: 'inline-flex',
+                background: 'var(--bg3)',
+                padding: 3,
+                borderRadius: 'var(--radius-sm)',
+                border: 'none'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setLembretesView('lista')}
+                  title="Exibir em Lista"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: 'none',
+                    background: lembretesView === 'lista' ? 'var(--bg1)' : 'transparent',
+                    color: lembretesView === 'lista' ? 'var(--text)' : 'var(--text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLembretesView('calendario')}
+                  title="Exibir Calendário Mensal"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: 'none',
+                    background: lembretesView === 'calendario' ? 'var(--bg1)' : 'transparent',
+                    color: lembretesView === 'calendario' ? 'var(--text)' : 'var(--text3)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Calendário
+                </button>
+              </div>
+
+              <motion.button
+                className="btn btn-sm btn-primary"
+                onClick={() => openModal('lembrete')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                + Novo
+              </motion.button>
+            </div>
+          </div>
+          <div className="dash-glass-card-body dash-card-scroll">
+            {lembretesView === 'calendario' ? (
+              <LembretesCalendar />
+            ) : !stats.lembretes.length ? (
+              <div className="dash-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: 'var(--green)' }}>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Tudo em dia</span>
+              </div>
+            ) : stats.lembretes.map((r, i) => {
+              const taskDate = r.prazo;
+              const taskTime = r.horario;
+              let deadline = null;
+              if (taskDate) {
+                deadline = taskTime ? new Date(`${taskDate}T${taskTime}`) : new Date(`${taskDate}T23:59:59`);
+              }
+              const isOverdue = deadline && now > deadline && !r.concluido;
+              const todayStr = now.toISOString().split('T')[0];
+              const tomorrow = new Date(now);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowStr = tomorrow.toISOString().split('T')[0];
+              const isSoon = !isOverdue && !r.concluido && (taskDate === todayStr || taskDate === tomorrowStr);
+              const deadlineColor = isOverdue ? 'var(--red)' : isSoon ? 'var(--amber)' : 'var(--text3)';
+
+              return (
+                <motion.div
+                  key={r.id}
+                  className={`dash-reminder-item ${r.concluido ? 'concluido' : ''} ${isOverdue ? 'overdue' : ''}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.06 }}
+                >
+                  <div className="dash-reminder-row">
+                    <label className="dash-reminder-check">
+                      <input
+                        type="checkbox"
+                        checked={!!r.concluido}
+                        onChange={() => toggleLembrete(r.id, r.concluido)}
+                      />
+                      <span className="dash-reminder-checkmark" />
+                    </label>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="dash-reminder-title" style={{
+                        textDecoration: r.concluido ? 'line-through' : 'none',
+                        opacity: r.concluido ? 0.45 : 1,
+                      }}>
+                        {r.titulo}
+                      </div>
+                      <div className="dash-reminder-meta">
+                        {r.categoria && <span className="task-cat-tag">{r.categoria}</span>}
+                        <Badge status={r.prioridade} />
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: deadlineColor }}>
+                          <IconCalendar />{fmtDate(r.prazo)}
+                        </span>
+                        {r.horario && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--text3)' }}>
+                            <IconClock />{r.horario}
+                          </span>
+                        )}
+                        {r.descricao && (
+                          <span
+                            style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--accent)', cursor: 'pointer' }}
+                            onClick={() => openModal('verNota', r.id)}
+                            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                          >
+                            <IconNote />Nota
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="dash-reminder-actions">
+                      <button className="btn-icon-sub" onClick={() => openModal('lembrete', r.id)} title="Editar">
+                        <IconEdit />
+                      </button>
+                      <button className="btn-icon-sub text-danger" onClick={() => deleteLembrete(r.id)} title="Excluir">
+                        <IconTrash />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Leads para Abordar */}
+        {stats.isLeadsOn && (
+          <motion.div
+            className="dash-glass-card dash-bento-leads"
+            custom={3}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="dash-glass-card-header">
+              <div>
+                <div className="dash-glass-card-title">Leads para Abordar</div>
+                <div className="dash-glass-card-sub">{stats.leadsNovos} novo{stats.leadsNovos !== 1 ? 's' : ''} aguardando</div>
+              </div>
+              <button className="btn btn-sm btn-secondary" onClick={() => goTo('leads')}>ver todos</button>
+            </div>
+            <div className="dash-glass-card-body">
+              {!stats.leadsParaAbordar.length ? (
+                <div className="dash-empty">Nenhum lead novo para contatar.</div>
+              ) : stats.leadsParaAbordar.map((l, i) => (
+                <motion.div
+                  key={l.id}
+                  className="dash-lead-item"
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.08, duration: 0.35 }}
+                  whileHover={{ x: -4, transition: { duration: 0.15 } }}
+                >
+                  <div className="dash-lead-avatar">
+                    {(l.nome || '?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="dash-lead-name">{l.nome}</div>
+                    <div className="dash-lead-nicho">{l.nicho || 'Sem nicho'}</div>
+                  </div>
+                  <div className="dash-lead-phone">
+                    <CopyCell text={l.telefone} />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Projetos em andamento */}
+        {stats.isProjetosOn && (
+          <>
+            <motion.div
+              className={`dash-glass-card dash-bento-projetos ${(!showCharts || stats.projetosByStatus.length === 0) ? 'full-width' : ''}`}
+              custom={4}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+            >
+              <div className="dash-glass-card-header">
+                <div>
+                  <div className="dash-glass-card-title">Projetos em Andamento</div>
+                  <div className="dash-glass-card-sub">{stats.projetosAndamento.length} projeto{stats.projetosAndamento.length !== 1 ? 's' : ''} ativo{stats.projetosAndamento.length !== 1 ? 's' : ''}</div>
+                </div>
+                <button className="btn btn-sm btn-secondary" onClick={() => goTo('projetos')}>ver todos</button>
+              </div>
+              <div className="dash-glass-card-body">
+                {!stats.projetosAndamento.length ? (
+                  <div className="dash-empty">Nenhum projeto em andamento.</div>
+                ) : stats.projetosAndamento.map((p, i) => {
+                  const ts = p.tarefas || [];
+                  const feito = ts.filter(t => t.col === 'feito').length;
+                  const pct = ts.length > 0 ? Math.round((feito / ts.length) * 100) : 0;
+                  return (
+                    <motion.div
+                      key={p.id}
+                      className="dash-project-item"
+                      onClick={() => openProjectView(p.id)}
+                      whileHover={{ x: 4, transition: { duration: 0.15 } }}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + i * 0.08, duration: 0.35 }}
+                    >
+                      <div className="dash-project-item-header">
+                        <div className="dash-project-item-name">{p.cliente || 'Projeto sem nome'}</div>
+                        <div className="dash-project-item-val">{fmtBRL(p.valor)}</div>
+                      </div>
+                      {p.descricao && <div className="dash-project-item-desc">{p.descricao}</div>}
+                      {FEATURES.PROJECT_TASKS && (
+                        <div className="dash-project-progress-row">
+                          <div className="dash-project-progress-bar">
+                            <motion.div
+                              className="dash-project-progress-fill"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ delay: 0.5 + i * 0.1, duration: 0.7, ease: 'easeOut' }}
+                            />
+                          </div>
+                          <span className="dash-project-progress-label">{feito}/{ts.length} tarefas</span>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+
+            {/* Status dos Projetos - Mini chart */}
+            {showCharts && stats.projetosByStatus.length > 0 && (
+              <motion.div
+                className="dash-glass-card dash-bento-proj-status"
+                custom={5}
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="dash-glass-card-header">
+                  <div>
+                    <div className="dash-glass-card-title">Status dos Projetos</div>
+                    <div className="dash-glass-card-sub">{projetos.length} projetos</div>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={140}>
+                  <BarChart data={stats.projetosByStatus} margin={{ top: 8, right: 8, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
+                    <Bar dataKey="value" name="Projetos" radius={[4, 4, 0, 0]} animationDuration={800}>
+                      {stats.projetosByStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
+          </>
+        )}
+
+      </div>
+
+      {/* F5: FAB Speed Dial */}
+      <div className="dash-fab-container" style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 100 }}>
+        <AnimatePresence>
+          {isFabOpen && (
+            <div className="dash-fab-menu" style={{ position: 'absolute', bottom: 70, right: 0, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-end' }}>
+              {[
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, label: 'Novo Fechamento', action: () => openModal('novoFechamento'), color: '#8b5cf6' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>, label: 'Novo Lead', action: () => openModal('lead'), color: 'var(--accent)' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>, label: 'Novo Projeto', action: () => openModal('projeto'), color: '#3b82f6' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><path d="M12 5v14M5 12h14"/></svg>, label: 'Receita', action: () => openModal('negocioReceita'), color: '#10b981' },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 18, height: 18 }}><line x1="5" y1="12" x2="19" y2="12"/></svg>, label: 'Despesa', action: () => openModal('negocioDespesa'), color: '#ef4444' },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0, y: 20 }}
+                  transition={{ delay: i * 0.05, type: 'spring', stiffness: 260, damping: 20 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                  onClick={() => { item.action(); setIsFabOpen(false); }}
+                >
+                  <span className="fab-label" style={{ background: 'var(--bg2)', padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                    {item.label}
+                  </span>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                    {item.icon}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          className="btn btn-primary"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          style={{
+            width: 60, height: 60, borderRadius: '50%',
+            boxShadow: '0 8px 24px rgba(34,197,94,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', zIndex: 101, border: 'none'
+          }}
+          onClick={() => setIsFabOpen(!isFabOpen)}
+        >
+          <motion.div
+            animate={{ rotate: isFabOpen ? 135 : 0 }}
+            transition={{ duration: 0.3, ease: 'backOut' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 28, height: 28 }}><path d="M12 5v14M5 12h14" /></svg>
+          </motion.div>
+        </motion.button>
+      </div>
+    </div>
+  );
+}

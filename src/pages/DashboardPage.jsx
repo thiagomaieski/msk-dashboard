@@ -15,6 +15,8 @@ import {
 } from '../store/useStore';
 import { Badge, CopyCell } from '../components/shared';
 import LembretesCalendar from '../components/LembretesCalendar';
+import Button from '../components/ui/Button';
+import './DashboardPage.css';
 import { FEATURES } from '../config/features';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
@@ -190,6 +192,9 @@ function KpiCard({ icon, label, value, trend, trendLabel, trendInvert, sparkData
       className="modern-kpi-card"
       style={{ '--kpi-accent': accentColor, cursor: onClick ? 'pointer' : 'default' }}
       onClick={onClick}
+      role={onClick ? "link" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={e => { if (onClick && e.key === "Enter") onClick(); }}
     >
       <div className="modern-kpi-top">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -320,7 +325,7 @@ export default function DashboardPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [lembretesView, setLembretesView] = useState('lista');
-  const [showCharts, setShowCharts] = useState(false);
+  const [showCharts, setShowCharts] = useState(() => window.matchMedia('(min-width: 1025px)').matches);
 
   useEffect(() => {
     if (!uptimeMonitors || uptimeMonitors.length === 0) {
@@ -593,7 +598,7 @@ export default function DashboardPage() {
   const is5Cards = activeModulesCount === 5;
 
   return (
-    <div className="dash-premium-wrap">
+    <div className="dash-premium-wrap dashboard-overview">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <motion.div
         className="dash-premium-header"
@@ -603,7 +608,7 @@ export default function DashboardPage() {
       >
         <div>
           <h2 className="dash-greeting-title">
-            {period}, <span className="serif">{firstName}!</span>
+            {period}, <span>{firstName}!</span>
           </h2>
           <p className="dash-greeting-date">{dateStr}</p>
         </div>
@@ -618,23 +623,113 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
+<div className="dashboard-top-grid">
+<section className="dashboard-revenue" aria-label="Faturamento e evolução financeira">
+      {/* ─── T2.6: Faturamento do Mês em uma Linha Compacta ──────────────── */}
+      <div className="dashboard-revenue-summary">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div className="dashboard-revenue-value" style={{ cursor: 'pointer' }} onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}>
+            <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>Faturamento ({MESES_CURTOS[mesAtual]}):</span>
+            <strong style={{ fontSize: 16, color: 'var(--green)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong>
+            <Trend value={stats.trendRec} suffix={`vs ${mesLabel}`} />
+          </div>
+          {stats.isRecorrenciaOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('recorrencia')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>MRR:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{fmtBRL(stats.mrr)}</strong>
+            </div>
+          )}
+          {stats.isPessoalOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('financas-pessoais')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Desp. Pessoais:</span>
+              <strong style={{ fontSize: 14, color: 'var(--red)' }}>{fmtBRL(stats.despMesAtual)}</strong>
+            </div>
+          )}
+          {stats.isProjetosOn && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('projetos')}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Projetos ativos:</span>
+              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{stats.projAtivos}</strong>
+            </div>
+          )}
+        </div>
+
+        <Button
+          size="sm"
+          aria-expanded={showCharts}
+          onClick={() => setShowCharts(v => !v)}
+          style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, transform: showCharts ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          {showCharts ? 'Recolher gráficos e KPIs' : 'Expandir gráficos e KPIs'}
+        </Button>
+      </div>
+
+        {/* Receita vs Despesas (large) */}
+        {showCharts && (stats.isNegocioOn || stats.isPessoalOn) && (
+          <motion.div
+            className={`dash-glass-card dash-bento-chart-main ${(!stats.isLeadsOn && !stats.isPessoalOn) ? 'full-width' : ''}`}
+            custom={0}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="dash-glass-card-header">
+              <div>
+                <div className="dash-glass-card-title">
+                  {stats.isNegocioOn ? 'Receita Negócio vs Despesas' : 'Receita Pessoal vs Despesas'}
+                </div>
+                <div className="dash-glass-card-sub">Últimos 6 meses</div>
+              </div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
+                  Receita
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--red)', display: 'inline-block' }} />
+                  Despesas
+                </div>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={stats.last6Months} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-lime)" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="var(--chart-lime)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradDespesa" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-coral)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--chart-coral)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text3)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--text3)' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} width={50} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="Receita" stroke="var(--chart-lime)" strokeWidth={2} fill="url(#gradReceita)" dot={false} activeDot={{ r: 4, fill: 'var(--chart-lime)', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} />
+                <Area type="monotone" dataKey="Despesas" stroke="var(--chart-coral)" strokeWidth={2} fill="url(#gradDespesa)" dot={false} activeDot={{ r: 4, fill: 'var(--chart-coral)', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} animationBegin={200} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
+
+</section>
+<section className="dashboard-operations-panel" aria-label="Indicadores operacionais">
+<div className="dashboard-section-heading">Seu negócio hoje<span>Metas e pendências</span></div>
       {/* ─── T2.6: Primeira Linha "Hoje" ─────────────────────────────────── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(195px, 1fr))',
-          gap: 12,
-          marginBottom: 14,
-        }}
-      >
+      <div className="dashboard-operations">
         {/* 1. Meta de abordagens do dia */}
         <div
+          className="dashboard-operation"
+          role="link"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
           onClick={() => goTo('leads')}
           style={{
-            background: 'var(--bg2)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 14px',
             cursor: 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -673,12 +768,13 @@ export default function DashboardPage() {
 
         {/* 2. NFs e mensalidades pendentes do mês */}
         <div
+          className="dashboard-operation"
+          role="link"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
           onClick={() => goTo('recorrencia')}
           style={{
-            background: 'var(--bg2)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 14px',
             cursor: 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -710,12 +806,13 @@ export default function DashboardPage() {
 
         {/* 3. DAS a vencer & despesas fixas */}
         <div
+          className="dashboard-operation"
+          role="link"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
           onClick={() => goTo('financas-negocio')}
           style={{
-            background: 'var(--bg2)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 14px',
             cursor: 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -747,12 +844,13 @@ export default function DashboardPage() {
 
         {/* 4. Sites Offline (Uptime) */}
         <div
+          className="dashboard-operation"
+          role="link"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
           onClick={() => goTo('uptime')}
           style={{
-            background: 'var(--bg2)',
             border: `1px solid ${hojeStats.offlineSites > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
-            borderRadius: 12,
-            padding: '12px 14px',
             cursor: 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -784,12 +882,13 @@ export default function DashboardPage() {
 
         {/* 5. Previsão resumida do mês */}
         <div
+          className="dashboard-operation"
+          role="link"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
           onClick={() => goTo('financas-negocio')}
           style={{
-            background: 'var(--bg2)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 14px',
             cursor: 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -819,60 +918,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ─── T2.6: Faturamento do Mês em uma Linha Compacta ──────────────── */}
-      <div
-        style={{
-          background: 'var(--bg2)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '10px 16px',
-          marginBottom: 18,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, cursor: 'pointer' }} onClick={() => goTo(stats.isNegocioOn ? 'financas-negocio' : 'financas-pessoais')}>
-            <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500 }}>Faturamento ({MESES_CURTOS[mesAtual]}):</span>
-            <strong style={{ fontSize: 16, color: 'var(--green)', fontWeight: 700 }}>{fmtBRL(stats.recMesAtual)}</strong>
-            <Trend value={stats.trendRec} suffix={`vs ${mesLabel}`} />
-          </div>
-          {stats.isRecorrenciaOn && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('recorrencia')}>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>MRR:</span>
-              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{fmtBRL(stats.mrr)}</strong>
-            </div>
-          )}
-          {stats.isPessoalOn && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('financas-pessoais')}>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Desp. Pessoais:</span>
-              <strong style={{ fontSize: 14, color: 'var(--red)' }}>{fmtBRL(stats.despMesAtual)}</strong>
-            </div>
-          )}
-          {stats.isProjetosOn && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('projetos')}>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Projetos ativos:</span>
-              <strong style={{ fontSize: 14, color: 'var(--text)' }}>{stats.projAtivos}</strong>
-            </div>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-sm btn-secondary"
-          onClick={() => setShowCharts(v => !v)}
-          style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, transform: showCharts ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-          {showCharts ? 'Recolher gráficos e KPIs' : 'Expandir gráficos e KPIs'}
-        </button>
-      </div>
-
+</section>
+</div>
       {/* ─── KPI Row (Recolhido por padrão, expansível) ──────────────────── */}
       {showCharts && (
       <div className={`dash-kpi-row ${is5Cards ? 'is-5-cards' : ''}`}>
@@ -950,7 +997,7 @@ export default function DashboardPage() {
         {/* F4: Meta de Faturamento — Segmentada (Salesforce / Crextio Style) */}
         {stats.isMetaActive && (
           <motion.div
-            className="segmented-metric-container full-width"
+            className={`segmented-metric-container ${!showCharts || !(stats.isLeadsOn || stats.isPessoalOn) ? 'full-width' : ''}`}
             custom={0}
             variants={fadeUp}
             initial="hidden"
@@ -977,7 +1024,7 @@ export default function DashboardPage() {
                 className="segmented-metric-bar"
                 style={{
                   width: `${Math.min(100, stats.metaPct)}%`,
-                  background: stats.metaPct >= 100 ? 'var(--green)' : 'linear-gradient(90deg, #00C573, #3ECF8E)',
+                  background: stats.metaPct >= 100 ? 'var(--green)' : 'var(--chart-lime)',
                 }}
                 title={`Faturamento Realizado: ${fmtBRL(stats.recMesAtual)}`}
               />
@@ -1038,56 +1085,6 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </motion.div>
-        )}
-
-        {/* Receita vs Despesas (large) */}
-        {showCharts && (stats.isNegocioOn || stats.isPessoalOn) && (
-          <motion.div
-            className={`dash-glass-card dash-bento-chart-main ${(!stats.isLeadsOn && !stats.isPessoalOn) ? 'full-width' : ''}`}
-            custom={0}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-          >
-            <div className="dash-glass-card-header">
-              <div>
-                <div className="dash-glass-card-title">
-                  {stats.isNegocioOn ? 'Receita Negócio vs Despesas' : 'Receita Pessoal vs Despesas'}
-                </div>
-                <div className="dash-glass-card-sub">Últimos 6 meses</div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
-                  Receita
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--red)', display: 'inline-block' }} />
-                  Despesas
-                </div>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={stats.last6Months} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00C573" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#00C573" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gradDespesa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#737373' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#737373' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} width={50} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="Receita" stroke="#00C573" strokeWidth={2} fill="url(#gradReceita)" dot={false} activeDot={{ r: 4, fill: '#00C573', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} />
-                <Area type="monotone" dataKey="Despesas" stroke="#ef4444" strokeWidth={2} fill="url(#gradDespesa)" dot={false} activeDot={{ r: 4, fill: '#ef4444', stroke: '#171717', strokeWidth: 2 }} animationDuration={1000} animationBegin={200} />
-              </AreaChart>
-            </ResponsiveContainer>
           </motion.div>
         )}
 
@@ -1184,6 +1181,7 @@ export default function DashboardPage() {
               }}>
                 <button
                   type="button"
+                  aria-pressed={lembretesView === 'lista'}
                   onClick={() => setLembretesView('lista')}
                   title="Exibir em Lista"
                   style={{
@@ -1213,6 +1211,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   type="button"
+                  aria-pressed={lembretesView === 'calendario'}
                   onClick={() => setLembretesView('calendario')}
                   title="Exibir Calendário Mensal"
                   style={{
@@ -1240,14 +1239,12 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <motion.button
-                className="btn btn-sm btn-primary"
+              <Button
+                variant="primary" size="sm"
                 onClick={() => openModal('lembrete')}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 + Novo
-              </motion.button>
+              </Button>
             </div>
           </div>
           <div className="dash-glass-card-body dash-card-scroll">
@@ -1287,6 +1284,7 @@ export default function DashboardPage() {
                     <label className="dash-reminder-check">
                       <input
                         type="checkbox"
+                        aria-label={`Concluir ${r.titulo}`}
                         checked={!!r.concluido}
                         onChange={() => toggleLembrete(r.id, r.concluido)}
                       />
@@ -1456,9 +1454,9 @@ export default function DashboardPage() {
                 </div>
                 <ResponsiveContainer width="100%" height={140}>
                   <BarChart data={stats.projetosByStatus} margin={{ top: 8, right: 8, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#737373' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 4" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text3)' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--text3)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
                     <Bar dataKey="value" name="Projetos" radius={[4, 4, 0, 0]} animationDuration={800}>
                       {stats.projetosByStatus.map((entry, index) => (

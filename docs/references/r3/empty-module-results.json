@@ -1,0 +1,22 @@
+[
+  {
+    "theme": "dark",
+    "emptyLead": true,
+    "emptyTasks": true,
+    "emptyProjects": true
+  },
+  {
+    "theme": "light",
+    "emptyLead": true,
+    "emptyTasks": true,
+    "emptyProjects": true
+  },
+  {
+    "personalOnly": true,
+    "expenseEmpty": true,
+    "kpis": 2
+  },
+  {
+    "noModules": 0
+  }
+]

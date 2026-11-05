@@ -1,0 +1,41 @@
+{
+  "before": {
+    "kpis": [
+      "Receita NegócioR$ 3.500,0017% vs Out",
+      "Despesas PessoaisR$ 700,0017% vs Out",
+      "Novos Leads18% este mês",
+      "Projetos Ativos15% em andamento",
+      "Recorrência (MRR)R$ 500,00"
+    ],
+    "meta": "Meta de Faturamento — OutProgresso acumulado e projeção do períodoR$ 3.500,00 de R$ 6.000,0058.3% atingidoRealizado (R$ 3.500,00)Restante (R$ 2.500,00)",
+    "donut": "Pipeline de Leads4 leads no total33.33% ConversãoNovo1Abordado1Em negociação1Fechado1",
+    "projects": "Projetos em Andamento1 projeto ativover todosProjeto demonstraçãoR$ 4.000,00Website institucional",
+    "operations": [
+      "Abordagens Hoje4/10Faltam 6",
+      "Fechamento do MêsAtenção1 NF(s) • 1 mens.Pendentes em Nov/2026",
+      "DAS & ImpostosVence dia 20DAS MEI Pendente1 despesa(s) do negócio a pagar",
+      "Uptime Sites1 offline1 site(s) fora do ar2 monitorado(s) no total",
+      "Previsão Nov≈ 1 proj.R$ 4.000,00 garantidoFalta fechar R$ 2.000,00"
+    ]
+  },
+  "after": {
+    "kpis": [
+      "Receita NegócioR$ 3.500,0017% vs Out",
+      "Despesas PessoaisR$ 700,0017% vs Out",
+      "Novos Leads18% este mês",
+      "Projetos Ativos15% em andamento",
+      "Recorrência (MRR)R$ 500,00"
+    ],
+    "meta": "Meta de Faturamento — OutProgresso acumulado e projeção do períodoR$ 3.500,00 de R$ 6.000,0058.3% atingidoRealizado (R$ 3.500,00)Restante (R$ 2.500,00)",
+    "donut": "Pipeline de Leads4 leads no total33.33% ConversãoNovo1Abordado1Em negociação1Fechado1",
+    "projects": "Projetos em Andamento1 projeto ativover todosProjeto demonstraçãoR$ 4.000,00Website institucional",
+    "operations": [
+      "Abordagens Hoje4/10Faltam 6",
+      "Fechamento do MêsAtenção1 NF(s) • 1 mens.Pendentes em Nov/2026",
+      "DAS & ImpostosVence dia 20DAS MEI Pendente1 despesa(s) do negócio a pagar",
+      "Uptime Sites1 offline1 site(s) fora do ar2 monitorado(s) no total",
+      "Previsão Nov≈ 1 proj.R$ 4.000,00 garantidoFalta fechar R$ 2.000,00"
+    ]
+  },
+  "equal": true
+}

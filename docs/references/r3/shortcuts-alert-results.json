@@ -1,0 +1,28 @@
+[
+  {
+    "destination": "financas-negocio",
+    "actual": "financas-negocio"
+  },
+  {
+    "destination": "financas-pessoais",
+    "actual": "financas-pessoais"
+  },
+  {
+    "destination": "leads",
+    "actual": "leads"
+  },
+  {
+    "destination": "projetos",
+    "actual": "projetos"
+  },
+  {
+    "destination": "recorrencia",
+    "actual": "recorrencia"
+  },
+  {
+    "alert": true
+  },
+  {
+    "alertProject": true
+  }
+]

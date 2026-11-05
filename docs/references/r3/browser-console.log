@@ -1,0 +1,25 @@
+Total messages: 42 (Errors: 7, Warnings: 9)
+Returning 16 messages for level "warning"
+
+[WARNING] [2026-11-05T17:30:46.019Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] [2026-11-05T17:32:27.673Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] [2026-11-05T17:32:30.251Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(80%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://127.0.0.1:5174/@vite/client:509
+[WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(80%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://127.0.0.1:5174/@vite/client:509
+[WARNING] [2026-11-05T17:35:09.128Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] [2026-11-05T17:35:48.674Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] [2026-11-05T17:35:50.599Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0
+[WARNING] [2026-11-05T17:35:52.442Z]  @firebase/firestore: Firestore (12.12.0): enableMultiTabIndexedDbPersistence() will be deprecated in the future, you can use `FirestoreSettings.cache` instead. @ http://127.0.0.1:5174/@vite/client:509
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap:0

@@ -1,0 +1,87 @@
+/* R3.1: scoped presentation. Shell and other modules retain their styles. */
+.dashboard-overview {
+  --chart-lime: var(--green);
+  --chart-coral: var(--red);
+  padding: 0;
+  max-width: none;
+  gap: 16px;
+}
+.dashboard-overview .dash-premium-header { margin: 4px 0 8px; align-items: center; }
+.dashboard-overview .dash-greeting-title { font-size: clamp(28px, 2.6vw, 38px); font-weight: 600; line-height: 1.1; }
+.dashboard-overview .dash-greeting-date { margin-top: 8px; }
+.dashboard-top-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.dashboard-revenue { grid-column: span 7; min-width: 0; }
+.dashboard-operations-panel { grid-column: span 5; min-width: 0; display: flex; flex-direction: column; }
+.dashboard-revenue,
+.dashboard-operations-panel,
+.dashboard-overview .dash-glass-card,
+.dashboard-overview .segmented-metric-container,
+.dashboard-overview .modern-kpi-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card, 22px);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  min-width: 0;
+  backdrop-filter: none;
+}
+.dashboard-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.dashboard-section-heading span { color: var(--text3); font-size: 12px; font-weight: 500; }
+.dashboard-operations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; flex: 1; }
+.dashboard-operation { border-radius: 18px; padding: 16px; background: var(--surface-control); min-width: 0; justify-content: space-between; min-height: 110px; }
+.dashboard-operation:last-child { grid-column: 1 / -1; background: var(--accent-bg); }
+.dashboard-operation:hover { background: var(--surface-hover); }
+.dashboard-operation:focus-visible,
+.dashboard-overview .modern-kpi-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.dashboard-revenue-summary { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
+.dashboard-revenue-summary > div { width: 100%; }
+.dashboard-revenue-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; width: 100%; }
+.dashboard-revenue-value > span:first-child { flex-basis: 100%; font-size: 15px !important; color: var(--text) !important; font-weight: 600 !important; }
+.dashboard-revenue-value > strong { font-size: clamp(30px, 3vw, 42px) !important; line-height: 1.1; color: var(--text) !important; font-weight: 600 !important; letter-spacing: -.03em; }
+.dashboard-revenue .dash-bento-chart-main { background: none; border: 0; border-radius: 0; overflow: visible; box-shadow: none; padding: 0; margin-top: 24px; }
+.dashboard-overview .dash-glass-card-header { margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+.dashboard-overview .dash-glass-card-title { font-weight: 600; font-size: 15px; }
+.dashboard-overview .dash-glass-card-sub { font-size: 12px; margin-top: 4px; }
+.dashboard-overview .dash-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 0; }
+.dashboard-overview .modern-kpi-card::before { display: none; }
+.dashboard-overview .modern-kpi-value { font-size: 26px; font-weight: 600; margin-top: 16px; }
+.dashboard-overview .modern-kpi-label { font-size: 12px; }
+.dashboard-overview .modern-kpi-arrow-btn { background: transparent; border: 1px solid var(--border); border-radius: 50%; }
+.dashboard-overview .dash-bento-grid { gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.dashboard-overview .segmented-metric-container { grid-column: span 7; background: color-mix(in srgb, var(--accent-bg) 55%, var(--surface-glass)); display: flex; flex-direction: column; justify-content: center; margin-bottom: 0; }
+.dashboard-overview .segmented-metric-header { flex-wrap: wrap; gap: 16px; }
+.dashboard-overview .segmented-metric-track { height: 14px; margin: 24px 0; }
+.dashboard-overview .dash-bento-donut { grid-column: span 5; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; align-items: center; gap: 12px; }
+.dashboard-overview .dash-bento-donut > .dash-glass-card-header,
+.dashboard-overview .dash-bento-donut > .dash-empty { grid-column: 1 / -1; }
+.dashboard-overview .dash-bento-donut .dash-donut-legend { margin: 0; }
+.dashboard-overview .dash-bento-lembretes { grid-column: span 7; }
+.dashboard-overview .dash-bento-leads { grid-column: span 5; }
+.dashboard-overview .dash-bento-projetos { grid-column: span 7; }
+.dashboard-overview .dash-bento-proj-status { grid-column: span 5; }
+.dashboard-overview .full-width { grid-column: 1 / -1 !important; }
+.dashboard-overview .dash-card-scroll { max-height: 640px; }
+.dashboard-overview .dash-reminder-item,
+.dashboard-overview .dash-lead-item,
+.dashboard-overview .dash-project-item { border-radius: 14px; border-bottom: 1px solid var(--border); padding: 14px 10px; }
+.dashboard-overview .dash-reminder-item { background: var(--surface-control); margin-bottom: 8px; }
+.dashboard-overview .dash-reminder-actions { opacity: 1; }
+.dashboard-overview .dash-empty { min-height: 120px; display: flex; align-items: center; justify-content: center; }
+.dashboard-overview .dash-donut-legend { gap: 8px; }
+.dashboard-overview .recharts-tooltip-wrapper { z-index: 5; }
+@media (min-width: 768px) and (max-width: 1180px) {
+  .dashboard-operation { padding: 12px; }
+  .dashboard-operation > div:first-child { flex-wrap: wrap; gap: 6px; }
+  .dashboard-overview .dash-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .dashboard-top-grid { display: flex; flex-direction: column; }
+  .dashboard-operations-panel { order: -1; }
+  .dashboard-overview .dash-bento-grid > * { grid-column: 1 / -1; }
+  .dashboard-overview .dash-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-overview .dash-glass-card-header > div { max-width: 100%; flex-wrap: wrap; }
+  .dashboard-overview .dash-glass-card-header { align-items: flex-start; }
+  .dashboard-operation { padding: 12px; }
+  .dashboard-operation > div:first-child { flex-wrap: wrap; gap: 6px; }
+  .dashboard-revenue-summary > div { gap: 12px !important; }
+}

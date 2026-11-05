@@ -1,0 +1,46 @@
+{
+  "completed": true,
+  "calls": [
+    [
+      "toggleLembrete",
+      "l1",
+      false
+    ],
+    [
+      "toggleLembrete",
+      "l1",
+      true
+    ]
+  ],
+  "newForm": "Novo Lembrete\nTÍTULO DA TAREFA\nCATEGORIA\nGeral\nTrabalho\nPessoal\nFinanceiro\nUrgente\nANTECEDÊNCIA DO ALERTA\nMins\nHoras\nDias\nPRIORIDADE\nBaixa\nMédia\nAlta\nDATA DE ENTREGA\nDefinir horário\nDESCRIÇÃO / NOTAS (OPCIONAL)\nCancelar\nAdicionar Tarefa",
+  "editForm": "Editar Lembrete\nTÍTULO DA TAREFA\nCATEGORIA\nGeral\nTrabalho\nPessoal\nFinanceiro\nUrgente\nANTECEDÊNCIA DO ALERTA\nMins\nHoras\nDias\nPRIORIDADE\nBaixa\nMédia\nAlta\nDATA DE ENTREGA\nDefinir horário\nDESCRIÇÃO / NOTAS (OPCIONAL)\nCancelar\nAtualizar Tarefa",
+  "note": "Observações da Tarefa\nTAREFA:\nRevisar proposta comercial\nNota local\nFechar",
+  "routes": [
+    {
+      "expected": "leads",
+      "active": "leads",
+      "url": "http://127.0.0.1:5174/leads"
+    },
+    {
+      "expected": "recorrencia",
+      "active": "recorrencia",
+      "url": "http://127.0.0.1:5174/recorrencia"
+    },
+    {
+      "expected": "financas-negocio",
+      "active": "financas-negocio",
+      "url": "http://127.0.0.1:5174/financas-negocio"
+    },
+    {
+      "expected": "uptime",
+      "active": "uptime",
+      "url": "http://127.0.0.1:5174/uptime"
+    },
+    {
+      "expected": "financas-negocio",
+      "active": "financas-negocio",
+      "url": "http://127.0.0.1:5174/financas-negocio"
+    }
+  ],
+  "project": "1793899950252"
+}

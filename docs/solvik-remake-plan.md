@@ -551,3 +551,11 @@ Esta é uma troca de **apresentação**. Não alterar:
 3. Baseline visual do Maieski capturada em ambiente sem dados de produção.
 4. Escopo da R1: `index.css`, `components/ui/*`, `UiKit`; **sem** páginas, store, backend.
 5. Critério de saída: UiKit comparado com `overview-dark/light-1440x900` e `settings-*`; `npm run build` e `npm run lint` sem novas falhas; contratos de props preservados.
+
+## 14. Status R3.1 (05/11/2026)
+
+R1 e R2 aprovadas pelo usuário. R3.1 implementada para aprovação visual e funcional: Dashboard com composição de 12 colunas, painel financeiro 7/5 com operações, KPIs, meta, pipeline, agenda e projetos. Shell preservado. Cálculos, seletores, ações, períodos e fontes Recharts preservados.
+
+Relatório e limitações: [r3-implementation.md](r3-implementation.md). Capturas e validação Playwright MCP: [references/r3](references/r3/). Build aprovado; lint permanece em 134 erros e 15 avisos, sem novos diagnósticos em src. Dados sintéticos locais, sem operações financeiras reais.
+
+Aguardando aprovação da R3.1. Não iniciar R3.2 nem R4. Sem commit ou push.
