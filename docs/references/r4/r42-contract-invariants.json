@@ -1,0 +1,13 @@
+{
+  "handleSinglePreQual": true,
+  "handleQualifyWithAi": true,
+  "handleConfirmAiDraft": true,
+  "handleGenerateAiMessage": true,
+  "handleGenerateOfflineMessage": true,
+  "handleCopyMessage": true,
+  "handleOpenWhatsAppWithText": true,
+  "handleSave": true,
+  "resizeImageToMax1600": true,
+  "navListIds": true,
+  "pasteEffect": true
+}

@@ -1,0 +1,16 @@
+31. [GET] http://127.0.0.1:5173/node_modules/.vite/deps/firebase_firestore.js?v=581fe42d => [FAILED] net::ERR_ABORTED
+32. [GET] http://127.0.0.1:5173/node_modules/.vite/deps/index.esm-CZLmQmUT.js?v=581fe42d => [FAILED] net::ERR_ABORTED
+65. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+174. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+283. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+443. [GET] http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs => [FAILED] net::ERR_ABORTED
+444. [GET] http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=581fe42d => [FAILED] net::ERR_ABORTED
+445. [GET] http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=581fe42d => [FAILED] net::ERR_ABORTED
+446. [GET] http://127.0.0.1:5173/src/index.css => [FAILED] net::ERR_ABORTED
+447. [GET] http://127.0.0.1:5173/src/store/useStore.js => [FAILED] net::ERR_ABORTED
+448. [GET] http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=581fe42d => [FAILED] net::ERR_ABORTED
+480. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+597. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+733. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+
+Note: 840 static requests not shown, run with "static" option to see them.

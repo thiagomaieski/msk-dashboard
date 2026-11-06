@@ -1,9 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDash, getWaLink } from '../../store/useStore';
 import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS, generatePitchMessage } from '../../utils/crmAnalyticsUtils';
 import { qualifyLeadWithAi, generateLeadMessageWithAi } from '../../utils/aiApi';
 import CustomSelect from '../CustomSelect';
 import Drawer from '../ui/Drawer';
+import Modal from '../ui/Modal';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
+import './LeadDrawer.css';
 import { PageSpeedScore } from './LeadForm';
 import { navToConfigTab } from './shared';
 
@@ -59,11 +63,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   const refreshAiUsage = useDash(s => s.refreshAiUsage);
   const filteredLeadIds = useDash(s => s.filteredLeadIds);
 
-  useEffect(() => {
-    if (isOpen) {
-      refreshAiUsage();
-    }
-  }, [isOpen, refreshAiUsage]);
+  const [activeSection, setActiveSection] = useState('resumo');
+  const identityRef = useRef(null);
 
   const navTo = (tab) => navToConfigTab(onClose, setConfigTab, goTo, tab);
 
@@ -124,6 +125,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
       botBarreira: !!item?.botBarreira,
       qualChips: Array.isArray(item?.qualChips) ? item.qualChips : [],
     });
+    setActiveSection('resumo');
     setIntText('');
     setSingleProgress(null);
     setAiDraft(null);
@@ -134,7 +136,12 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
     setLightboxOpen(false);
   }, [item?.id, isOpen]);
 
-  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  const u = (k) => (e) => {
+    // Radix can emit an empty native-select event during form initialization.
+    // Status and niche have no empty option: keep their populated values.
+    if ((k === 'status' || k === 'nicho') && e.target.value === '') return;
+    setF(p => ({ ...p, [k]: e.target.value }));
+  };
 
   const [isPrequaling, setIsPrequaling] = useState(false);
   const [isAiQualifying, setIsAiQualifying] = useState(false);
@@ -332,6 +339,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
+      if (lightboxOpen || e.defaultPrevented || document.querySelector('.custom-select-content')) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSave();
@@ -354,17 +362,17 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
   }, [isOpen, f, item?.id, isSaving, prevLeadId, nextLeadId, lightboxOpen]);
 
   const titleNode = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <span>{item ? (item.nome || 'Editar Lead') : 'Novo Lead'}</span>
+    <span className="lead-drawer-title">
+      <span>{item ? 'Detalhes do lead' : 'Novo Lead'}</span>
       {item && currentIdx !== -1 && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <button
             type="button"
             className="btn btn-sm btn-secondary"
             disabled={!prevLeadId}
             onClick={() => prevLeadId && openModal('lead', prevLeadId)}
             title="Lead anterior na lista (Seta ↑)"
-            style={{ padding: '2px 7px', fontSize: 11 }}
+            aria-label="Lead anterior"
           >
             ↑
           </button>
@@ -377,22 +385,22 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
             disabled={!nextLeadId}
             onClick={() => nextLeadId && openModal('lead', nextLeadId)}
             title="Próximo lead na lista (Seta ↓)"
-            style={{ padding: '2px 7px', fontSize: 11 }}
+            aria-label="Próximo lead"
           >
             ↓
           </button>
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 
   const footerNode = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 10, flexWrap: 'wrap' }}>
       <div>
         {item && (
-          <button
+          <Button
             type="button"
-            className="btn btn-secondary"
+            variant="secondary"
             style={{ color: 'var(--green)', gap: 6, fontSize: 12 }}
             onClick={() => useDash.getState().convertLeadToCliente(item.id)}
             title="Converter lead em cliente cadastrado"
@@ -403,24 +411,24 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               <polyline points="17 11 19 13 23 9"/>
             </svg>
             <span>Converter em Cliente</span>
-          </button>
+          </Button>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="desktop-only" style={{ fontSize: 11, color: 'var(--text3)' }}>
           <kbd>Ctrl</kbd>+<kbd>S</kbd>
         </span>
-        <button type="button" className="btn btn-secondary" onClick={onClose}>
+        <Button type="button" variant="secondary" onClick={onClose}>
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="btn btn-primary"
+          variant="primary"
           disabled={isSaving}
           onClick={handleSave}
         >
           {isSaving ? 'Salvando...' : (item ? 'Salvar Alterações' : 'Salvar Lead')}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -430,21 +438,44 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
       isOpen={isOpen}
       onClose={onClose}
       title={titleNode}
-      description={item ? 'Use ↑/↓ fora dos campos para navegar pela lista filtrada • Esc para fechar' : 'Preencha os dados do novo lead'}
+      description={item ? 'Carteira comercial / Leads' : 'Cadastre uma nova oportunidade comercial'}
       footer={footerNode}
-      width={620}
+      width={760}
+      className="lead-drawer"
+      navigation={
+        <nav className="lead-drawer-nav" aria-label="Seções do lead">
+          {[["resumo", "01", "Resumo"], ["qualificacao", "02", "Qualificação"], ["historico", "03", "Histórico"]].map(([id, number, label]) => (
+            <button type="button" key={id} id={`lead-nav-${id}`} aria-controls={`lead-panel-${id}`}
+              aria-current={activeSection === id ? 'step' : undefined}
+              onClick={() => {
+                setActiveSection(id);
+                identityRef.current?.parentElement.scrollTo({ top: 0 });
+              }}>
+              <span>{number}</span>{label}
+            </button>
+          ))}
+        </nav>
+      }
     >
-      <form id="lead-drawer-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div ref={identityRef} className="lead-drawer-identity">
+        <span className="lead-drawer-avatar" aria-hidden="true">{(f.nome || 'Novo lead').split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()}</span>
+        <div><span className="lead-drawer-eyebrow">{item ? 'Oportunidade comercial' : 'Novo cadastro'}</span>
+          <h3>{f.nome || 'Nome / Empresa'}</h3>
+          <p>{[f.nicho, f.cidade].filter(Boolean).join(' • ') || 'Complete os dados abaixo'}</p>
+        </div>
+        <Badge status={f.status} />
+      </div>
+      <form id="lead-drawer-form" onSubmit={handleSave}>
         {/* ─── SEÇÃO 1: RESUMO ───────────────────────────────────────────── */}
-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+        <section className="lead-drawer-section" id="lead-panel-resumo" aria-labelledby="lead-nav-resumo" hidden={activeSection !== 'resumo'}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', marginBottom: 12 }}>
-            1. Resumo
+            Cadastro e contato
           </div>
-          <div className="form-grid" style={{ gap: 10 }}>
+          <div className="form-grid lead-drawer-card">
             <div className="form-grid form-grid-2">
               <div className="form-group">
                 <label className="form-label">Nome / Empresa *</label>
-                <input className="form-input" value={f.nome} onChange={u('nome')} />
+                <input className="form-input" aria-label="Nome / Empresa" value={f.nome} onChange={u('nome')} />
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -454,34 +485,35 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                       href={getWaLink(f.telefone)}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: '#25D366', fontSize: 11, fontWeight: 600, textDecoration: 'none' }}
+                      style={{ color: 'var(--green)', fontSize: 11, fontWeight: 600, textDecoration: 'none' }}
                     >
                       Abrir WhatsApp ↗
                     </a>
                   )}
                 </label>
-                <input className="form-input" value={f.telefone} onChange={u('telefone')} />
+                <input className="form-input" aria-label="Telefone / WhatsApp" value={f.telefone} onChange={u('telefone')} />
               </div>
             </div>
 
             <div className="form-grid form-grid-2">
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <CustomSelect variant="form" value={f.status} onChange={u('status')}>
+                <CustomSelect variant="form" ariaLabel="Status" value={f.status} onChange={u('status')}>
                   {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
                 </CustomSelect>
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Nicho</span>
-                  <span
+                  <button type="button"
+                    className="lead-drawer-text-action"
                     style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}
                     onClick={() => navTo('cfg-negocios')}
                   >
                     Gerenciar →
-                  </span>
+                  </button>
                 </label>
-                <CustomSelect variant="form" value={f.nicho} onChange={u('nicho')}>
+                <CustomSelect variant="form" ariaLabel="Nicho" value={f.nicho} onChange={u('nicho')}>
                   {configData.nichos.map(n => <option key={n}>{n}</option>)}
                 </CustomSelect>
               </div>
@@ -492,7 +524,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 <label className="form-label">Cidade / Localização</label>
                 <input
                   className="form-input"
-                  value={f.cidade}
+                  aria-label="Cidade / Localização" value={f.cidade}
                   onChange={u('cidade')}
                   list="existing-cidades-drawer"
                   placeholder="Ex: Curitiba - PR"
@@ -505,7 +537,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 <label className="form-label">Lote</label>
                 <input
                   className="form-input"
-                  value={f.lote}
+                  aria-label="Lote" value={f.lote}
                   onChange={u('lote')}
                   list="existing-lotes-drawer"
                   placeholder="Ex: Curitiba 11/2026"
@@ -531,22 +563,26 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                     </a>
                   )}
                 </label>
-                <input className="form-input" value={f.site} onChange={u('site')} />
+                <input className="form-input" aria-label="Site / Instagram" value={f.site} onChange={u('site')} />
               </div>
               <div className="form-group">
                 <label className="form-label">E-mail</label>
-                <input className="form-input" type="email" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" />
+                <input className="form-input" type="email" aria-label="E-mail" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" />
               </div>
             </div>
 
+          </div>
+          <details className="lead-drawer-card lead-drawer-details">
+            <summary>Informações complementares <span>Valor, origem e acompanhamento</span></summary>
+            <div className="form-grid">
             <div className="form-grid form-grid-2">
               <div className="form-group">
                 <label className="form-label">Valor Estimado (R$)</label>
-                <input className="form-input" type="number" min="0" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" />
+                <input className="form-input" type="number" min="0" aria-label="Valor Estimado (R$)" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" />
               </div>
               <div className="form-group">
                 <label className="form-label">Origem do Lead</label>
-                <CustomSelect variant="form" value={f.origem} onChange={u('origem')} placeholder="-- Selecione --">
+                <CustomSelect variant="form" ariaLabel="Origem do Lead" value={f.origem} onChange={u('origem')} placeholder="-- Selecione --">
                   {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
                 </CustomSelect>
               </div>
@@ -555,22 +591,37 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
             <div className="form-grid form-grid-2">
               <div className="form-group">
                 <label className="form-label">Último Contato</label>
-                <input className="form-input" type="date" value={f.ultimoContato} onChange={u('ultimoContato')} />
+                <input className="form-input" type="date" aria-label="Último Contato" value={f.ultimoContato} onChange={u('ultimoContato')} />
               </div>
               <div className="form-group">
                 <label className="form-label">Próximo Contato</label>
-                <input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} />
+                <input className="form-input" type="date" aria-label="Próximo Contato" value={f.proximoContato} onChange={u('proximoContato')} />
               </div>
             </div>
           </div>
-        </div>
+          </details>
+          <div className="lead-drawer-card lead-drawer-notes">
+          {/* Observações */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Observações de Qualificação</label>
+            <textarea
+              className="form-textarea"
+              style={{ minHeight: 75 }}
+              placeholder="Anotações sobre problemas no site, oportunidades ou pontos fortes..."
+              aria-label="Observações de Qualificação" value={f.observacoes}
+              onChange={u('observacoes')}
+            />
+          </div>
+
+          </div>
+        </section>
 
         {/* ─── SEÇÃO 2: QUALIFICAÇÃO ────────────────────────────────────── */}
-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section className="lead-drawer-section lead-drawer-card" id="lead-panel-qualificacao" aria-labelledby="lead-nav-qualificacao" hidden={activeSection !== 'qualificacao'}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
-                2. Qualificação
+                Análise e presença digital
               </div>
               <span
                 title="Chamadas de IA utilizadas hoje pelo seu usuário"
@@ -586,6 +637,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               >
                 IA hoje: {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 60}
               </span>
+              <Button size="sm" variant="ghost" onClick={refreshAiUsage} title="Consultar utilização atual de IA">Atualizar cota</Button>
             </div>
             {item?.id && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -596,8 +648,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                   disabled={isPrequaling}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
-                    background: isPrequaling ? 'var(--bg2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    color: '#fff', border: 'none',
+                    background: 'var(--color-accent)',
+                    color: 'var(--on-accent)', border: 'none',
                   }}
                 >
                   {isPrequaling ? 'Analisando...' : (prequalData ? 'Re-qualificar Site' : 'Qualificar Agora')}
@@ -660,7 +712,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"
-                  style={{ background: 'var(--green)', borderColor: 'var(--green)', color: '#fff' }}
+                  style={{ background: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: 'var(--on-accent)' }}
                   onClick={handleConfirmAiDraft}
                 >
                   Confirmar e Salvar
@@ -697,6 +749,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 return (
                   <button
                     key={chip.id}
+                    aria-pressed={active}
                     type="button"
                     onClick={() => setF(p => {
                       const curr = Array.isArray(p.qualChips) ? p.qualChips : [];
@@ -722,6 +775,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               })}
               <button
                 type="button"
+                aria-pressed={f.botBarreira}
                 onClick={() => setF(p => ({ ...p, botBarreira: !p.botBarreira }))}
                 style={{
                   fontSize: 11,
@@ -769,6 +823,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
             </div>
           )}
 
+          {!prequalData && !singleProgress && (
+            <p className="lead-drawer-empty">Nenhuma análise técnica registrada. {item?.id ? 'Use Qualificar Agora para iniciar a análise.' : 'Salve o lead para disponibilizar a análise.'}</p>
+          )}
           {/* Notas PageSpeed & Instagram */}
           {prequalData && (prequalData.pagespeed?.mobile != null || prequalData.pagespeed?.desktop != null) && (
             <div className="prequal-speed-row">
@@ -830,14 +887,16 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               </div>
             </div>
             {screenshotUrlWithCacheBuster ? (
-              <div
+              <button
+                type="button"
+                aria-label="Ampliar screenshot"
                 className="prequal-screenshot-wrap"
                 onClick={() => { setLightboxNotes(f.observacoes || ''); setLightboxOpen(true); }}
                 title="Clique para ampliar no Lightbox (ou cole outro print com Ctrl+V para substituir)"
                 style={{ maxHeight: 220, overflow: 'hidden', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)' }}
               >
                 <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="prequal-screenshot-img" />
-              </div>
+              </button>
             ) : (
               <div
                 className="prequal-screenshot-placeholder"
@@ -850,18 +909,110 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
             )}
           </div>
 
-          {/* Observações */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Observações de Qualificação</label>
-            <textarea
-              className="form-textarea"
-              style={{ minHeight: 75 }}
-              placeholder="Anotações sobre problemas no site, oportunidades ou pontos fortes..."
-              value={f.observacoes}
-              onChange={u('observacoes')}
-            />
+
+        </section>
+
+        {/* ─── SEÇÃO 3: HISTÓRICO ───────────────────────────────────────── */}
+        <section className="lead-drawer-section lead-drawer-card" id="lead-panel-historico" aria-labelledby="lead-nav-historico" hidden={activeSection !== 'historico'}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
+              Histórico de interações
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              style={{
+                fontSize: 11,
+                padding: '3px 10px',
+                color: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : 'var(--text2)',
+                borderColor: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'rgba(16,185,129,0.4)' : undefined,
+              }}
+              onClick={() => {
+                const nowISO = new Date().toISOString();
+                const newInt = { data: nowISO, texto: 'Resposta recebida', tipo: 'resposta_recebida', criadoEm: nowISO };
+                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+              }}
+            >
+              ✓ Marcar resposta
+            </button>
           </div>
 
+          {(f.interacoes || []).length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>
+          ) : (
+            <div className="lead-drawer-timeline">
+              {(f.interacoes || []).map((int, i) => ({ int, i })).sort((a, b) => (Date.parse(b.int.data || b.int.criadoEm) || 0) - (Date.parse(a.int.data || a.int.criadoEm) || 0)).map(({ int, i }) => (
+                <div className="lead-drawer-event" key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)', alignItems: 'flex-start' }}>
+                  <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {(int.data || int.criadoEm || '').split('T')[0].split('-').reverse().join('/')}
+                    <small>{(int.data || int.criadoEm || '').includes('T') ? new Date(int.data || int.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+                  </span>
+                  {int.tipo && int.tipo !== 'outro' && (
+                    <span style={{ fontSize: 10, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      {INTERACAO_TIPO_LABELS[int.tipo] || int.tipo}
+                    </span>
+                  )}
+                  <span className="lead-drawer-event-text" style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
+                  <button
+                    type="button"
+                    className="row-btn del"
+                    aria-label="Remover interação"
+                    style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }}
+                    onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {INTERACAO_TIPOS.map(t => (
+              <button
+                key={t}
+                type="button"
+                className={`btn btn-sm ${intTipo === t ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: 10, padding: '3px 8px' }}
+                onClick={() => setIntTipo(t)}
+              >
+                {INTERACAO_TIPO_LABELS[t] || t}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              className="form-input"
+              style={{ flex: 1, fontSize: 12, padding: '6px 8px' }}
+              placeholder="Adicionar interação (Enter para incluir)..."
+              value={intText}
+              onChange={e => setIntText(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!intText) return;
+                  const nowISO = new Date().toISOString();
+                  const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+                  setIntText('');
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => {
+                if (!intText) return;
+                const nowISO = new Date().toISOString();
+                const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+                setIntText('');
+              }}
+            >
+              Adicionar
+            </button>
+          </div>
           {/* T4.3: Gerar mensagem com IA ou Modelo Offline */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
@@ -869,13 +1020,13 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Mensagem de Abordagem
                 </span>
-                <span
+                <button type="button" className="lead-drawer-text-action"
                   style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}
                   onClick={() => navTo('cfg-sistema')}
                   title="Personalizar tom de voz e instruções da IA em Configurações > Sistema"
                 >
                   Instruções da IA →
-                </span>
+                </button>
               </div>
               <div style={{ display: 'inline-flex', gap: 4 }}>
                 <button
@@ -955,9 +1106,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
                     onClick={handleOpenWhatsAppWithText}
                     style={{
                       fontSize: 11,
-                      background: '#25D366',
-                      borderColor: '#25D366',
-                      color: '#fff',
+                      background: 'var(--color-accent)',
+                      borderColor: 'var(--color-accent)',
+                      color: 'var(--on-accent)',
                       fontWeight: 600,
                     }}
                   >
@@ -967,113 +1118,13 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               </div>
             )}
           </div>
-        </div>
-
-        {/* ─── SEÇÃO 3: HISTÓRICO ───────────────────────────────────────── */}
-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
-              3. Histórico de Interações
-            </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              style={{
-                fontSize: 11,
-                padding: '3px 10px',
-                color: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : 'var(--text2)',
-                borderColor: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'rgba(16,185,129,0.4)' : undefined,
-              }}
-              onClick={() => {
-                const nowISO = new Date().toISOString();
-                const newInt = { data: nowISO, texto: 'Resposta recebida', tipo: 'resposta_recebida', criadoEm: nowISO };
-                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
-              }}
-            >
-              ✓ Marcar resposta
-            </button>
-          </div>
-
-          {(f.interacoes || []).length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
-              {(f.interacoes || []).map((int, i) => (
-                <div key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)', alignItems: 'flex-start' }}>
-                  <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {(int.data || int.criadoEm || '').split('T')[0].split('-').reverse().join('/')}
-                  </span>
-                  {int.tipo && int.tipo !== 'outro' && (
-                    <span style={{ fontSize: 10, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {INTERACAO_TIPO_LABELS[int.tipo] || int.tipo}
-                    </span>
-                  )}
-                  <span style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
-                  <button
-                    type="button"
-                    className="row-btn del"
-                    style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }}
-                    onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {INTERACAO_TIPOS.map(t => (
-              <button
-                key={t}
-                type="button"
-                className={`btn btn-sm ${intTipo === t ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: 10, padding: '3px 8px' }}
-                onClick={() => setIntTipo(t)}
-              >
-                {INTERACAO_TIPO_LABELS[t] || t}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              className="form-input"
-              style={{ flex: 1, fontSize: 12, padding: '6px 8px' }}
-              placeholder="Adicionar interação (Enter para incluir)..."
-              value={intText}
-              onChange={e => setIntText(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (!intText) return;
-                  const nowISO = new Date().toISOString();
-                  const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
-                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
-                  setIntText('');
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => {
-                if (!intText) return;
-                const nowISO = new Date().toISOString();
-                const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
-                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
-                setIntText('');
-              }}
-            >
-              Adicionar
-            </button>
-          </div>
-        </div>
+        </section>
       </form>
 
       {/* Lightbox para o print */}
       {lightboxOpen && screenshotUrlWithCacheBuster && (
-        <div className="lightbox-overlay" onClick={() => setLightboxOpen(false)}>
+        <Modal isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} title="Screenshot do site" description={item?.nome || 'Lead'} className="lead-lightbox" size="lg">
+          <div className="lead-lightbox-layout">
           <div className="lightbox-split-left">
             <div className="lightbox-split-img-container">
               <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="lightbox-split-img" />
@@ -1088,6 +1139,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               <label className="lightbox-sidebar-label">Anotações / Pontos de Qualificação</label>
               <textarea
                 className="lightbox-sidebar-textarea"
+                aria-label="Anotações do screenshot"
                 placeholder="Escreva os pontos de qualificação observados no site..."
                 value={lightboxNotes}
                 onChange={(e) => setLightboxNotes(e.target.value)}
@@ -1109,7 +1161,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        </Modal>
       )}
     </Drawer>
   );

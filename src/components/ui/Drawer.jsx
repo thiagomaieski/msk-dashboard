@@ -10,6 +10,7 @@ export function Drawer({
   description,
   children,
   footer,
+  navigation,
   width = 460,
   className = '',
 }) {
@@ -135,10 +136,13 @@ export function Drawer({
               </button>
             </div>
 
+            {navigation}
+
             {/* Content Body */}
             <div
               style={{
                 flex: 1,
+                minHeight: 0,
                 overflowY: 'auto',
                 padding: '24px',
                 display: 'flex',

@@ -1,0 +1,7 @@
+{
+  "focusTrap": true,
+  "complementaryFieldsRetained": true,
+  "sectionScrollReset": true,
+  "mobileLightboxOverflow": false,
+  "reducedMotion": "none"
+}

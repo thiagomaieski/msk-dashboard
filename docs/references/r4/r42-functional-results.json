@@ -1,0 +1,94 @@
+[
+  {
+    "name": "Preenchimento de status e nicho",
+    "passed": true
+  },
+  {
+    "name": "Histórico cronológico",
+    "passed": true
+  },
+  {
+    "name": "Preserva campos ao trocar seção",
+    "passed": true
+  },
+  {
+    "name": "Nenhuma chamada automática",
+    "passed": true
+  },
+  {
+    "name": "Ctrl+S e payload",
+    "passed": true
+  },
+  {
+    "name": "Select preserva escolha",
+    "passed": true
+  },
+  {
+    "name": "Escape fecha Select antes do drawer",
+    "passed": true
+  },
+  {
+    "name": "Próximo na ordem filtrada",
+    "passed": true
+  },
+  {
+    "name": "Ctrl+S não salva drawer atrás do lightbox",
+    "passed": true
+  },
+  {
+    "name": "Notas do lightbox no handler original",
+    "passed": true
+  },
+  {
+    "name": "Escape lightbox mantém drawer e devolve foco",
+    "passed": true
+  },
+  {
+    "name": "Pré-qualificação em processamento",
+    "passed": true
+  },
+  {
+    "name": "Pré-qualificação sucesso e erro",
+    "passed": true
+  },
+  {
+    "name": "Pré-qualificação ignorada",
+    "passed": true
+  },
+  {
+    "name": "IA loading",
+    "passed": true
+  },
+  {
+    "name": "IA confirma pelo contrato original",
+    "passed": true
+  },
+  {
+    "name": "IA erro",
+    "passed": true
+  },
+  {
+    "name": "Mensagem offline",
+    "passed": true
+  },
+  {
+    "name": "Mensagem IA erro e sucesso",
+    "passed": true
+  },
+  {
+    "name": "Nome obrigatório sem persistência",
+    "passed": true
+  },
+  {
+    "name": "Novo lead sem print",
+    "passed": true
+  },
+  {
+    "name": "Criação em memória",
+    "passed": true
+  },
+  {
+    "name": "Foco restaurado",
+    "passed": true
+  }
+]

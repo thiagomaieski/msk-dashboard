@@ -559,3 +559,13 @@ R1 e R2 aprovadas pelo usuário. R3.1 implementada para aprovação visual e fun
 Relatório e limitações: [r3-implementation.md](r3-implementation.md). Capturas e validação Playwright MCP: [references/r3](references/r3/). Build aprovado; lint permanece em 134 erros e 15 avisos, sem novos diagnósticos em src. Dados sintéticos locais, sem operações financeiras reais.
 
 Aguardando aprovação da R3.1. Não iniciar R3.2 nem R4. Sem commit ou push.
+
+## 15. Status R4.2 (06/11/2026)
+
+R1, R2, R3.1 e R4.1 aprovadas pelo usuário. R4.2 implementada para revisão: LeadDrawer com identificação, navegação em três seções, cadastro agrupado, qualificação técnica/IA, histórico cronológico, compositor comercial e lightbox sobre Modal R1. Listagem R4.1 preservada.
+
+Consulta de cota passou a exigir clique explícito. Corrigido esvaziamento de status/nicho por eventos do Select na inicialização. Handlers comerciais, navegação filtrada e compressão/upload preservados. Nenhuma alteração de store, APIs, flags, backend ou dependências.
+
+Build aprovado. Lint permanece em 134 erros e 17 avisos globais, com baseline de src em 134 erros e 15 avisos e sem diagnósticos novos. Playwright MCP com fixtures isoladas: 23 verificações funcionais, matriz de 24 capturas nas três seções e dois temas, testes adicionais de foco, upload simulado e navegação filtrada. Sem serviços externos ou gravações reais.
+
+[Relatório R4.2, diff, testes, capturas e limitações](r4.2-implementation.md). Aguardar aprovação visual e funcional. Não iniciar R5. Sem commit ou push.

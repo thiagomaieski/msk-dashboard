@@ -1,0 +1,170 @@
+[
+  {
+    "theme": "dark",
+    "width": 1440,
+    "height": 900,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "height": 900,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "height": 900,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "height": 800,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "height": 800,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "height": 800,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1024,
+    "height": 768,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1024,
+    "height": 768,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 1024,
+    "height": 768,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "height": 844,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "height": 844,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "height": 844,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "height": 900,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "height": 900,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "height": 900,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "height": 800,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "height": 800,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "height": 800,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1024,
+    "height": 768,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1024,
+    "height": 768,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 1024,
+    "height": 768,
+    "section": "historico",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "height": 844,
+    "section": "resumo",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "height": 844,
+    "section": "qualificacao",
+    "overflow": false
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "height": 844,
+    "section": "historico",
+    "overflow": false
+  }
+]

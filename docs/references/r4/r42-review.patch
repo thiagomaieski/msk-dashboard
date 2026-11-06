@@ -1,0 +1,909 @@
+diff --git a/docs/solvik-remake-plan.md b/docs/solvik-remake-plan.md
+index 6a85790..4833b8a 100644
+--- a/docs/solvik-remake-plan.md
++++ b/docs/solvik-remake-plan.md
+@@ -559,3 +559,13 @@ R1 e R2 aprovadas pelo usuário. R3.1 implementada para aprovação visual e fun
+ Relatório e limitações: [r3-implementation.md](r3-implementation.md). Capturas e validação Playwright MCP: [references/r3](references/r3/). Build aprovado; lint permanece em 134 erros e 15 avisos, sem novos diagnósticos em src. Dados sintéticos locais, sem operações financeiras reais.
+ 
+ Aguardando aprovação da R3.1. Não iniciar R3.2 nem R4. Sem commit ou push.
++
++## 15. Status R4.2 (06/11/2026)
++
++R1, R2, R3.1 e R4.1 aprovadas pelo usuário. R4.2 implementada para revisão: LeadDrawer com identificação, navegação em três seções, cadastro agrupado, qualificação técnica/IA, histórico cronológico, compositor comercial e lightbox sobre Modal R1. Listagem R4.1 preservada.
++
++Consulta de cota passou a exigir clique explícito. Corrigido esvaziamento de status/nicho por eventos do Select na inicialização. Handlers comerciais, navegação filtrada e compressão/upload preservados. Nenhuma alteração de store, APIs, flags, backend ou dependências.
++
++Build aprovado. Lint permanece em 134 erros e 17 avisos globais, com baseline de src em 134 erros e 15 avisos e sem diagnósticos novos. Playwright MCP com fixtures isoladas: 23 verificações funcionais, matriz de 24 capturas nas três seções e dois temas, testes adicionais de foco, upload simulado e navegação filtrada. Sem serviços externos ou gravações reais.
++
++[Relatório R4.2, diff, testes, capturas e limitações](r4.2-implementation.md). Aguardar aprovação visual e funcional. Não iniciar R5. Sem commit ou push.
+diff --git a/src/components/modals/LeadDrawer.jsx b/src/components/modals/LeadDrawer.jsx
+index 02312a0..fe59ea4 100644
+--- a/src/components/modals/LeadDrawer.jsx
++++ b/src/components/modals/LeadDrawer.jsx
+@@ -1,9 +1,13 @@
+-import { useState, useEffect, useMemo } from 'react';
++import { useState, useEffect, useMemo, useRef } from 'react';
+ import { useDash, getWaLink } from '../../store/useStore';
+ import { INTERACAO_TIPO_LABELS, INTERACAO_TIPOS, LEAD_STATUSES, QUAL_CHIPS, generatePitchMessage } from '../../utils/crmAnalyticsUtils';
+ import { qualifyLeadWithAi, generateLeadMessageWithAi } from '../../utils/aiApi';
+ import CustomSelect from '../CustomSelect';
+ import Drawer from '../ui/Drawer';
++import Modal from '../ui/Modal';
++import Button from '../ui/Button';
++import Badge from '../ui/Badge';
++import './LeadDrawer.css';
+ import { PageSpeedScore } from './LeadForm';
+ import { navToConfigTab } from './shared';
+ 
+@@ -59,11 +63,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+   const refreshAiUsage = useDash(s => s.refreshAiUsage);
+   const filteredLeadIds = useDash(s => s.filteredLeadIds);
+ 
+-  useEffect(() => {
+-    if (isOpen) {
+-      refreshAiUsage();
+-    }
+-  }, [isOpen, refreshAiUsage]);
++  const [activeSection, setActiveSection] = useState('resumo');
++  const identityRef = useRef(null);
+ 
+   const navTo = (tab) => navToConfigTab(onClose, setConfigTab, goTo, tab);
+ 
+@@ -124,6 +125,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+       botBarreira: !!item?.botBarreira,
+       qualChips: Array.isArray(item?.qualChips) ? item.qualChips : [],
+     });
++    setActiveSection('resumo');
+     setIntText('');
+     setSingleProgress(null);
+     setAiDraft(null);
+@@ -134,7 +136,12 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+     setLightboxOpen(false);
+   }, [item?.id, isOpen]);
+ 
+-  const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
++  const u = (k) => (e) => {
++    // Radix can emit an empty native-select event during form initialization.
++    // Status and niche have no empty option: keep their populated values.
++    if ((k === 'status' || k === 'nicho') && e.target.value === '') return;
++    setF(p => ({ ...p, [k]: e.target.value }));
++  };
+ 
+   const [isPrequaling, setIsPrequaling] = useState(false);
+   const [isAiQualifying, setIsAiQualifying] = useState(false);
+@@ -332,6 +339,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+   useEffect(() => {
+     if (!isOpen) return;
+     const handleKeyDown = (e) => {
++      if (lightboxOpen || e.defaultPrevented || document.querySelector('.custom-select-content')) return;
+       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+         e.preventDefault();
+         handleSave();
+@@ -354,17 +362,17 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+   }, [isOpen, f, item?.id, isSaving, prevLeadId, nextLeadId, lightboxOpen]);
+ 
+   const titleNode = (
+-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+-      <span>{item ? (item.nome || 'Editar Lead') : 'Novo Lead'}</span>
++    <span className="lead-drawer-title">
++      <span>{item ? 'Detalhes do lead' : 'Novo Lead'}</span>
+       {item && currentIdx !== -1 && (
+-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
++        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+           <button
+             type="button"
+             className="btn btn-sm btn-secondary"
+             disabled={!prevLeadId}
+             onClick={() => prevLeadId && openModal('lead', prevLeadId)}
+             title="Lead anterior na lista (Seta ↑)"
+-            style={{ padding: '2px 7px', fontSize: 11 }}
++            aria-label="Lead anterior"
+           >
+             ↑
+           </button>
+@@ -377,22 +385,22 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+             disabled={!nextLeadId}
+             onClick={() => nextLeadId && openModal('lead', nextLeadId)}
+             title="Próximo lead na lista (Seta ↓)"
+-            style={{ padding: '2px 7px', fontSize: 11 }}
++            aria-label="Próximo lead"
+           >
+             ↓
+           </button>
+-        </div>
++        </span>
+       )}
+-    </div>
++    </span>
+   );
+ 
+   const footerNode = (
+     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 10, flexWrap: 'wrap' }}>
+       <div>
+         {item && (
+-          <button
++          <Button
+             type="button"
+-            className="btn btn-secondary"
++            variant="secondary"
+             style={{ color: 'var(--green)', gap: 6, fontSize: 12 }}
+             onClick={() => useDash.getState().convertLeadToCliente(item.id)}
+             title="Converter lead em cliente cadastrado"
+@@ -403,24 +411,24 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               <polyline points="17 11 19 13 23 9"/>
+             </svg>
+             <span>Converter em Cliente</span>
+-          </button>
++          </Button>
+         )}
+       </div>
+       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+         <span className="desktop-only" style={{ fontSize: 11, color: 'var(--text3)' }}>
+           <kbd>Ctrl</kbd>+<kbd>S</kbd>
+         </span>
+-        <button type="button" className="btn btn-secondary" onClick={onClose}>
++        <Button type="button" variant="secondary" onClick={onClose}>
+           Cancelar
+-        </button>
+-        <button
++        </Button>
++        <Button
+           type="button"
+-          className="btn btn-primary"
++          variant="primary"
+           disabled={isSaving}
+           onClick={handleSave}
+         >
+           {isSaving ? 'Salvando...' : (item ? 'Salvar Alterações' : 'Salvar Lead')}
+-        </button>
++        </Button>
+       </div>
+     </div>
+   );
+@@ -430,21 +438,44 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+       isOpen={isOpen}
+       onClose={onClose}
+       title={titleNode}
+-      description={item ? 'Use ↑/↓ fora dos campos para navegar pela lista filtrada • Esc para fechar' : 'Preencha os dados do novo lead'}
++      description={item ? 'Carteira comercial / Leads' : 'Cadastre uma nova oportunidade comercial'}
+       footer={footerNode}
+-      width={620}
++      width={760}
++      className="lead-drawer"
++      navigation={
++        <nav className="lead-drawer-nav" aria-label="Seções do lead">
++          {[["resumo", "01", "Resumo"], ["qualificacao", "02", "Qualificação"], ["historico", "03", "Histórico"]].map(([id, number, label]) => (
++            <button type="button" key={id} id={`lead-nav-${id}`} aria-controls={`lead-panel-${id}`}
++              aria-current={activeSection === id ? 'step' : undefined}
++              onClick={() => {
++                setActiveSection(id);
++                identityRef.current?.parentElement.scrollTo({ top: 0 });
++              }}>
++              <span>{number}</span>{label}
++            </button>
++          ))}
++        </nav>
++      }
+     >
+-      <form id="lead-drawer-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
++      <div ref={identityRef} className="lead-drawer-identity">
++        <span className="lead-drawer-avatar" aria-hidden="true">{(f.nome || 'Novo lead').split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()}</span>
++        <div><span className="lead-drawer-eyebrow">{item ? 'Oportunidade comercial' : 'Novo cadastro'}</span>
++          <h3>{f.nome || 'Nome / Empresa'}</h3>
++          <p>{[f.nicho, f.cidade].filter(Boolean).join(' • ') || 'Complete os dados abaixo'}</p>
++        </div>
++        <Badge status={f.status} />
++      </div>
++      <form id="lead-drawer-form" onSubmit={handleSave}>
+         {/* ─── SEÇÃO 1: RESUMO ───────────────────────────────────────────── */}
+-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
++        <section className="lead-drawer-section" id="lead-panel-resumo" aria-labelledby="lead-nav-resumo" hidden={activeSection !== 'resumo'}>
+           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', marginBottom: 12 }}>
+-            1. Resumo
++            Cadastro e contato
+           </div>
+-          <div className="form-grid" style={{ gap: 10 }}>
++          <div className="form-grid lead-drawer-card">
+             <div className="form-grid form-grid-2">
+               <div className="form-group">
+                 <label className="form-label">Nome / Empresa *</label>
+-                <input className="form-input" value={f.nome} onChange={u('nome')} />
++                <input className="form-input" aria-label="Nome / Empresa" value={f.nome} onChange={u('nome')} />
+               </div>
+               <div className="form-group">
+                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+@@ -454,34 +485,35 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                       href={getWaLink(f.telefone)}
+                       target="_blank"
+                       rel="noreferrer"
+-                      style={{ color: '#25D366', fontSize: 11, fontWeight: 600, textDecoration: 'none' }}
++                      style={{ color: 'var(--green)', fontSize: 11, fontWeight: 600, textDecoration: 'none' }}
+                     >
+                       Abrir WhatsApp ↗
+                     </a>
+                   )}
+                 </label>
+-                <input className="form-input" value={f.telefone} onChange={u('telefone')} />
++                <input className="form-input" aria-label="Telefone / WhatsApp" value={f.telefone} onChange={u('telefone')} />
+               </div>
+             </div>
+ 
+             <div className="form-grid form-grid-2">
+               <div className="form-group">
+                 <label className="form-label">Status</label>
+-                <CustomSelect variant="form" value={f.status} onChange={u('status')}>
++                <CustomSelect variant="form" ariaLabel="Status" value={f.status} onChange={u('status')}>
+                   {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
+                 </CustomSelect>
+               </div>
+               <div className="form-group">
+                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <span>Nicho</span>
+-                  <span
++                  <button type="button"
++                    className="lead-drawer-text-action"
+                     style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}
+                     onClick={() => navTo('cfg-negocios')}
+                   >
+                     Gerenciar →
+-                  </span>
++                  </button>
+                 </label>
+-                <CustomSelect variant="form" value={f.nicho} onChange={u('nicho')}>
++                <CustomSelect variant="form" ariaLabel="Nicho" value={f.nicho} onChange={u('nicho')}>
+                   {configData.nichos.map(n => <option key={n}>{n}</option>)}
+                 </CustomSelect>
+               </div>
+@@ -492,7 +524,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                 <label className="form-label">Cidade / Localização</label>
+                 <input
+                   className="form-input"
+-                  value={f.cidade}
++                  aria-label="Cidade / Localização" value={f.cidade}
+                   onChange={u('cidade')}
+                   list="existing-cidades-drawer"
+                   placeholder="Ex: Curitiba - PR"
+@@ -505,7 +537,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                 <label className="form-label">Lote</label>
+                 <input
+                   className="form-input"
+-                  value={f.lote}
++                  aria-label="Lote" value={f.lote}
+                   onChange={u('lote')}
+                   list="existing-lotes-drawer"
+                   placeholder="Ex: Curitiba 11/2026"
+@@ -531,22 +563,26 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                     </a>
+                   )}
+                 </label>
+-                <input className="form-input" value={f.site} onChange={u('site')} />
++                <input className="form-input" aria-label="Site / Instagram" value={f.site} onChange={u('site')} />
+               </div>
+               <div className="form-group">
+                 <label className="form-label">E-mail</label>
+-                <input className="form-input" type="email" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" />
++                <input className="form-input" type="email" aria-label="E-mail" value={f.email} onChange={u('email')} placeholder="email@exemplo.com" />
+               </div>
+             </div>
+ 
++          </div>
++          <details className="lead-drawer-card lead-drawer-details">
++            <summary>Informações complementares <span>Valor, origem e acompanhamento</span></summary>
++            <div className="form-grid">
+             <div className="form-grid form-grid-2">
+               <div className="form-group">
+                 <label className="form-label">Valor Estimado (R$)</label>
+-                <input className="form-input" type="number" min="0" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" />
++                <input className="form-input" type="number" min="0" aria-label="Valor Estimado (R$)" value={f.valorEstimado} onChange={u('valorEstimado')} placeholder="0,00" />
+               </div>
+               <div className="form-group">
+                 <label className="form-label">Origem do Lead</label>
+-                <CustomSelect variant="form" value={f.origem} onChange={u('origem')} placeholder="-- Selecione --">
++                <CustomSelect variant="form" ariaLabel="Origem do Lead" value={f.origem} onChange={u('origem')} placeholder="-- Selecione --">
+                   {['', 'Instagram', 'Google', 'Indicação', 'LinkedIn', 'WhatsApp', 'Facebook', 'Site', 'Evento', 'Outro'].map(o => <option key={o} value={o}>{o || '-- Selecione --'}</option>)}
+                 </CustomSelect>
+               </div>
+@@ -555,22 +591,37 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+             <div className="form-grid form-grid-2">
+               <div className="form-group">
+                 <label className="form-label">Último Contato</label>
+-                <input className="form-input" type="date" value={f.ultimoContato} onChange={u('ultimoContato')} />
++                <input className="form-input" type="date" aria-label="Último Contato" value={f.ultimoContato} onChange={u('ultimoContato')} />
+               </div>
+               <div className="form-group">
+                 <label className="form-label">Próximo Contato</label>
+-                <input className="form-input" type="date" value={f.proximoContato} onChange={u('proximoContato')} />
++                <input className="form-input" type="date" aria-label="Próximo Contato" value={f.proximoContato} onChange={u('proximoContato')} />
+               </div>
+             </div>
+           </div>
+-        </div>
++          </details>
++          <div className="lead-drawer-card lead-drawer-notes">
++          {/* Observações */}
++          <div className="form-group" style={{ marginBottom: 0 }}>
++            <label className="form-label">Observações de Qualificação</label>
++            <textarea
++              className="form-textarea"
++              style={{ minHeight: 75 }}
++              placeholder="Anotações sobre problemas no site, oportunidades ou pontos fortes..."
++              aria-label="Observações de Qualificação" value={f.observacoes}
++              onChange={u('observacoes')}
++            />
++          </div>
++
++          </div>
++        </section>
+ 
+         {/* ─── SEÇÃO 2: QUALIFICAÇÃO ────────────────────────────────────── */}
+-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
++        <section className="lead-drawer-section lead-drawer-card" id="lead-panel-qualificacao" aria-labelledby="lead-nav-qualificacao" hidden={activeSection !== 'qualificacao'}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
+-                2. Qualificação
++                Análise e presença digital
+               </div>
+               <span
+                 title="Chamadas de IA utilizadas hoje pelo seu usuário"
+@@ -586,6 +637,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               >
+                 IA hoje: {aiUsage?.used ?? 0}/{aiUsage?.limit ?? 60}
+               </span>
++              <Button size="sm" variant="ghost" onClick={refreshAiUsage} title="Consultar utilização atual de IA">Atualizar cota</Button>
+             </div>
+             {item?.id && (
+               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+@@ -596,8 +648,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                   disabled={isPrequaling}
+                   style={{
+                     display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
+-                    background: isPrequaling ? 'var(--bg2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+-                    color: '#fff', border: 'none',
++                    background: 'var(--color-accent)',
++                    color: 'var(--on-accent)', border: 'none',
+                   }}
+                 >
+                   {isPrequaling ? 'Analisando...' : (prequalData ? 'Re-qualificar Site' : 'Qualificar Agora')}
+@@ -660,7 +712,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                 <button
+                   type="button"
+                   className="btn btn-sm btn-primary"
+-                  style={{ background: 'var(--green)', borderColor: 'var(--green)', color: '#fff' }}
++                  style={{ background: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: 'var(--on-accent)' }}
+                   onClick={handleConfirmAiDraft}
+                 >
+                   Confirmar e Salvar
+@@ -697,6 +749,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                 return (
+                   <button
+                     key={chip.id}
++                    aria-pressed={active}
+                     type="button"
+                     onClick={() => setF(p => {
+                       const curr = Array.isArray(p.qualChips) ? p.qualChips : [];
+@@ -722,6 +775,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               })}
+               <button
+                 type="button"
++                aria-pressed={f.botBarreira}
+                 onClick={() => setF(p => ({ ...p, botBarreira: !p.botBarreira }))}
+                 style={{
+                   fontSize: 11,
+@@ -769,6 +823,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+             </div>
+           )}
+ 
++          {!prequalData && !singleProgress && (
++            <p className="lead-drawer-empty">Nenhuma análise técnica registrada. {item?.id ? 'Use Qualificar Agora para iniciar a análise.' : 'Salve o lead para disponibilizar a análise.'}</p>
++          )}
+           {/* Notas PageSpeed & Instagram */}
+           {prequalData && (prequalData.pagespeed?.mobile != null || prequalData.pagespeed?.desktop != null) && (
+             <div className="prequal-speed-row">
+@@ -830,14 +887,16 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               </div>
+             </div>
+             {screenshotUrlWithCacheBuster ? (
+-              <div
++              <button
++                type="button"
++                aria-label="Ampliar screenshot"
+                 className="prequal-screenshot-wrap"
+                 onClick={() => { setLightboxNotes(f.observacoes || ''); setLightboxOpen(true); }}
+                 title="Clique para ampliar no Lightbox (ou cole outro print com Ctrl+V para substituir)"
+                 style={{ maxHeight: 220, overflow: 'hidden', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)' }}
+               >
+                 <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="prequal-screenshot-img" />
+-              </div>
++              </button>
+             ) : (
+               <div
+                 className="prequal-screenshot-placeholder"
+@@ -850,18 +909,110 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+             )}
+           </div>
+ 
+-          {/* Observações */}
+-          <div className="form-group" style={{ marginBottom: 0 }}>
+-            <label className="form-label">Observações de Qualificação</label>
+-            <textarea
+-              className="form-textarea"
+-              style={{ minHeight: 75 }}
+-              placeholder="Anotações sobre problemas no site, oportunidades ou pontos fortes..."
+-              value={f.observacoes}
+-              onChange={u('observacoes')}
+-            />
++
++        </section>
++
++        {/* ─── SEÇÃO 3: HISTÓRICO ───────────────────────────────────────── */}
++        <section className="lead-drawer-section lead-drawer-card" id="lead-panel-historico" aria-labelledby="lead-nav-historico" hidden={activeSection !== 'historico'}>
++          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
++            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
++              Histórico de interações
++            </div>
++            <button
++              type="button"
++              className="btn btn-sm btn-secondary"
++              style={{
++                fontSize: 11,
++                padding: '3px 10px',
++                color: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : 'var(--text2)',
++                borderColor: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'rgba(16,185,129,0.4)' : undefined,
++              }}
++              onClick={() => {
++                const nowISO = new Date().toISOString();
++                const newInt = { data: nowISO, texto: 'Resposta recebida', tipo: 'resposta_recebida', criadoEm: nowISO };
++                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
++              }}
++            >
++              ✓ Marcar resposta
++            </button>
+           </div>
+ 
++          {(f.interacoes || []).length === 0 ? (
++            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>
++          ) : (
++            <div className="lead-drawer-timeline">
++              {(f.interacoes || []).map((int, i) => ({ int, i })).sort((a, b) => (Date.parse(b.int.data || b.int.criadoEm) || 0) - (Date.parse(a.int.data || a.int.criadoEm) || 0)).map(({ int, i }) => (
++                <div className="lead-drawer-event" key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)', alignItems: 'flex-start' }}>
++                  <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
++                    {(int.data || int.criadoEm || '').split('T')[0].split('-').reverse().join('/')}
++                    <small>{(int.data || int.criadoEm || '').includes('T') ? new Date(int.data || int.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</small>
++                  </span>
++                  {int.tipo && int.tipo !== 'outro' && (
++                    <span style={{ fontSize: 10, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
++                      {INTERACAO_TIPO_LABELS[int.tipo] || int.tipo}
++                    </span>
++                  )}
++                  <span className="lead-drawer-event-text" style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
++                  <button
++                    type="button"
++                    className="row-btn del"
++                    aria-label="Remover interação"
++                    style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }}
++                    onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}
++                  >
++                    ×
++                  </button>
++                </div>
++              ))}
++            </div>
++          )}
++
++          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
++            {INTERACAO_TIPOS.map(t => (
++              <button
++                key={t}
++                type="button"
++                className={`btn btn-sm ${intTipo === t ? 'btn-primary' : 'btn-secondary'}`}
++                style={{ fontSize: 10, padding: '3px 8px' }}
++                onClick={() => setIntTipo(t)}
++              >
++                {INTERACAO_TIPO_LABELS[t] || t}
++              </button>
++            ))}
++          </div>
++
++          <div style={{ display: 'flex', gap: 6 }}>
++            <input
++              className="form-input"
++              style={{ flex: 1, fontSize: 12, padding: '6px 8px' }}
++              placeholder="Adicionar interação (Enter para incluir)..."
++              value={intText}
++              onChange={e => setIntText(e.target.value)}
++              onKeyDown={e => {
++                if (e.key === 'Enter') {
++                  e.preventDefault();
++                  if (!intText) return;
++                  const nowISO = new Date().toISOString();
++                  const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
++                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
++                  setIntText('');
++                }
++              }}
++            />
++            <button
++              type="button"
++              className="btn btn-sm btn-secondary"
++              onClick={() => {
++                if (!intText) return;
++                const nowISO = new Date().toISOString();
++                const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
++                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
++                setIntText('');
++              }}
++            >
++              Adicionar
++            </button>
++          </div>
+           {/* T4.3: Gerar mensagem com IA ou Modelo Offline */}
+           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+@@ -869,13 +1020,13 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                   Mensagem de Abordagem
+                 </span>
+-                <span
++                <button type="button" className="lead-drawer-text-action"
+                   style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}
+                   onClick={() => navTo('cfg-sistema')}
+                   title="Personalizar tom de voz e instruções da IA em Configurações > Sistema"
+                 >
+                   Instruções da IA →
+-                </span>
++                </button>
+               </div>
+               <div style={{ display: 'inline-flex', gap: 4 }}>
+                 <button
+@@ -955,9 +1106,9 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+                     onClick={handleOpenWhatsAppWithText}
+                     style={{
+                       fontSize: 11,
+-                      background: '#25D366',
+-                      borderColor: '#25D366',
+-                      color: '#fff',
++                      background: 'var(--color-accent)',
++                      borderColor: 'var(--color-accent)',
++                      color: 'var(--on-accent)',
+                       fontWeight: 600,
+                     }}
+                   >
+@@ -967,113 +1118,13 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               </div>
+             )}
+           </div>
+-        </div>
+-
+-        {/* ─── SEÇÃO 3: HISTÓRICO ───────────────────────────────────────── */}
+-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)' }}>
+-              3. Histórico de Interações
+-            </div>
+-            <button
+-              type="button"
+-              className="btn btn-sm btn-secondary"
+-              style={{
+-                fontSize: 11,
+-                padding: '3px 10px',
+-                color: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : 'var(--text2)',
+-                borderColor: (f.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'rgba(16,185,129,0.4)' : undefined,
+-              }}
+-              onClick={() => {
+-                const nowISO = new Date().toISOString();
+-                const newInt = { data: nowISO, texto: 'Resposta recebida', tipo: 'resposta_recebida', criadoEm: nowISO };
+-                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+-              }}
+-            >
+-              ✓ Marcar resposta
+-            </button>
+-          </div>
+-
+-          {(f.interacoes || []).length === 0 ? (
+-            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma interação registrada.</div>
+-          ) : (
+-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+-              {(f.interacoes || []).map((int, i) => (
+-                <div key={i} style={{ fontSize: 12, display: 'flex', gap: 8, paddingBottom: 4, borderBottom: '1px solid var(--border2)', alignItems: 'flex-start' }}>
+-                  <span style={{ color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+-                    {(int.data || int.criadoEm || '').split('T')[0].split('-').reverse().join('/')}
+-                  </span>
+-                  {int.tipo && int.tipo !== 'outro' && (
+-                    <span style={{ fontSize: 10, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+-                      {INTERACAO_TIPO_LABELS[int.tipo] || int.tipo}
+-                    </span>
+-                  )}
+-                  <span style={{ color: 'var(--text)', flex: 1 }}>{int.texto}</span>
+-                  <button
+-                    type="button"
+-                    className="row-btn del"
+-                    style={{ marginLeft: 'auto', padding: 0, flexShrink: 0 }}
+-                    onClick={() => setF(p => ({ ...p, interacoes: p.interacoes.filter((_, idx) => idx !== i) }))}
+-                  >
+-                    ×
+-                  </button>
+-                </div>
+-              ))}
+-            </div>
+-          )}
+-
+-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+-            {INTERACAO_TIPOS.map(t => (
+-              <button
+-                key={t}
+-                type="button"
+-                className={`btn btn-sm ${intTipo === t ? 'btn-primary' : 'btn-secondary'}`}
+-                style={{ fontSize: 10, padding: '3px 8px' }}
+-                onClick={() => setIntTipo(t)}
+-              >
+-                {INTERACAO_TIPO_LABELS[t] || t}
+-              </button>
+-            ))}
+-          </div>
+-
+-          <div style={{ display: 'flex', gap: 6 }}>
+-            <input
+-              className="form-input"
+-              style={{ flex: 1, fontSize: 12, padding: '6px 8px' }}
+-              placeholder="Adicionar interação (Enter para incluir)..."
+-              value={intText}
+-              onChange={e => setIntText(e.target.value)}
+-              onKeyDown={e => {
+-                if (e.key === 'Enter') {
+-                  e.preventDefault();
+-                  if (!intText) return;
+-                  const nowISO = new Date().toISOString();
+-                  const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+-                  setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+-                  setIntText('');
+-                }
+-              }}
+-            />
+-            <button
+-              type="button"
+-              className="btn btn-sm btn-secondary"
+-              onClick={() => {
+-                if (!intText) return;
+-                const nowISO = new Date().toISOString();
+-                const newInt = { data: nowISO, texto: intText, tipo: intTipo, criadoEm: nowISO };
+-                setF(p => ({ ...p, interacoes: [...(p.interacoes || []), newInt], ultimoContato: nowISO.split('T')[0] }));
+-                setIntText('');
+-              }}
+-            >
+-              Adicionar
+-            </button>
+-          </div>
+-        </div>
++        </section>
+       </form>
+ 
+       {/* Lightbox para o print */}
+       {lightboxOpen && screenshotUrlWithCacheBuster && (
+-        <div className="lightbox-overlay" onClick={() => setLightboxOpen(false)}>
++        <Modal isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} title="Screenshot do site" description={item?.nome || 'Lead'} className="lead-lightbox" size="lg">
++          <div className="lead-lightbox-layout">
+           <div className="lightbox-split-left">
+             <div className="lightbox-split-img-container">
+               <img src={screenshotUrlWithCacheBuster} alt="Screenshot do site" className="lightbox-split-img" />
+@@ -1088,6 +1139,7 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               <label className="lightbox-sidebar-label">Anotações / Pontos de Qualificação</label>
+               <textarea
+                 className="lightbox-sidebar-textarea"
++                aria-label="Anotações do screenshot"
+                 placeholder="Escreva os pontos de qualificação observados no site..."
+                 value={lightboxNotes}
+                 onChange={(e) => setLightboxNotes(e.target.value)}
+@@ -1109,7 +1161,8 @@ export default function LeadDrawer({ isOpen, onClose, item }) {
+               </button>
+             </div>
+           </div>
+-        </div>
++          </div>
++        </Modal>
+       )}
+     </Drawer>
+   );
+diff --git a/src/components/ui/Drawer.jsx b/src/components/ui/Drawer.jsx
+index 76b383c..aebd6cd 100644
+--- a/src/components/ui/Drawer.jsx
++++ b/src/components/ui/Drawer.jsx
+@@ -10,6 +10,7 @@ export function Drawer({
+   description,
+   children,
+   footer,
++  navigation,
+   width = 460,
+   className = '',
+ }) {
+@@ -135,10 +136,13 @@ export function Drawer({
+               </button>
+             </div>
+ 
++            {navigation}
++
+             {/* Content Body */}
+             <div
+               style={{
+                 flex: 1,
++                minHeight: 0,
+                 overflowY: 'auto',
+                 padding: '24px',
+                 display: 'flex',
+diff --git a/src/components/modals/LeadDrawer.css b/src/components/modals/LeadDrawer.css
+new file mode 100644
+index 0000000..1f8c233
+--- /dev/null
++++ b/src/components/modals/LeadDrawer.css
+@@ -0,0 +1,74 @@
++﻿.lead-drawer { background: linear-gradient(145deg, var(--surface-floating), var(--bg2)) !important; }
++.lead-drawer > div:first-child { flex-shrink: 0; }
++.lead-drawer-title { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
++.lead-drawer-title > span:last-child { gap: 10px !important; }
++.lead-drawer-title .btn { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
++.lead-drawer-nav { display: flex; gap: 4px; padding: 6px; margin: 16px 24px 0; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-glass); flex-shrink: 0; }
++.lead-drawer-nav button { flex: 1; display: flex; justify-content: center; align-items: center; gap: 9px; padding: 11px 8px; border: 0; border-radius: 999px; background: transparent; color: var(--text2); font: inherit; font-size: 13px; cursor: pointer; transition: background 180ms, color 180ms; }
++.lead-drawer-nav button span { font-size: 11px; opacity: .65; }
++.lead-drawer-nav button[aria-current] { background: var(--bg4); color: var(--text); box-shadow: var(--shadow-1); font-weight: 700; }
++.lead-drawer-nav button[aria-current] span { color: var(--accent); opacity: 1; }
++.lead-drawer-identity { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 22px; background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--surface-glass)); }
++.lead-drawer-avatar { width: 50px; height: 50px; border-radius: 17px; background: var(--color-accent); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; font-size: 20px; font-weight: 700; }
++.lead-drawer-identity > div { flex: 1; min-width: 0; }
++.lead-drawer-eyebrow { font-size: 11px; color: var(--text3); }
++.lead-drawer-identity h3 { font-size: 24px; line-height: 1.2; letter-spacing: -.025em; margin: 4px 0 6px; overflow-wrap: anywhere; }
++.lead-drawer-identity p { margin: 0; font-size: 13px; color: var(--text2); }
++.lead-drawer-section { display: flex; flex-direction: column; gap: 16px; animation: lead-section-in 160ms ease-out; }
++.lead-drawer-section[hidden] { display: none; }
++.lead-drawer-card { padding: 18px; border: 1px solid var(--border-light); border-radius: 22px; background: var(--surface-glass); box-shadow: inset 0 1px 0 var(--border-light); }
++.lead-drawer .form-grid { gap: 16px; }
++.lead-drawer .form-group { margin: 0; min-width: 0; gap: 7px; }
++.lead-drawer .form-label { font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--text2); }
++.lead-drawer .form-input, .lead-drawer .form-select { min-height: 42px; border-radius: 14px; font-size: 13px; }
++.lead-drawer .form-textarea { border-radius: 14px; font-size: 13px; }
++.lead-drawer-details summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); }
++.lead-drawer-details summary span { margin-left: 12px; font-size: 12px; font-weight: 400; color: var(--text3); }
++.lead-drawer-details[open] summary { margin-bottom: 20px; }
++.lead-drawer .btn { border-radius: 999px; min-height: 32px; }
++.lead-drawer #lead-panel-qualificacao > div:first-child { padding-bottom: 14px; border-bottom: 1px solid var(--border); gap: 14px !important; }
++.lead-drawer #lead-panel-qualificacao > div:first-child > div { flex-wrap: wrap; }
++.lead-drawer .prequal-speed-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
++.lead-drawer .prequal-screenshot-wrap { display: block; width: 100%; padding: 0; background: var(--bg2); border-radius: 16px !important; }
++.lead-drawer .prequal-screenshot-placeholder { min-height: 130px; display: grid; place-content: center; background: var(--bg2); border-radius: 16px !important; }
++.lead-drawer .prequal-screenshot-img { width: 100%; }
++.lead-drawer-timeline { display: flex; flex-direction: column; gap: 12px; }
++.lead-drawer-event { display: grid !important; grid-template-columns: 85px max-content 1fr 24px; gap: 10px !important; padding: 14px !important; border: 1px solid var(--border) !important; border-left: 3px solid var(--accent) !important; border-radius: 14px; background: var(--bg2); }
++.lead-drawer-event small { display: block; margin-top: 4px; font-size: 11px; }
++.lead-drawer-event > span { overflow-wrap: anywhere; }
++.lead-lightbox { max-width: min(1320px, calc(100vw - 32px)) !important; }
++.lead-lightbox-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr); min-height: 0; gap: 20px; }
++.lead-lightbox .lightbox-split-left { width: auto; padding: 0; min-width: 0; max-height: 70dvh; overflow: auto; background: var(--bg2); border-radius: 16px; }
++.lead-lightbox .lightbox-split-img-container { width: 100%; padding: 0; }
++.lead-lightbox .lightbox-split-img { width: 100%; max-width: 100%; height: auto; }
++.lead-lightbox .lightbox-split-right { width: auto; min-width: 0; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-glass); color: var(--text); }
++.lead-lightbox .lightbox-split-header, .lead-lightbox .lightbox-split-body, .lead-lightbox .lightbox-split-footer { padding: 16px; }
++.lead-lightbox .lightbox-split-header h3 { color: var(--text); }
++.lead-lightbox .lightbox-split-header p, .lead-lightbox .lightbox-sidebar-label { color: var(--text2); }
++.lead-lightbox .lightbox-sidebar-textarea { background: var(--bg2); color: var(--text); border-color: var(--border); min-height: 220px; }
++@keyframes lead-section-in { from { opacity: .5; transform: translateY(3px); } to { opacity: 1; transform: none; } }
++@media (max-width: 600px) {
++  .lead-drawer-nav { margin: 12px 12px 0; }
++  .lead-drawer-nav button { font-size: 12px; gap: 4px; }
++  .lead-drawer-nav button span { display: none; }
++  .lead-drawer > div { padding-left: 14px !important; padding-right: 14px !important; }
++  .lead-drawer-identity { flex-wrap: wrap; padding: 14px; gap: 10px; }
++  .lead-drawer-identity h3 { font-size: 20px; }
++  .lead-drawer-card { padding: 14px; }
++  .lead-drawer .form-grid-2 { grid-template-columns: 1fr; }
++  .lead-drawer-details summary span { display: block; margin: 6px 0 0; }
++  .lead-drawer-event { grid-template-columns: 1fr auto; }
++  .lead-drawer-event > span:nth-last-child(2) { grid-column: 1; }
++  .lead-lightbox-layout { grid-template-columns: 1fr; }
++  .lead-lightbox .lightbox-split-left { max-height: 40dvh; }
++}
++@media (prefers-reduced-motion: reduce) { .lead-drawer-section { animation: none; } .lead-drawer-nav button { transition: none; } }
++.lead-drawer-text-action { border: 0; background: transparent; padding: 0; font: inherit; }
++.lead-lightbox .lightbox-split-right { height: auto; animation: none; overflow: hidden; box-shadow: none; }
++.lead-lightbox-layout { flex-shrink: 0; }
++.lead-lightbox .lightbox-split-left { height: 65dvh; }
++@media (max-width: 600px) { .lead-lightbox .lightbox-split-left { height: 35dvh; } }
++.lead-drawer-event .lead-drawer-event-text { grid-column: 3; min-width: 0; white-space: pre-wrap; }
++.lead-drawer-event .row-btn { grid-column: 4; width: 24px; height: 24px; }
++.lead-drawer-empty { padding: 16px; border: 1px dashed var(--border); border-radius: 16px; color: var(--text3); font-size: 13px; }
++@media (max-width: 600px) { .lead-drawer-event .lead-drawer-event-text { grid-column: 1; } .lead-drawer-event .row-btn { grid-column: 2; } }
+diff --git a/docs/r4.2-implementation.md b/docs/r4.2-implementation.md
+new file mode 100644
+index 0000000..4f6e6e1
+--- /dev/null
++++ b/docs/r4.2-implementation.md
+@@ -0,0 +1,91 @@
++# R4.2: LeadDrawer e interface comercial
++
++Data: 06/11/2026. Implementação concluída para aprovação visual e funcional. R5 não iniciada. Sem commit ou push.
++
++## Escopo e referências
++
++Lidos os seis documentos solicitados. Consultadas as cinco capturas antigas de `before/`, o Pipeline em lista, o drawer Solvik, menu contextual e formulário de Settings. A auditoria R0 informa que não há captura do modal de criação do Solvik; essa lacuna não foi tratada como referência visual comprovada. Não houve nova coleta no template.
++
++O Git estava limpo na entrada. A implementação altera três arquivos de aplicação:
++
++| Arquivo | Alteração |
++|---|---|
++| `src/components/modals/LeadDrawer.jsx` | Composição em três seções, identificação, cards, histórico, controles acessíveis e lightbox sobre o Modal R1 |
++| `src/components/modals/LeadDrawer.css` | Novo CSS restrito ao drawer e ao lightbox, com tokens R1 e adaptação móvel mínima |
++| `src/components/ui/Drawer.jsx` | Slot opcional `navigation` fora da rolagem e `minHeight: 0` no corpo flexível |
++
++[Diff completo, incluindo o CSS novo](references/r4/r42-review.patch). O plano já é versionado e aparece no diff. O relatório novo e as evidências seguem ignorados pela regra de `docs/`; não houve staging.
++
++## Organização visual
++
++- Drawer desktop de até 760px, com margens e raios R1. Cabeçalho e rodapé permanecem fora da rolagem. A largura acomoda os campos reais do Maieski, sem copiar mecanicamente os 460px da referência.
++- Identificação com iniciais, nome, nicho, cidade e Badge do status atual. Não existem métricas ou pontuações inventadas.
++- Navegação segmentada persistente: Resumo, Qualificação e Histórico. Botões com `aria-controls` e `aria-current`; Tab e Enter/Space usam a semântica nativa. Seções ocultas continuam montadas, preservando campos e rascunhos. Trocar seção retorna a rolagem ao início.
++- Resumo: cadastro e contato em duas colunas; valor, origem e datas em bloco complementar recolhível; observações em card próprio. Mantidos todos os campos existentes. Nome e empresa continuam sendo o mesmo campo do modelo.
++- Qualificação: ações explícitas e cota, resumo/rascunho de IA, chips, bot, PageSpeed mobile/desktop, dados do Instagram, screenshot e estado sem análise. Mantidos logs de processamento, sucesso, erro e ignorado.
++- Histórico: cartões cronológicos, mais recentes primeiro, com data e hora. Ordenação feita somente na apresentação, carregando o índice original para remoção. O array persistido não é reordenado. Compositor de abordagem/follow-up transferido para essa seção, com geração IA e offline, edição, cópia e WhatsApp originais.
++- Lightbox: Modal da R1 em portal, imagem com rolagem e painel de notas. O overlay anterior ficava dentro de um painel transformado e com recorte. Reutilizar o Modal resolve a camada e a contenção de foco sem criar outro sistema. Não havia zoom dedicado nem galeria anterior/próxima no código original.
++- Temas usam `body.light` e tokens existentes. Animações respeitam movimento reduzido. Mobile mantém drawer e rolagem, com campos em uma coluna.
++
++Reutilizados: Drawer, Modal, Button e Badge R1, CustomSelect/Radix e PageSpeedScore do LeadForm. LeadForm permanece intacto como fallback.
++
++## Contratos e correções locais
++
++[Comparação automatizada dos blocos originais](references/r4/r42-contract-invariants.json): os oito handlers de pré-qualificação, IA, mensagem, WhatsApp e salvamento são idênticos. Também são idênticos `navListIds` e cálculo anterior/próximo, `resizeImageToMax1600` e o efeito de colagem/upload. Sincronização do formulário por `item.id` e `isOpen` preservada, com apenas o reset da seção visual acrescentado.
++
++Três ajustes funcionais limitados à UI:
++
++1. A consulta `refreshAiUsage` era disparada ao abrir. Foi removida desse efeito e exposta em **Atualizar cota**, para cumprir a exigência de chamadas explícitas. A cota em memória segue visível e as respostas de IA seguem atualizando-a pelo handler original. O número pode estar desatualizado até uma consulta ou resposta; não foi alterado o limite ou o contrato da API.
++2. Eventos vazios do Select na inicialização apagavam status e nicho, problema também visível nas capturas anteriores. O adaptador local ignora valor vazio nesses dois campos, cujas opções não incluem valor vazio. Preenchimento e alterações reais foram retestados. CustomSelect global não foi alterado.
++3. Atalhos do drawer não atuam atrás do lightbox nem durante um Select aberto. Escape fecha a camada superior e restaura o foco. Ctrl+S continua usando `handleSave` original quando o drawer está ativo.
++
++Não alterados: listagem R4.1, store, filtros, flags, Firebase, autenticação, rotas, backend, modelos, limites, utilitários de integração, dependências, Clientes e Projetos. A conversão continua chamando `convertLeadToCliente(item.id)`.
++
++## Testes com Playwright MCP
++
++Ambiente: Vite local, `/docs/references/r4/r42.html`, fixture com 113 leads sintéticos e usuário sem sessão Firebase. Sem initAuth/loadAll. Gravações substituídas por operações em memória e registro de argumentos. Contexto MCP bloqueou origens externas e caminhos `/api-storage`/PHP antes da navegação. O módulo aiApi foi substituído na resposta de desenvolvimento por funções simuladas. Nenhuma cota, pré-qualificação, upload, exclusão ou gravação real foi executada.
++
++- [23 verificações funcionais aprovadas](references/r4/r42-functional-results.json), roteiro em [r42-playwright.txt](references/r4/r42-playwright.txt).
++- [24 combinações visuais aprovadas](references/r4/r42-visual-results.json): três seções, dois temas, 1440x900, 1280x800, 1024x768 e 390x844. Sem overflow horizontal do drawer.
++- [Verificações adicionais](references/r4/r42-extra-final.json): circulação de foco, retenção de campos complementares, reset de scroll, lightbox móvel e movimento reduzido (`animationName: none`).
++
++| Fluxo | Resultado observado |
++|---|---|
++| Abertura/fechamento | Nome da tabela abre; Escape, botão e backdrop fecham; foco volta ao acionador |
++| Edição | Telefone e interação mantidos ao trocar seções; Ctrl+S recebe nome, status, nicho e histórico corretos |
++| Criação | Novo lead salvo somente na memória da fixture; estado sem screenshot exibido |
++| Validação | Nome vazio não chama saveLead; handler original mantido, sem novas regras de e-mail/valor |
++| Navegação | Botões e setas percorrem fila; filtro Café navega de 113 para 101 e volta, respeitando filteredLeadIds |
++| Selects | Status e nicho preenchidos; escolha Em negociação aplicada; Escape fecha menu antes do drawer |
++| Histórico | Ordem cronológica, Enter inclui, Marcar resposta inclui e remoção elimina o índice correto |
++| IA | Loading, erro, rascunho, confirmação e mensagem exercitados com respostas simuladas |
++| Pré-qualificação | Processing, success, error e skipped exercitados por callback local |
++| Chamadas involuntárias | Log vazio após abrir e alternar as três seções; consulta de cota registrada apenas ao clicar |
++| Lightbox | Imagem local, edição e saveLeadNotes com argumentos corretos; Escape preserva drawer e restaura foco ao thumbnail |
++| Upload/colagem | Imagem sintética 2400x1200 redimensionada a JPEG 1600x800 antes do substituto de upload; nenhum upload real |
++| Conversão | ID encaminhado ao substituto de convertLeadToCliente; wizard/persistência financeira não executados |
++| Rolagem | Campos inferiores e mensagem acessíveis; navegação/rodapé não são recortados; lightbox móvel tem rolagem própria |
++
++Ocorrências de teste: o primeiro seletor da matriz usava o número da seção, oculto no mobile, e teve timeout; corrigido para o texto do botão e matriz inteira repetida. O primeiro paste sintético coincidiu com atualização da fixture e não produziu resultado; repetido após estabilização, confirmou 1600x800. Durante a implementação foram corrigidas a altura herdada de 100vh no painel do lightbox e a inicialização dos Selects. Não são testes aprovados por inferência.
++
++## Build, lint e evidências
++
++- `npm run build`: aprovado. [Log final](references/r4/r42-build-final.log). Permanece o aviso de chunks acima de 500kB.
++- `npm run lint`: 134 erros e 17 avisos antes e depois. [Comparação](references/r4/r42-lint-comparison.json) não encontrou diagnósticos adicionados ou removidos. Em `src`: baseline de 134 erros e 15 avisos; dois avisos globais são os artefatos R4.1 já documentados. Lint global continua falhando.
++- `git -c core.whitespace=cr-at-eol diff --check`: aprovado.
++- [Console](references/r4/r42-console.log): aviso preexistente do Firestore e falha esperada de Instrument Serif remoto bloqueado. Sem erro de execução identificado. [Rede](references/r4/r42-network.log): sem chamadas aos endpoints comerciais; abortos de recursos locais decorrem de recargas durante o desenvolvimento.
++
++Capturas para aprovação:
++
++- [Resumo escuro 1440](references/r4/r42-resumo-dark-1440.png), [resumo claro 1440](references/r4/r42-resumo-light-1440.png).
++- [Qualificação escura](references/r4/r42-qualificacao-dark-1440.png), [qualificação clara 1024](references/r4/r42-qualificacao-light-1024.png).
++- [Histórico escuro](references/r4/r42-historico-dark-1440.png), [mensagem clara](references/r4/r42-mensagem-light-1440.png).
++- [Complementares](references/r4/r42-complementares-light-1440.png), [criação](references/r4/r42-criacao-light-1440.png).
++- [Lightbox escuro](references/r4/r42-lightbox-dark-1440.png), [lightbox claro](references/r4/r42-lightbox-light-1440.png), [lightbox móvel](references/r4/r42-lightbox-light-390.png).
++- Demais larguras/temas: `r42-{resumo,qualificacao,historico}-{dark,light}-{1440,1280,1024,390}.png`.
++
++## Limitações e aprovação
++
++Os testes comprovam comportamento da UI e argumentos dos handlers em ambiente isolado. Não comprovam persistência remota, disponibilidade dos fornecedores, limites reais ou execução financeira da conversão. Não houve certificação completa de contraste, teste em dispositivo físico ou reconstrução mobile aprofundada. A regra original de navegação para outro lead descarta o formulário local não salvo; mantida. Trocar somente a seção mantém os dados.
++
++Aguardando aprovação visual e funcional da R4.2. R5 não iniciada.
