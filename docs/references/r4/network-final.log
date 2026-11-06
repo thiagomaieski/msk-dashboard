@@ -1,0 +1,10 @@
+33. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+120. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+203. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+289. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+372. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+477. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+560. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+653. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+
+Note: 717 static requests not shown, run with "static" option to see them.

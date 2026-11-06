@@ -1,0 +1,793 @@
+diff --git a/src/components/BulkBar.jsx b/src/components/BulkBar.jsx
+index f821508..ddac41d 100644
+--- a/src/components/BulkBar.jsx
++++ b/src/components/BulkBar.jsx
+@@ -1,6 +1,7 @@
+ import { useMemo, useState } from 'react';
+ import { useDash } from '../store/useStore';
+ import { leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
++import CustomSelect from './CustomSelect';
+ 
+ export default function BulkBar() {
+   const selectedItems = useDash(s => s.selectedItems);
+@@ -27,7 +28,7 @@ export default function BulkBar() {
+   if (!selectedItems.length) return null;
+ 
+   return (
+-    <div id="bulk-bar" style={{
++    <div id="bulk-bar" className={currentBulkCol === 'leads' ? 'leads-bulk-bar' : undefined} role="region" aria-label="Ações em massa" style={{
+       position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+       background: 'var(--bg2)', border: '1px solid var(--border)',
+       padding: '12px 24px', borderRadius: 100, display: 'flex',
+@@ -72,6 +73,7 @@ export default function BulkBar() {
+               type="button"
+               className="btn btn-sm btn-secondary"
+               onClick={() => setWithAi(v => !v)}
++              aria-pressed={withAi}
+               disabled={isPrequaling}
+               title="Incluir análise com IA após a pré-qualificação (respeita o teto diário)"
+               style={{
+@@ -86,8 +88,8 @@ export default function BulkBar() {
+             >
+               ✨ {withAi ? '+ IA ativo' : 'Sem IA'}
+             </button>
+-            <select
+-              className="form-select"
++            <CustomSelect value="" variant="chip"
++              ariaLabel="Alterar status em massa"
+               style={{ padding: '4px 8px', height: 30, fontSize: 12, width: 'auto' }}
+               onChange={e => { bulkEditLeads('status', e.target.value); e.target.value = ''; }}
+             >
+@@ -95,15 +97,15 @@ export default function BulkBar() {
+               {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(s => (
+                 <option key={s}>{s}</option>
+               ))}
+-            </select>
+-            <select
+-              className="form-select"
++            </CustomSelect>
++            <CustomSelect value="" variant="chip"
++              ariaLabel="Alterar nicho em massa"
+               style={{ padding: '4px 8px', height: 30, fontSize: 12, width: 'auto' }}
+               onChange={e => { bulkEditLeads('nicho', e.target.value); e.target.value = ''; }}
+             >
+               <option value="">Alterar Nicho...</option>
+               {configData.nichos.map(n => <option key={n}>{n}</option>)}
+-            </select>
++            </CustomSelect>
+           </>
+         )}
+       </div>
+diff --git a/src/pages/LeadsPage.jsx b/src/pages/LeadsPage.jsx
+index 54af8d3..52d1735 100644
+--- a/src/pages/LeadsPage.jsx
++++ b/src/pages/LeadsPage.jsx
+@@ -1,6 +1,6 @@
+ import { useState, useMemo, useEffect } from 'react';
+ import { useDash, sortData } from '../store/useStore';
+-import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
++import { CopyCell, EmptyState, NumberStepper } from '../components/shared';
+ import { getWaLink } from '../store/useStore';
+ import { leadHasValidSite } from '../utils/prequalUtils';
+ import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
+@@ -8,6 +8,10 @@ import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
+ import { computePendingResponseLeads, computeTodayAbordagens, computeLoteSummary, LEAD_STATUSES, QUAL_CHIP_LABELS } from '../utils/crmAnalyticsUtils';
+ import CustomSelect from '../components/CustomSelect';
+ import { FEATURES } from '../config/features';
++import './LeadsPage.css';
++import LeadActionsMenu from '../components/LeadActionsMenu';
++import { Button } from '../components/ui/Button';
++import { Badge as StatusBadge } from '../components/ui/Badge';
+ 
+ const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
+ 
+@@ -289,6 +293,7 @@ function PreQualProgressModal({ modal, onClose }) {
+ }
+ 
+ export default function LeadsPage() {
++  const [filtersExpanded, setFiltersExpanded] = useState(false);
+   const data = useDash(s => s.data);
+   const configData = useDash(s => s.configData);
+   const openModal = useDash(s => s.openModal);
+@@ -674,7 +679,7 @@ export default function LeadsPage() {
+   };
+ 
+   return (
+-    <div>
++    <div className="leads-list-page">
+       {/* ─── DESKTOP HEADER BAR ────────────────────────────────────── */}
+       <div className="leads-page-header desktop-only">
+         <div className="leads-page-header-left">
+@@ -709,6 +714,7 @@ export default function LeadsPage() {
+               <span>{abordadosHoje}/{metaAbordagensDia} abordagens hoje</span>
+             </button>
+           </div>
++          <p className="leads-page-description">Organize sua prospecção e acompanhe cada oportunidade.</p>
+         </div>
+ 
+         <div className="leads-page-header-right">
+@@ -740,14 +746,11 @@ export default function LeadsPage() {
+             </div>
+           )}
+ 
+-          <button
+-            className="btn btn-secondary"
++          <Button variant="secondary"
+             onClick={() => setShowLoteSummary(s => !s)}
++            aria-expanded={showLoteSummary}
+             title="Ver desempenho e taxas por lote"
+-            style={{
+-              borderColor: showLoteSummary ? 'var(--accent)' : undefined,
+-              color: showLoteSummary ? 'var(--accent)' : undefined,
+-            }}
++            style={showLoteSummary ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
+           >
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+@@ -755,17 +758,17 @@ export default function LeadsPage() {
+               <line x1="12" y1="22.08" x2="12" y2="12"/>
+             </svg>
+             <span>Resumo por Lote</span>
+-          </button>
++          </Button>
+ 
+-          <button className="btn btn-secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
++          <Button variant="secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+             <span>Importar CSV</span>
+-          </button>
++          </Button>
+ 
+-          <button className="btn btn-primary" onClick={() => openModal('lead')} title="Adicionar novo lead">
++          <Button variant="primary" onClick={() => openModal('lead')} title="Adicionar novo lead">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="M12 5v14M5 12h14" /></svg>
+             <span>Novo Lead</span>
+-          </button>
++          </Button>
+         </div>
+       </div>
+ 
+@@ -773,17 +776,19 @@ export default function LeadsPage() {
+       {effectiveViewMode === 'list' && (
+         <div className="leads-status-grid desktop-only">
+           {[
+-            { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: '#94a3b8' },
+-            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', dot: '#38bdf8' },
+-            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', dot: '#3b82f6' },
+-            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', dot: '#f59e0b' },
+-            { label: 'Em Negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)', dot: '#a855f7' },
+-            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', dot: '#10b981' },
+-            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', dot: '#ef4444' },
++            { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: 'var(--text3)' },
++            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: 'var(--blue)', bg: 'rgba(56, 189, 248, 0.12)', dot: 'var(--blue)' },
++            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: 'var(--amber)', bg: 'rgba(59, 130, 246, 0.12)', dot: 'var(--amber)' },
++            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: 'var(--cyan)', bg: 'rgba(245, 158, 11, 0.12)', dot: 'var(--cyan)' },
++            { label: 'Em Negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: 'var(--purple)', bg: 'rgba(168, 85, 247, 0.12)', dot: 'var(--purple)' },
++            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: 'var(--green)', bg: 'rgba(16, 185, 129, 0.12)', dot: 'var(--green)' },
++            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'rgba(239, 68, 68, 0.12)', dot: 'var(--red)' },
+           ].map((item) => {
+             const isSelected = item.status === '' ? status === '' : status === item.status;
+             return (
+-              <div
++              <button
++                type="button"
++                aria-pressed={isSelected}
+                 key={item.label}
+                 className={`leads-status-card ${isSelected ? 'selected' : ''}`}
+                 onClick={() => {
+@@ -810,7 +815,7 @@ export default function LeadsPage() {
+                 <div className="leads-status-card-value">
+                   {item.value.toLocaleString('pt-BR')}
+                 </div>
+-              </div>
++              </button>
+             );
+           })}
+         </div>
+@@ -818,7 +823,7 @@ export default function LeadsPage() {
+ 
+       {/* ─── RESUMO POR LOTE (T3.7 - painel recolhível) ────────── */}
+       {effectiveViewMode === 'list' && showLoteSummary && (
+-        <div
++        <div className="leads-lote-summary"
+           style={{
+             background: 'var(--bg2)',
+             border: '1px solid var(--border)',
+@@ -905,7 +910,7 @@ export default function LeadsPage() {
+       {/* ─── FILTERS & SEARCH TOOLBAR (LIST VIEW ONLY) ────────── */}
+       {effectiveViewMode === 'list' && (
+         <div className="leads-toolbar desktop-only">
+-          {/* Linha 1: Busca Ampla + Filtros Rápidos + Paginação */}
++          {/* Busca e filtros rápidos; quantidade por página no cabeçalho da tabela. */}
+           <div className="leads-toolbar-row leads-toolbar-row-top">
+             <div className="leads-search-box">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="leads-search-icon">
+@@ -913,7 +918,7 @@ export default function LeadsPage() {
+                 <path d="m21 21-4.35-4.35" />
+               </svg>
+               <input
+-                className="leads-search-input"
++                className="leads-search-input" aria-label="Buscar leads"
+                 placeholder="Buscar leads por nome, telefone, nicho, cidade ou site..."
+                 value={search}
+                 onChange={updateFilter(setSearch)}
+@@ -979,52 +984,11 @@ export default function LeadsPage() {
+                 {botBarreiraCount > 0 && <span className="leads-quick-badge">{botBarreiraCount}</span>}
+               </button>
+             </div>
+-
+-            <div className="leads-page-size-wrap">
+-              <span className="leads-page-size-label">Exibir:</span>
+-              <div className="pill-tab-group" style={{ padding: 2 }}>
+-                {PAGE_SIZE_OPTIONS.map((item) => (
+-                  <button
+-                    key={item}
+-                    type="button"
+-                    className={`pill-tab-btn ${Number(pageSize) === item ? 'active' : ''}`}
+-                    style={{ padding: '4px 9px', fontSize: 11 }}
+-                    onClick={() => { setPageSize(item); setPage(1); }}
+-                  >
+-                    {item}
+-                  </button>
+-                ))}
+-              </div>
+-              <div className="leads-page-size-custom-box" title="Digite uma quantidade personalizada de itens">
+-                <input
+-                  type="number"
+-                  min="1"
+-                  max="1000"
+-                  className="leads-page-size-custom-input"
+-                  value={pageSize}
+-                  onChange={(e) => {
+-                    const raw = e.target.value;
+-                    if (raw === '') {
+-                      setPageSize('');
+-                    } else {
+-                      const num = parseInt(raw, 10);
+-                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
+-                    }
+-                    setPage(1);
+-                  }}
+-                  onBlur={() => {
+-                    if (!pageSize || Number(pageSize) < 1) {
+-                      setPageSize(30);
+-                    }
+-                  }}
+-                />
+-                <span className="leads-page-size-custom-unit">por pág.</span>
+-              </div>
+-            </div>
++            <Button size="sm" className="leads-filter-toggle" aria-expanded={filtersExpanded} aria-controls="leads-desktop-filters" onClick={() => setFiltersExpanded(v => !v)}>Filtros e ordenação {activeFiltersCount > 0 ? '(' + activeFiltersCount + ')' : ''}</Button>
+           </div>
+ 
+           {/* Linha 2: Barra de Chips de Filtro e Ordenação */}
+-          <div className="leads-toolbar-row leads-toolbar-row-bottom">
++          <div className={`leads-toolbar-row leads-toolbar-row-bottom ${filtersExpanded ? '' : 'is-collapsed'}`} id="leads-desktop-filters">
+             <div className="leads-chips-group">
+               {/* Lote */}
+               <CustomSelect
+@@ -1261,6 +1225,10 @@ export default function LeadsPage() {
+                 return (
+                   <div
+                     key={sf.id}
++                    role="button"
++                    tabIndex={0}
++                    aria-pressed={isActive}
++                    onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
+                     style={{
+                       display: 'inline-flex',
+                       alignItems: 'center',
+@@ -1320,7 +1288,7 @@ export default function LeadsPage() {
+                 <path d="m21 21-4.35-4.35" />
+               </svg>
+               <input
+-                className="leads-search-input"
++                className="leads-search-input" aria-label="Buscar leads"
+                 placeholder="Filtrar cards no Kanban por nome, telefone, nicho ou cidade..."
+                 value={search}
+                 onChange={updateFilter(setSearch)}
+@@ -1693,7 +1661,7 @@ export default function LeadsPage() {
+                   type="number"
+                   min="1"
+                   max="1000"
+-                  className="leads-page-size-custom-input"
++                  className="leads-page-size-custom-input" aria-label="Leads por página"
+                   value={pageSize}
+                   onChange={(e) => {
+                     const raw = e.target.value;
+@@ -1873,91 +1841,111 @@ export default function LeadsPage() {
+ 
+       {/* ─── LISTA (TABELA) ─────────────────────────────── */}
+       {effectiveViewMode === 'list' && (
+-      <div className="table-wrap">
+-        <table>
++      <section className="leads-results" aria-label="Lista de leads">
++        <div className="leads-results-heading">
++          <h2>Leads <span>· {totalItems.toLocaleString('pt-BR')}</span></h2>
++          <span aria-live="polite">{selectedItems.length > 0 ? `${selectedItems.length} selecionado(s)` : 'Sua carteira de contatos'}</span>
++            <div className="leads-page-size-wrap">
++              <span className="leads-page-size-label">Exibir:</span>
++              <div className="pill-tab-group" style={{ padding: 2 }}>
++                {PAGE_SIZE_OPTIONS.map((item) => (
++                  <button
++                    key={item}
++                    type="button"
++                    className={`pill-tab-btn ${Number(pageSize) === item ? 'active' : ''}`}
++                    style={{ padding: '4px 9px', fontSize: 11 }}
++                    onClick={() => { setPageSize(item); setPage(1); }}
++                  >
++                    {item}
++                  </button>
++                ))}
++              </div>
++              <div className="leads-page-size-custom-box" title="Digite uma quantidade personalizada de itens">
++                <input
++                  type="number"
++                  min="1"
++                  max="1000"
++                  className="leads-page-size-custom-input" aria-label="Leads por página"
++                  value={pageSize}
++                  onChange={(e) => {
++                    const raw = e.target.value;
++                    if (raw === '') {
++                      setPageSize('');
++                    } else {
++                      const num = parseInt(raw, 10);
++                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
++                    }
++                    setPage(1);
++                  }}
++                  onBlur={() => {
++                    if (!pageSize || Number(pageSize) < 1) {
++                      setPageSize(30);
++                    }
++                  }}
++                />
++                <span className="leads-page-size-custom-unit">por pág.</span>
++              </div>
++            </div>
++        </div>
++        <div className="table-wrap leads-table-scroll">
++        <table className="leads-data-table" aria-label="Leads">
+           <colgroup>
+             <col style={{ width: 36 }} />
+-            <col style={{ width: '23%' }} />
+-            <col style={{ width: '16%' }} />
+-            <col style={{ width: '12%' }} />
+-            <col style={{ width: '16%' }} />
+-            <col style={{ width: '12%' }} />
++            <col style={{ width: '20%' }} />
+             <col style={{ width: '15%' }} />
+-            <col style={{ width: 88 }} />
++            <col style={{ width: '14%' }} />
++            <col style={{ width: '14%' }} />
++            <col style={{ width: 148 }} />
++            <col style={{ width: '19%' }} />
++            <col style={{ width: 54 }} />
+           </colgroup>
+           <thead>
+             <tr>
+               <th style={{ width: 30 }}>
+                 <input 
+-                  type="checkbox" 
++                  type="checkbox" aria-label="Selecionar leads desta página"
+                   onChange={() => selectAll('leads', pageIds)} 
+                   checked={paginated.length > 0 && paginated.every(p => selectedItems.includes(p.id))} 
+                 />
+               </th>
+-              <th onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</th>
+-              <th onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</th>
+-              <th onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</th>
+-              <th onClick={() => handleColumnSort('site')}>Site / Social {sortIndicator('site')}</th>
+-              <th onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</th>
+-              <th onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</th>
+-              <th></th>
++              <th scope="col" aria-sort={columnSort.key === 'nome' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</button><button type="button" className="leads-niche-sort" aria-label="Ordenar por nicho" onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</button></th>
++              <th scope="col">Cidade / Lote</th>
++              <th scope="col" aria-sort={columnSort.key === 'telefone' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</button></th>
++
++              <th scope="col" aria-sort={columnSort.key === 'site' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('site')}>Site / Social {sortIndicator('site')}</button></th>
++              <th scope="col" aria-sort={columnSort.key === 'status' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</button></th>
++              <th scope="col" aria-sort={columnSort.key === 'observacoes' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</button></th>
++              <th scope="col">Ações</th>
+             </tr>
+           </thead>
+           <tbody>
+             {!paginated.length ? (
+-              <EmptyState msg="Nenhum lead encontrado" colSpan={8} />
++              <EmptyState msg={hasActiveFilters ? "Nenhum lead encontrado. Ajuste a busca ou limpe os filtros." : "Nenhum lead cadastrado. Importe uma planilha ou crie seu primeiro lead."} colSpan={8} />
+             ) : (
+               paginated.map((l) => (
+-                <tr key={l.id} className="row-in">
+-                  <td><input type="checkbox" checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
++                <tr key={l.id} className={`row-in ${selectedItems.includes(l.id) ? "is-selected" : ""}`}>
++                  <td><input type="checkbox" aria-label={`Selecionar ${l.nome || "lead"}`} checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
+                   <td style={{ maxWidth: 220 }}>
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+-                        <span
++                        <button type="button" className="leads-name-button"
+                           style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                           onClick={() => openModal('lead', l.id)}
+                           title="Clique para editar"
+                         >
+                           {l.nome || '-'}
+-                        </span>
+-                        {(l.interacoes || []).some(i => i.tipo === 'resposta_recebida') && (
+-                          <span
+-                            title="Respondeu mensagem"
+-                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 600, flexShrink: 0 }}
+-                          >
+-                            Respondeu
+-                          </span>
+-                        )}
+-                        {l.botBarreira && (
+-                          <span
+-                            title="Barreira de atendimento automático (Bot no WhatsApp)"
+-                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 600, flexShrink: 0 }}
+-                          >
+-                            Bot
+-                          </span>
+-                        )}
++                        </button>
++
+                       </div>
+-                      {(l.cidade || l.lote) && (
+-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+-                          {l.cidade && (
+-                            <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+-                              {l.cidade}
+-                            </span>
+-                          )}
+-                          {l.lote && (
+-                            <span
+-                              onClick={(e) => { e.stopPropagation(); setLoteFilter(curr => curr === l.lote ? '' : l.lote); setPage(1); }}
+-                              title="Filtrar por este lote"
+-                              style={{ fontSize: 10, padding: '0 5px', borderRadius: 4, background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'pointer' }}
+-                            >
+-                              {l.lote}
+-                            </span>
+-                          )}
+-                        </div>
+-                      )}
++                      <span className="leads-company-niche">{l.nicho || 'Sem nicho'}</span>
+                     </div>
+                   </td>
++                  <td className="leads-location-cell">
++                    <span>{l.cidade || 'Sem cidade'}</span>
++                    {l.lote ? <button type="button" className="leads-lote-link"
++                      onClick={(e) => { e.stopPropagation(); setLoteFilter(curr => curr === l.lote ? '' : l.lote); setPage(1); }}
++                      title="Filtrar por este lote">{l.lote}</button> : <span className="leads-cell-secondary">Sem lote</span>}
++                  </td>
+                   <td style={{ whiteSpace: 'nowrap' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                       <CopyCell text={l.telefone} />
+@@ -1968,12 +1956,7 @@ export default function LeadsPage() {
+                       )}
+                     </div>
+                   </td>
+-                  <td style={{ maxWidth: 120 }}>
+-                    <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '100%' }}>
+-                      {l.nicho || '-'}
+-                    </span>
+-                  </td>
+-                  <td style={{ maxWidth: 140 }}>
++                  <td className="leads-site-cell">
+                     {(l.site && (l.site.includes('.') || l.site.startsWith('http'))) ? (
+                       <a 
+                         href={l.site.trim().startsWith('http') ? l.site.trim() : `https://${l.site.trim()}`} 
+@@ -1987,14 +1970,21 @@ export default function LeadsPage() {
+                       </a>
+                     ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
+                   </td>
+-                  <td style={{ position: 'relative' }}>
++                  <td style={{ position: 'relative' }} onKeyDown={e => {
++                    if (e.key === 'Escape' && statusMenuLeadId === l.id) {
++                      e.stopPropagation();
++                      setStatusMenuLeadId(null);
++                      e.currentTarget.querySelector('.status-badge-arrow')?.focus();
++                    }
++                  }}>
+                     <div 
+-                      className="status-badge-interactive" 
++                      className="status-badge-interactive" role="group"
+                       onClick={(e) => handleNextStatus(l, e)}
+                       title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status, ou na seta para escolher direto`}
+                     >
+-                      <Badge status={l.status || 'Novo'}>
+-                        <span
++                      <StatusBadge status={l.status || 'Novo'}>
++                        <button type="button" className="leads-status-advance" aria-label={`Avançar status de ${l.nome}`} onClick={(e) => handleNextStatus(l, e)}>{l.status || 'Novo'}</button>
++                        <button type="button" aria-label={`Escolher status de ${l.nome}`} aria-expanded={statusMenuLeadId === l.id}
+                           className="status-badge-arrow"
+                           onClick={(e) => {
+                             e.stopPropagation();
+@@ -2005,11 +1995,29 @@ export default function LeadsPage() {
+                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                             <polyline points="6 9 12 15 18 9"/>
+                           </svg>
+-                        </span>
+-                      </Badge>
++                        </button>
++                      </StatusBadge>
++                    </div>
++                    <div className="leads-contact-signals">
++                        {(l.interacoes || []).some(i => i.tipo === 'resposta_recebida') && (
++                          <span
++                            title="Respondeu mensagem"
++                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 600, flexShrink: 0 }}
++                          >
++                            Respondeu
++                          </span>
++                        )}
++                        {l.botBarreira && (
++                          <span
++                            title="Barreira de atendimento automático (Bot no WhatsApp)"
++                            style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 600, flexShrink: 0 }}
++                          >
++                            Bot
++                          </span>
++                        )}
+                     </div>
+                     {statusMenuLeadId === l.id && (
+-                      <div
++                      <div className="leads-status-menu"
+                         onClick={e => e.stopPropagation()}
+                         style={{
+                           position: 'absolute',
+@@ -2111,43 +2119,44 @@ export default function LeadsPage() {
+                     </div>
+                   </td>
+                   <td>
+-                    <div className="row-actions">
+-                      <button
++                    <LeadActionsMenu name={l.nome}>
++                      <button type="button" role="menuitem"
+                         className="row-btn"
+                         onClick={() => addLeadInteracao(l.id, { tipo: 'resposta_recebida', texto: 'Resposta recebida' })}
+                         title="Marcar resposta recebida"
+                         style={{ color: (l.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : undefined }}
+                       >
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 11 12 15 8"/></svg>
+-                      </button>
+-                      <button
++                      <span>Marcar resposta recebida</span></button>
++                      <button type="button" role="menuitem"
+                         className="row-btn"
+                         onClick={() => toggleLeadBotBarreira(l.id)}
+                         title={l.botBarreira ? 'Remover flag Bot no WhatsApp' : 'Marcar Bot no WhatsApp'}
+                         style={{ color: l.botBarreira ? 'var(--amber)' : undefined }}
+                       >
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
+-                      </button>
+-                      <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
++                      <span>{l.botBarreira ? 'Remover Bot no WhatsApp' : 'Marcar Bot no WhatsApp'}</span></button>
++                      <button type="button" role="menuitem" className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+-                      </button>
+-                      <button className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">
++                      <span>Converter em Cliente</span></button>
++                      <button type="button" role="menuitem" className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+-                      </button>
+-                      <button className="row-btn" onClick={() => openModal('lead', l.id)} title="Editar">
++                      <span>Copiar dados</span></button>
++                      <button type="button" role="menuitem" className="row-btn" onClick={() => openModal('lead', l.id)} title="Editar">
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+-                      </button>
+-                      <button className="row-btn del" onClick={() => deleteItem('leads', l.id, l.nome)} title="Excluir">
++                      <span>Editar</span></button>
++                      <button type="button" role="menuitem" className="row-btn del" onClick={() => deleteItem('leads', l.id, l.nome)} title="Excluir">
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+-                      </button>
+-                    </div>
++                      <span>Excluir</span></button>
++                    </LeadActionsMenu>
+                   </td>
+                 </tr>
+               ))
+             )}
+           </tbody>
+         </table>
+-      </div>
++        </div>
++      </section>
+       )}
+ 
+       {effectiveViewMode === 'list' && (
+@@ -2171,7 +2180,7 @@ export default function LeadsPage() {
+                     type="number"
+                     min="1"
+                     max="1000"
+-                    className="leads-page-size-custom-input"
++                    className="leads-page-size-custom-input" aria-label="Leads por página"
+                     style={{ width: 34, fontSize: 11 }}
+                     value={pageSize}
+                     onChange={(e) => {
+diff --git a/src/pages/LeadsPage.css b/src/pages/LeadsPage.css
+new file mode 100644
+index 0000000..704cadf
+--- /dev/null
++++ b/src/pages/LeadsPage.css
+@@ -0,0 +1,116 @@
++/* R4.1: list presentation only. Shared tokens and controls come from R1. */
++@media (min-width: 769px) {
++  .leads-list-page { padding-bottom: 100px; }
++  .leads-list-page .leads-page-header { margin-bottom: 24px; gap: 18px; }
++  .leads-list-page .leads-page-title-wrap { flex-wrap: wrap; }
++  .leads-list-page .leads-page-title { font-size: var(--font-page); font-weight: 600; line-height: 1.08; letter-spacing: -.025em; }
++  .leads-list-page .leads-page-header-right { gap: 8px; flex-wrap: wrap; }
++  .leads-list-page .leads-page-header-right .btn { min-height: 42px; border-radius: var(--radius-pill); padding: 0 16px; font-size: 13px; }
++  .leads-list-page .leads-page-header-right .btn-primary { background: var(--color-accent); color: var(--on-accent); border-color: transparent; }
++  .leads-list-page .leads-page-count-badge { background: var(--surface-control); border: 1px solid var(--border); padding: 6px 10px; }
++  .leads-list-page .leads-status-grid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 0; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-glass); box-shadow: var(--shadow-card); margin-bottom: 20px; }
++  .leads-list-page .leads-status-card { font: inherit; text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--radius-tile); box-shadow: none; padding: 14px; gap: 10px; }
++  .leads-list-page .leads-status-card + .leads-status-card { border-left-color: var(--border); }
++  .leads-list-page .leads-status-card:hover { background: var(--surface-hover); transform: none; box-shadow: none; }
++  .leads-list-page .leads-status-card.selected { background: color-mix(in srgb,var(--card-accent) 10%,transparent); border-color: color-mix(in srgb,var(--card-accent) 40%,transparent); }
++  .leads-list-page .leads-status-card-label { text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--text2); white-space: normal; }
++  .leads-list-page .leads-status-card-header { min-height: 30px; }
++  .leads-list-page .leads-status-card-value { font-size: 28px; font-weight: 600; }
++  .leads-list-page .leads-status-card-dot { box-shadow: none !important; width: 7px; height: 7px; }
++  .leads-list-page .leads-toolbar { padding: 18px; gap: 14px; background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); margin-bottom: 16px; }
++  .leads-list-page .leads-toolbar-row { flex-wrap: wrap; gap: 10px; }
++  .leads-list-page .leads-toolbar-row-top { border-color: var(--border); padding-bottom: 14px; }
++  .leads-list-page .leads-search-box { min-width: 230px; height: 42px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-control); }
++  .leads-list-page .leads-search-input { font-size: 13.5px; }
++  .leads-list-page .leads-search-box:focus-within { box-shadow: var(--focus-ring); }
++  .leads-list-page .leads-quick-filters { flex-wrap: wrap; gap: 6px; }
++  .leads-list-page .leads-quick-btn { border-radius: var(--radius-pill); min-height: 36px; font-size: 12px; border: 1px solid var(--border); background: var(--surface-control); color: var(--text2); }
++  .leads-list-page .leads-quick-btn.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
++  .leads-list-page .leads-page-size-wrap { margin-left: auto; }
++  .leads-list-page .leads-chips-group, .leads-list-page .leads-chips-actions { flex-wrap: wrap; gap: 8px; }
++  .leads-list-page .filter-chip { min-height: 36px; border-radius: var(--radius-pill); }
++  .leads-list-page .leads-page-size-custom-box { border: 1px solid var(--border); border-radius: var(--radius-pill); }
++  .leads-list-page .leads-results { background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-card) var(--radius-card) 0 0; box-shadow: var(--shadow-card); padding: 0 12px; }
++  .leads-list-page .leads-results-heading { padding: 20px 6px 18px; }
++  .leads-list-page .leads-table-scroll { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding-bottom: 8px; }
++  .leads-list-page .leads-data-table { min-width: 940px; table-layout: fixed; }
++  .leads-list-page .status-badge-arrow { display: inline-flex; opacity: .8; width: 12px; margin-left: 2px; }
++  .leads-list-page .leads-data-table th { background: transparent; padding: 12px 8px; color: var(--text3); font-size: 12px; letter-spacing: 0; text-transform: none; }
++  .leads-list-page .leads-data-table td { padding: 12px 8px; font-size: var(--font-table); }
++  .leads-list-page .leads-data-table td:nth-child(2) { max-width: none !important; }
++  .leads-list-page .leads-data-table td:nth-child(5) a { font-size: 12px !important; }
++  .leads-list-page .row-actions .row-btn { width: 28px; height: 28px; border-radius: var(--radius-pill); background: transparent; border: 1px solid transparent; }
++  .leads-list-page .row-actions .row-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); }
++  .leads-list-page .leads-data-table .is-selected { background: var(--accent-bg); }
++  /* Animated rows create stacking contexts; keep the open status menu above siblings. */
++  .leads-list-page .leads-data-table tr:has(.leads-status-menu) { position: relative; z-index: 2; }
++  .leads-list-page .leads-data-table tr:nth-last-child(-n+3):not(:nth-child(-n+3)) .leads-status-menu { top: auto !important; bottom: 100%; }
++  .leads-list-page .leads-table-scroll:has(tbody tr:first-child:nth-last-child(-n+3)):has(.leads-status-menu) { padding-bottom: 230px; }
++  .leads-list-page .lead-qual { font-size: 12px; }
++  .leads-list-page .lead-qual > div > span[style*="99px"] { color: var(--purple) !important; background: var(--purple-bg) !important; border-color: var(--border) !important; }
++  .leads-list-page .leads-status-menu { background: var(--surface-floating) !important; border-radius: var(--radius-tile) !important; box-shadow: var(--shadow-overlay) !important; padding: 6px !important; }
++  .leads-list-page .leads-status-menu button { min-height: 32px; border-radius: var(--radius-sm) !important; }
++  .leads-list-page .leads-status-menu button:hover { background: var(--surface-hover) !important; }
++  .leads-list-page .leads-pagination-bar { margin-top: 0; padding: 16px 18px; border: 1px solid var(--border); border-top: 0; background: var(--surface-glass); border-radius: 0 0 var(--radius-card) var(--radius-card); }
++  .leads-list-page .leads-pagination-btn { min-width: 34px; height: 34px; border-radius: var(--radius-pill); }
++  .leads-list-page .leads-pagination-btn.active { background: var(--color-accent); color: var(--on-accent); border-color: transparent; }
++  #bulk-bar.leads-bulk-bar { width: max-content; max-width: calc(100vw - 48px); flex-wrap: wrap; justify-content: center; background: var(--surface-floating) !important; border-color: var(--border-strong) !important; border-radius: var(--radius-card) !important; box-shadow: var(--shadow-overlay) !important; gap: 12px !important; padding: 14px 18px !important; }
++  #bulk-bar.leads-bulk-bar > div { flex-wrap: wrap; justify-content: center; }
++  #bulk-bar.leads-bulk-bar select { border-radius: var(--radius-pill); }
++}
++.leads-page-description { margin: 8px 0 0; color: var(--text3); font-size: 13px; }
++.leads-list-page .leads-page-header-left { flex-direction: column; align-items: flex-start; gap: 0; }
++.leads-list-page .leads-toolbar-row-bottom.is-collapsed { display: none; }
++.leads-list-page .leads-filter-toggle { height: 42px !important; }
++.leads-list-page .leads-company-niche { color: var(--text3); font-size: 12px; margin-top: 4px; }
++.leads-list-page .leads-location-cell { white-space: normal; overflow-wrap: anywhere; }
++.leads-location-cell > span, .leads-lote-link { display: block; }
++.leads-lote-link { border: 0; background: transparent; color: var(--text3); font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; padding: 4px 0 0; }
++.leads-lote-link:hover { color: var(--accent); text-decoration: underline; }
++.leads-cell-secondary { color: var(--text3); font-size: 11.5px; padding-top: 4px; }
++.leads-contact-signals { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
++.leads-contact-signals:empty { display: none; }
++.leads-list-page .leads-niche-sort { display: block; color: var(--text3); font-size: 11px; margin-top: 4px; }
++.leads-status-advance, .leads-list-page .status-badge-arrow { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; cursor: pointer; }
++.leads-list-page .status-badge-arrow { min-width: 16px; min-height: 20px; align-items: center; background: transparent; border: 0; padding: 0; }
++.leads-actions-trigger { width: 32px; height: 32px; border-radius: 50%; background: var(--surface-control); border: 1px solid var(--border); color: var(--text2); cursor: pointer; letter-spacing: 2px; }
++.leads-actions-trigger:hover, .leads-actions-trigger[aria-expanded=true] { background: var(--surface-hover); border-color: var(--border-strong); color: var(--text); }
++.leads-actions-menu { position: fixed; z-index: var(--z-popover, 1200); width: 230px; max-height: calc(100dvh - 24px); overflow-y: auto; padding: 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-tile); background: var(--surface-floating); box-shadow: var(--shadow-overlay); }
++.leads-actions-menu .row-btn { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; height: auto; min-height: 38px; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text2); text-align: left; font: inherit; font-size: 12.5px; cursor: pointer; }
++.leads-actions-menu .row-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
++.leads-actions-menu .row-btn:hover, .leads-actions-menu .row-btn:focus-visible { background: var(--surface-hover); color: var(--text); outline: 2px solid var(--accent); outline-offset: -2px; }
++.leads-actions-menu .row-btn.del { color: var(--red); border-top: 1px solid var(--border); margin-top: 4px; }
++@media (min-width: 769px) {
++  .leads-list-page .leads-page-header { align-items: center; }
++  .leads-list-page .leads-status-grid { margin-bottom: 18px; }
++  .leads-list-page .leads-status-card { padding: 12px 14px; gap: 4px; }
++  .leads-list-page .leads-status-card-header { min-height: 24px; }
++  .leads-list-page .leads-status-card-value { font-size: 26px; }
++  .leads-list-page .leads-toolbar { box-shadow: none; background: transparent; border: 0; border-radius: 0; padding: 0; gap: 12px; margin: 0 0 18px; }
++  .leads-list-page .leads-toolbar-row-top { border: 0; padding: 0; }
++  .leads-list-page .leads-toolbar-row-bottom { padding: 12px 14px; background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-tile); }
++  .leads-list-page .leads-search-box { flex: 1; max-width: none; }
++  .leads-list-page .leads-results-heading { flex-wrap: wrap; padding: 16px 6px; }
++  .leads-list-page .leads-results-heading .leads-page-size-wrap { gap: 8px; }
++  .leads-list-page .leads-results-heading .leads-page-size-wrap span { font-size: 11px; }
++  .leads-list-page .leads-lote-summary { background: var(--surface-glass) !important; border-radius: var(--radius-card) !important; padding: 18px !important; }
++  .leads-list-page .leads-data-table td { height: 76px; }
++  .leads-list-page .leads-data-table .leads-name-button { font-weight: 600 !important; white-space: normal !important; text-align: left; line-height: 1.35; }
++  #bulk-bar.leads-bulk-bar { backdrop-filter: var(--glass-blur); }
++  #bulk-bar.leads-bulk-bar .btn { min-height: 34px; border-radius: var(--radius-pill); }
++  #bulk-bar.leads-bulk-bar .btn-danger { color: var(--red) !important; background: var(--red-bg) !important; border-color: var(--border) !important; }
++  #bulk-bar.leads-bulk-bar .btn:has(svg) { background: var(--purple-bg) !important; color: var(--purple) !important; box-shadow: none !important; }
++}
++.leads-list-page .leads-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
++.leads-list-page .leads-results-heading h2 { font-size: 15px; font-weight: 600; margin: 0; }
++.leads-list-page .leads-results-heading span { color: var(--text3); font-size: 12px; }
++.leads-list-page .leads-name-button, .leads-list-page .leads-data-table th button { border: 0; padding: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
++.leads-list-page :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
++@media (min-width: 769px) and (max-width: 1180px) {
++  .leads-list-page .leads-status-card { padding: 10px; }
++  .leads-list-page .leads-page-header-right { margin-left: 0; }
++  .leads-list-page .leads-search-box { flex-basis: 230px; }
++}
++@media (max-width: 768px) {
++  .leads-list-page .leads-results-heading { display: none; }
++}
+diff --git a/src/components/LeadActionsMenu.jsx b/src/components/LeadActionsMenu.jsx
+new file mode 100644
+index 0000000..cd7b978
+--- /dev/null
++++ b/src/components/LeadActionsMenu.jsx
+@@ -0,0 +1,58 @@
++import { useEffect, useRef, useState } from 'react';
++import { createPortal } from 'react-dom';
++
++// Presentation only: the page supplies the existing action buttons and handlers.
++export default function LeadActionsMenu({ name, children }) {
++  const [position, setPosition] = useState(null);
++  const trigger = useRef(null);
++  const menu = useRef(null);
++  const close = () => {
++    setPosition(null);
++    trigger.current?.focus({ preventScroll: true });
++  };
++
++  useEffect(() => {
++    if (!position) return;
++    menu.current?.querySelector('button')?.focus({ preventScroll: true });
++    const outside = e => {
++      if (!menu.current?.contains(e.target) && !trigger.current?.contains(e.target)) setPosition(null);
++    };
++    const dismiss = e => {
++      if (e.type === 'scroll' && menu.current?.contains(e.target)) return;
++      setPosition(null);
++    };
++    document.addEventListener('pointerdown', outside);
++    window.addEventListener('resize', dismiss);
++    window.addEventListener('scroll', dismiss, true);
++    return () => {
++      document.removeEventListener('pointerdown', outside);
++      window.removeEventListener('resize', dismiss);
++      window.removeEventListener('scroll', dismiss, true);
++    };
++  }, [position]);
++
++  return <>
++    <button ref={trigger} type="button" className="leads-actions-trigger"
++      aria-label={`Ações de ${name || 'lead'}`} aria-expanded={!!position} aria-haspopup="menu"
++      onClick={() => {
++        if (position) { close(); return; }
++        const rect = trigger.current.getBoundingClientRect();
++        setPosition({ left: Math.max(8, Math.min(rect.right - 230, window.innerWidth - 238)),
++          ...(rect.bottom + 290 > window.innerHeight ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }) });
++      }}>•••</button>
++    {position && createPortal(
++      <div ref={menu} className="leads-actions-menu" role="menu" aria-label={`Ações de ${name || 'lead'}`}
++        style={position} onClick={e => { if (e.target.closest('button')) close(); }}
++        onKeyDown={e => {
++          const items = [...menu.current.querySelectorAll('button')];
++          const index = items.indexOf(document.activeElement);
++          if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
++          if (e.key === 'Tab') { setPosition(null); trigger.current?.focus(); }
++          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
++            e.preventDefault();
++            const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
++            items[next]?.focus({ preventScroll: true });
++          }
++        }}>{children}</div>, document.body)}
++  </>;
++}

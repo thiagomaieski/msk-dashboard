@@ -1,0 +1,75 @@
+/* R4.1: list presentation only. Shared tokens and controls come from R1. */
+@media (min-width: 769px) {
+  .leads-list-page { padding-bottom: 100px; }
+  .leads-list-page .leads-page-header { margin-bottom: 24px; gap: 18px; }
+  .leads-list-page .leads-page-title-wrap { flex-wrap: wrap; }
+  .leads-list-page .leads-page-title { font-size: var(--font-page); font-weight: 600; line-height: 1.08; letter-spacing: -.025em; }
+  .leads-list-page .leads-page-header-right { gap: 8px; flex-wrap: wrap; }
+  .leads-list-page .leads-page-header-right .btn { min-height: 42px; border-radius: var(--radius-pill); padding: 0 16px; font-size: 13px; }
+  .leads-list-page .leads-page-header-right .btn-primary { background: var(--color-accent); color: var(--on-accent); border-color: transparent; }
+  .leads-list-page .leads-page-count-badge { background: var(--surface-control); border: 1px solid var(--border); padding: 6px 10px; }
+  .leads-list-page .leads-status-grid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 0; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-glass); box-shadow: var(--shadow-card); margin-bottom: 20px; }
+  .leads-list-page .leads-status-card { font: inherit; text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--radius-tile); box-shadow: none; padding: 14px; gap: 10px; }
+  .leads-list-page .leads-status-card + .leads-status-card { border-left-color: var(--border); }
+  .leads-list-page .leads-status-card:hover { background: var(--surface-hover); transform: none; box-shadow: none; }
+  .leads-list-page .leads-status-card.selected { background: color-mix(in srgb,var(--card-accent) 10%,transparent); border-color: color-mix(in srgb,var(--card-accent) 40%,transparent); }
+  .leads-list-page .leads-status-card-label { text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--text2); white-space: normal; }
+  .leads-list-page .leads-status-card-header { min-height: 30px; }
+  .leads-list-page .leads-status-card-value { font-size: 28px; font-weight: 600; }
+  .leads-list-page .leads-status-card-dot { box-shadow: none !important; width: 7px; height: 7px; }
+  .leads-list-page .leads-toolbar { padding: 18px; gap: 14px; background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); margin-bottom: 16px; }
+  .leads-list-page .leads-toolbar-row { flex-wrap: wrap; gap: 10px; }
+  .leads-list-page .leads-toolbar-row-top { border-color: var(--border); padding-bottom: 14px; }
+  .leads-list-page .leads-search-box { min-width: 230px; height: 42px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-control); }
+  .leads-list-page .leads-search-input { font-size: 13.5px; }
+  .leads-list-page .leads-search-box:focus-within { box-shadow: var(--focus-ring); }
+  .leads-list-page .leads-quick-filters { flex-wrap: wrap; gap: 6px; }
+  .leads-list-page .leads-quick-btn { border-radius: var(--radius-pill); min-height: 36px; font-size: 12px; border: 1px solid var(--border); background: var(--surface-control); color: var(--text2); }
+  .leads-list-page .leads-quick-btn.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+  .leads-list-page .leads-page-size-wrap { margin-left: auto; }
+  .leads-list-page .leads-chips-group, .leads-list-page .leads-chips-actions { flex-wrap: wrap; gap: 8px; }
+  .leads-list-page .filter-chip { min-height: 36px; border-radius: var(--radius-pill); }
+  .leads-list-page .leads-page-size-custom-box { border: 1px solid var(--border); border-radius: var(--radius-pill); }
+  .leads-list-page .leads-results { background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-card) var(--radius-card) 0 0; box-shadow: var(--shadow-card); padding: 0 12px; }
+  .leads-list-page .leads-results-heading { padding: 20px 6px 18px; }
+  .leads-list-page .leads-table-scroll { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding-bottom: 8px; }
+  .leads-list-page .leads-data-table { min-width: 1080px; table-layout: fixed; }
+  .leads-list-page .status-badge-arrow { display: inline-flex; opacity: .8; width: 12px; margin-left: 2px; }
+  .leads-list-page .leads-data-table th { background: transparent; padding: 12px 8px; color: var(--text3); font-size: 12px; letter-spacing: 0; text-transform: none; }
+  .leads-list-page .leads-data-table td { padding: 12px 8px; font-size: var(--font-table); }
+  .leads-list-page .leads-data-table td:nth-child(2) { max-width: none !important; }
+  .leads-list-page .leads-data-table td:nth-child(5) a { font-size: 12px !important; }
+  .leads-list-page .leads-data-table td:nth-child(4) > span { color: var(--text2) !important; }
+  .leads-list-page .leads-data-table .row-actions { display: grid; grid-template-columns: repeat(3,28px); gap: 3px; opacity: 1; }
+  .leads-list-page .row-actions .row-btn { width: 28px; height: 28px; border-radius: var(--radius-pill); background: transparent; border: 1px solid transparent; }
+  .leads-list-page .row-actions .row-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+  .leads-list-page .leads-data-table .is-selected { background: var(--accent-bg); }
+  /* Animated rows create stacking contexts; keep the open status menu above siblings. */
+  .leads-list-page .leads-data-table tr:has(.leads-status-menu) { position: relative; z-index: 2; }
+  .leads-list-page .leads-data-table tr:nth-last-child(-n+3):not(:nth-child(-n+3)) .leads-status-menu { top: auto !important; bottom: 100%; }
+  .leads-list-page .leads-table-scroll:has(tbody tr:first-child:nth-last-child(-n+3)):has(.leads-status-menu) { padding-bottom: 230px; }
+  .leads-list-page .lead-qual { font-size: 12px; }
+  .leads-list-page .lead-qual > div > span[style*="99px"] { color: var(--purple) !important; background: var(--purple-bg) !important; border-color: var(--border) !important; }
+  .leads-list-page .leads-status-menu { background: var(--surface-floating) !important; border-radius: var(--radius-tile) !important; box-shadow: var(--shadow-overlay) !important; padding: 6px !important; }
+  .leads-list-page .leads-status-menu button { min-height: 32px; border-radius: var(--radius-sm) !important; }
+  .leads-list-page .leads-status-menu button:hover { background: var(--surface-hover) !important; }
+  .leads-list-page .leads-pagination-bar { margin-top: 0; padding: 16px 18px; border: 1px solid var(--border); border-top: 0; background: var(--surface-glass); border-radius: 0 0 var(--radius-card) var(--radius-card); }
+  .leads-list-page .leads-pagination-btn { min-width: 34px; height: 34px; border-radius: var(--radius-pill); }
+  .leads-list-page .leads-pagination-btn.active { background: var(--color-accent); color: var(--on-accent); border-color: transparent; }
+  #bulk-bar.leads-bulk-bar { width: max-content; max-width: calc(100vw - 48px); flex-wrap: wrap; justify-content: center; background: var(--surface-floating) !important; border-color: var(--border-strong) !important; border-radius: var(--radius-card) !important; box-shadow: var(--shadow-overlay) !important; gap: 12px !important; padding: 14px 18px !important; }
+  #bulk-bar.leads-bulk-bar > div { flex-wrap: wrap; justify-content: center; }
+  #bulk-bar.leads-bulk-bar select { border-radius: var(--radius-pill); }
+}
+.leads-list-page .leads-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.leads-list-page .leads-results-heading h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.leads-list-page .leads-results-heading span { color: var(--text3); font-size: 12px; }
+.leads-list-page .leads-name-button, .leads-list-page .leads-data-table th button { border: 0; padding: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.leads-list-page :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (min-width: 769px) and (max-width: 1180px) {
+  .leads-list-page .leads-status-card { padding: 10px; }
+  .leads-list-page .leads-page-header-right { margin-left: 0; }
+  .leads-list-page .leads-search-box { flex-basis: 100%; }
+}
+@media (max-width: 768px) {
+  .leads-list-page .leads-results-heading { display: none; }
+}

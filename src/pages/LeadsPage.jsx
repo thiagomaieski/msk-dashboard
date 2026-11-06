@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useDash, sortData } from '../store/useStore';
-import { Badge, CopyCell, EmptyState, NumberStepper } from '../components/shared';
+import { CopyCell, EmptyState, NumberStepper } from '../components/shared';
 import { getWaLink } from '../store/useStore';
 import { leadHasValidSite } from '../utils/prequalUtils';
 import LeadsFollowUpQueue from '../components/LeadsFollowUpQueue';
@@ -8,6 +8,10 @@ import LeadsCRMAnalytics from '../components/LeadsCRMAnalytics';
 import { computePendingResponseLeads, computeTodayAbordagens, computeLoteSummary, LEAD_STATUSES, QUAL_CHIP_LABELS } from '../utils/crmAnalyticsUtils';
 import CustomSelect from '../components/CustomSelect';
 import { FEATURES } from '../config/features';
+import './LeadsPage.css';
+import LeadActionsMenu from '../components/LeadActionsMenu';
+import { Button } from '../components/ui/Button';
+import { Badge as StatusBadge } from '../components/ui/Badge';
 
 const PAGE_SIZE_OPTIONS = [15, 30, 50, 100];
 
@@ -289,6 +293,7 @@ function PreQualProgressModal({ modal, onClose }) {
 }
 
 export default function LeadsPage() {
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const data = useDash(s => s.data);
   const configData = useDash(s => s.configData);
   const openModal = useDash(s => s.openModal);
@@ -674,7 +679,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div>
+    <div className="leads-list-page">
       {/* ─── DESKTOP HEADER BAR ────────────────────────────────────── */}
       <div className="leads-page-header desktop-only">
         <div className="leads-page-header-left">
@@ -709,6 +714,7 @@ export default function LeadsPage() {
               <span>{abordadosHoje}/{metaAbordagensDia} abordagens hoje</span>
             </button>
           </div>
+          <p className="leads-page-description">Organize sua prospecção e acompanhe cada oportunidade.</p>
         </div>
 
         <div className="leads-page-header-right">
@@ -740,14 +746,11 @@ export default function LeadsPage() {
             </div>
           )}
 
-          <button
-            className="btn btn-secondary"
+          <Button variant="secondary"
             onClick={() => setShowLoteSummary(s => !s)}
+            aria-expanded={showLoteSummary}
             title="Ver desempenho e taxas por lote"
-            style={{
-              borderColor: showLoteSummary ? 'var(--accent)' : undefined,
-              color: showLoteSummary ? 'var(--accent)' : undefined,
-            }}
+            style={showLoteSummary ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -755,17 +758,17 @@ export default function LeadsPage() {
               <line x1="12" y1="22.08" x2="12" y2="12"/>
             </svg>
             <span>Resumo por Lote</span>
-          </button>
+          </Button>
 
-          <button className="btn btn-secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
+          <Button variant="secondary" onClick={() => openModal('csvInfo')} title="Importar arquivo CSV de leads">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span>Importar CSV</span>
-          </button>
+          </Button>
 
-          <button className="btn btn-primary" onClick={() => openModal('lead')} title="Adicionar novo lead">
+          <Button variant="primary" onClick={() => openModal('lead')} title="Adicionar novo lead">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}><path d="M12 5v14M5 12h14" /></svg>
             <span>Novo Lead</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -773,17 +776,19 @@ export default function LeadsPage() {
       {effectiveViewMode === 'list' && (
         <div className="leads-status-grid desktop-only">
           {[
-            { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: '#94a3b8' },
-            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', dot: '#38bdf8' },
-            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', dot: '#3b82f6' },
-            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', dot: '#f59e0b' },
-            { label: 'Em Negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)', dot: '#a855f7' },
-            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', dot: '#10b981' },
-            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', dot: '#ef4444' },
+            { label: 'Total de Leads', status: '', value: totalLeads, color: 'var(--text3)', bg: 'rgba(255, 255, 255, 0.05)', dot: 'var(--text3)' },
+            { label: 'Novos', status: 'Novo', value: totalLeadsNovos, color: 'var(--blue)', bg: 'rgba(56, 189, 248, 0.12)', dot: 'var(--blue)' },
+            { label: 'Abordados', status: 'Abordado', value: totalLeadsAbordados, color: 'var(--amber)', bg: 'rgba(59, 130, 246, 0.12)', dot: 'var(--amber)' },
+            { label: 'Follow-up', status: 'Follow-up', value: totalLeadsFollowUp, color: 'var(--cyan)', bg: 'rgba(245, 158, 11, 0.12)', dot: 'var(--cyan)' },
+            { label: 'Em Negociação', status: 'Em negociação', value: totalLeadsEmNegociacao, color: 'var(--purple)', bg: 'rgba(168, 85, 247, 0.12)', dot: 'var(--purple)' },
+            { label: 'Fechados', status: 'Fechado', value: totalLeadsFechados, color: 'var(--green)', bg: 'rgba(16, 185, 129, 0.12)', dot: 'var(--green)' },
+            { label: 'Perdidos', status: 'Perdido', value: totalLeadsPerdidos, color: 'var(--red)', bg: 'rgba(239, 68, 68, 0.12)', dot: 'var(--red)' },
           ].map((item) => {
             const isSelected = item.status === '' ? status === '' : status === item.status;
             return (
-              <div
+              <button
+                type="button"
+                aria-pressed={isSelected}
                 key={item.label}
                 className={`leads-status-card ${isSelected ? 'selected' : ''}`}
                 onClick={() => {
@@ -810,7 +815,7 @@ export default function LeadsPage() {
                 <div className="leads-status-card-value">
                   {item.value.toLocaleString('pt-BR')}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -818,7 +823,7 @@ export default function LeadsPage() {
 
       {/* ─── RESUMO POR LOTE (T3.7 - painel recolhível) ────────── */}
       {effectiveViewMode === 'list' && showLoteSummary && (
-        <div
+        <div className="leads-lote-summary"
           style={{
             background: 'var(--bg2)',
             border: '1px solid var(--border)',
@@ -905,7 +910,7 @@ export default function LeadsPage() {
       {/* ─── FILTERS & SEARCH TOOLBAR (LIST VIEW ONLY) ────────── */}
       {effectiveViewMode === 'list' && (
         <div className="leads-toolbar desktop-only">
-          {/* Linha 1: Busca Ampla + Filtros Rápidos + Paginação */}
+          {/* Busca e filtros rápidos; quantidade por página no cabeçalho da tabela. */}
           <div className="leads-toolbar-row leads-toolbar-row-top">
             <div className="leads-search-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="leads-search-icon">
@@ -913,7 +918,7 @@ export default function LeadsPage() {
                 <path d="m21 21-4.35-4.35" />
               </svg>
               <input
-                className="leads-search-input"
+                className="leads-search-input" aria-label="Buscar leads"
                 placeholder="Buscar leads por nome, telefone, nicho, cidade ou site..."
                 value={search}
                 onChange={updateFilter(setSearch)}
@@ -979,52 +984,11 @@ export default function LeadsPage() {
                 {botBarreiraCount > 0 && <span className="leads-quick-badge">{botBarreiraCount}</span>}
               </button>
             </div>
-
-            <div className="leads-page-size-wrap">
-              <span className="leads-page-size-label">Exibir:</span>
-              <div className="pill-tab-group" style={{ padding: 2 }}>
-                {PAGE_SIZE_OPTIONS.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={`pill-tab-btn ${Number(pageSize) === item ? 'active' : ''}`}
-                    style={{ padding: '4px 9px', fontSize: 11 }}
-                    onClick={() => { setPageSize(item); setPage(1); }}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-              <div className="leads-page-size-custom-box" title="Digite uma quantidade personalizada de itens">
-                <input
-                  type="number"
-                  min="1"
-                  max="1000"
-                  className="leads-page-size-custom-input"
-                  value={pageSize}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      setPageSize('');
-                    } else {
-                      const num = parseInt(raw, 10);
-                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
-                    }
-                    setPage(1);
-                  }}
-                  onBlur={() => {
-                    if (!pageSize || Number(pageSize) < 1) {
-                      setPageSize(30);
-                    }
-                  }}
-                />
-                <span className="leads-page-size-custom-unit">por pág.</span>
-              </div>
-            </div>
+            <Button size="sm" className="leads-filter-toggle" aria-expanded={filtersExpanded} aria-controls="leads-desktop-filters" onClick={() => setFiltersExpanded(v => !v)}>Filtros e ordenação {activeFiltersCount > 0 ? '(' + activeFiltersCount + ')' : ''}</Button>
           </div>
 
           {/* Linha 2: Barra de Chips de Filtro e Ordenação */}
-          <div className="leads-toolbar-row leads-toolbar-row-bottom">
+          <div className={`leads-toolbar-row leads-toolbar-row-bottom ${filtersExpanded ? '' : 'is-collapsed'}`} id="leads-desktop-filters">
             <div className="leads-chips-group">
               {/* Lote */}
               <CustomSelect
@@ -1261,6 +1225,10 @@ export default function LeadsPage() {
                 return (
                   <div
                     key={sf.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isActive}
+                    onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1320,7 +1288,7 @@ export default function LeadsPage() {
                 <path d="m21 21-4.35-4.35" />
               </svg>
               <input
-                className="leads-search-input"
+                className="leads-search-input" aria-label="Buscar leads"
                 placeholder="Filtrar cards no Kanban por nome, telefone, nicho ou cidade..."
                 value={search}
                 onChange={updateFilter(setSearch)}
@@ -1693,7 +1661,7 @@ export default function LeadsPage() {
                   type="number"
                   min="1"
                   max="1000"
-                  className="leads-page-size-custom-input"
+                  className="leads-page-size-custom-input" aria-label="Leads por página"
                   value={pageSize}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -1873,53 +1841,164 @@ export default function LeadsPage() {
 
       {/* ─── LISTA (TABELA) ─────────────────────────────── */}
       {effectiveViewMode === 'list' && (
-      <div className="table-wrap">
-        <table>
+      <section className="leads-results" aria-label="Lista de leads">
+        <div className="leads-results-heading">
+          <h2>Leads <span>· {totalItems.toLocaleString('pt-BR')}</span></h2>
+          <span aria-live="polite">{selectedItems.length > 0 ? `${selectedItems.length} selecionado(s)` : 'Sua carteira de contatos'}</span>
+            <div className="leads-page-size-wrap">
+              <span className="leads-page-size-label">Exibir:</span>
+              <div className="pill-tab-group" style={{ padding: 2 }}>
+                {PAGE_SIZE_OPTIONS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`pill-tab-btn ${Number(pageSize) === item ? 'active' : ''}`}
+                    style={{ padding: '4px 9px', fontSize: 11 }}
+                    onClick={() => { setPageSize(item); setPage(1); }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="leads-page-size-custom-box" title="Digite uma quantidade personalizada de itens">
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  className="leads-page-size-custom-input" aria-label="Leads por página"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setPageSize('');
+                    } else {
+                      const num = parseInt(raw, 10);
+                      setPageSize(isNaN(num) ? 30 : Math.max(1, Math.min(1000, num)));
+                    }
+                    setPage(1);
+                  }}
+                  onBlur={() => {
+                    if (!pageSize || Number(pageSize) < 1) {
+                      setPageSize(30);
+                    }
+                  }}
+                />
+                <span className="leads-page-size-custom-unit">por pág.</span>
+              </div>
+            </div>
+        </div>
+        <div className="table-wrap leads-table-scroll">
+        <table className="leads-data-table" aria-label="Leads">
           <colgroup>
             <col style={{ width: 36 }} />
-            <col style={{ width: '23%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '20%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: 88 }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: 148 }} />
+            <col style={{ width: '19%' }} />
+            <col style={{ width: 54 }} />
           </colgroup>
           <thead>
             <tr>
               <th style={{ width: 30 }}>
                 <input 
-                  type="checkbox" 
+                  type="checkbox" aria-label="Selecionar leads desta página"
                   onChange={() => selectAll('leads', pageIds)} 
                   checked={paginated.length > 0 && paginated.every(p => selectedItems.includes(p.id))} 
                 />
               </th>
-              <th onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</th>
-              <th onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</th>
-              <th onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</th>
-              <th onClick={() => handleColumnSort('site')}>Site / Social {sortIndicator('site')}</th>
-              <th onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</th>
-              <th onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</th>
-              <th></th>
+              <th scope="col" aria-sort={columnSort.key === 'nome' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('nome')}>Nome / Empresa {sortIndicator('nome')}</button><button type="button" className="leads-niche-sort" aria-label="Ordenar por nicho" onClick={() => handleColumnSort('nicho')}>Nicho {sortIndicator('nicho')}</button></th>
+              <th scope="col">Cidade / Lote</th>
+              <th scope="col" aria-sort={columnSort.key === 'telefone' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('telefone')}>Telefone {sortIndicator('telefone')}</button></th>
+
+              <th scope="col" aria-sort={columnSort.key === 'site' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('site')}>Site / Social {sortIndicator('site')}</button></th>
+              <th scope="col" aria-sort={columnSort.key === 'status' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('status')}>Status {sortIndicator('status')}</button></th>
+              <th scope="col" aria-sort={columnSort.key === 'observacoes' ? (columnSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => handleColumnSort('observacoes')}>Qualificação {sortIndicator('observacoes')}</button></th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>
             {!paginated.length ? (
-              <EmptyState msg="Nenhum lead encontrado" colSpan={8} />
+              <EmptyState msg={hasActiveFilters ? "Nenhum lead encontrado. Ajuste a busca ou limpe os filtros." : "Nenhum lead cadastrado. Importe uma planilha ou crie seu primeiro lead."} colSpan={8} />
             ) : (
               paginated.map((l) => (
-                <tr key={l.id} className="row-in">
-                  <td><input type="checkbox" checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
+                <tr key={l.id} className={`row-in ${selectedItems.includes(l.id) ? "is-selected" : ""}`}>
+                  <td><input type="checkbox" aria-label={`Selecionar ${l.nome || "lead"}`} checked={selectedItems.includes(l.id)} onChange={() => toggleSelect('leads', l.id)} /></td>
                   <td style={{ maxWidth: 220 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <span
+                        <button type="button" className="leads-name-button"
                           style={{ cursor: 'pointer', color: 'var(--text)', fontWeight: 500, display: 'inline-block', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                           onClick={() => openModal('lead', l.id)}
                           title="Clique para editar"
                         >
                           {l.nome || '-'}
-                        </span>
+                        </button>
+
+                      </div>
+                      <span className="leads-company-niche">{l.nicho || 'Sem nicho'}</span>
+                    </div>
+                  </td>
+                  <td className="leads-location-cell">
+                    <span>{l.cidade || 'Sem cidade'}</span>
+                    {l.lote ? <button type="button" className="leads-lote-link"
+                      onClick={(e) => { e.stopPropagation(); setLoteFilter(curr => curr === l.lote ? '' : l.lote); setPage(1); }}
+                      title="Filtrar por este lote">{l.lote}</button> : <span className="leads-cell-secondary">Sem lote</span>}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CopyCell text={l.telefone} />
+                      {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
+                        <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => handleWaClick(l, e)}>
+                          <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                  <td className="leads-site-cell">
+                    {(l.site && (l.site.includes('.') || l.site.startsWith('http'))) ? (
+                      <a 
+                        href={l.site.trim().startsWith('http') ? l.site.trim() : `https://${l.site.trim()}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="link-btn"
+                        style={{ fontSize: 11, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {l.site.replace(/^https?:\/\//, '')}
+                      </a>
+                    ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
+                  </td>
+                  <td style={{ position: 'relative' }} onKeyDown={e => {
+                    if (e.key === 'Escape' && statusMenuLeadId === l.id) {
+                      e.stopPropagation();
+                      setStatusMenuLeadId(null);
+                      e.currentTarget.querySelector('.status-badge-arrow')?.focus();
+                    }
+                  }}>
+                    <div 
+                      className="status-badge-interactive" role="group"
+                      onClick={(e) => handleNextStatus(l, e)}
+                      title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status, ou na seta para escolher direto`}
+                    >
+                      <StatusBadge status={l.status || 'Novo'}>
+                        <button type="button" className="leads-status-advance" aria-label={`Avançar status de ${l.nome}`} onClick={(e) => handleNextStatus(l, e)}>{l.status || 'Novo'}</button>
+                        <button type="button" aria-label={`Escolher status de ${l.nome}`} aria-expanded={statusMenuLeadId === l.id}
+                          className="status-badge-arrow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusMenuLeadId(prev => prev === l.id ? null : l.id);
+                          }}
+                          title="Escolher status diretamente"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="6 9 12 15 18 9"/>
+                          </svg>
+                        </button>
+                      </StatusBadge>
+                    </div>
+                    <div className="leads-contact-signals">
                         {(l.interacoes || []).some(i => i.tipo === 'resposta_recebida') && (
                           <span
                             title="Respondeu mensagem"
@@ -1936,80 +2015,9 @@ export default function LeadsPage() {
                             Bot
                           </span>
                         )}
-                      </div>
-                      {(l.cidade || l.lote) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {l.cidade && (
-                            <span style={{ fontSize: 11, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10, opacity: 0.7 }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                              {l.cidade}
-                            </span>
-                          )}
-                          {l.lote && (
-                            <span
-                              onClick={(e) => { e.stopPropagation(); setLoteFilter(curr => curr === l.lote ? '' : l.lote); setPage(1); }}
-                              title="Filtrar por este lote"
-                              style={{ fontSize: 10, padding: '0 5px', borderRadius: 4, background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'pointer' }}
-                            >
-                              {l.lote}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CopyCell text={l.telefone} />
-                      {l.telefone && l.telefone.replace(/\D/g, '').length >= 8 && (
-                        <a href={getWaLink(l.telefone)} target="_blank" rel="noreferrer" title="Abrir WhatsApp" onClick={e => handleWaClick(l, e)}>
-                          <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15, color: '#25D366', marginTop: 2 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .004 5.412.001 12.048c0 2.123.554 4.197 1.607 6.037L0 24l6.105-1.602a11.834 11.834 0 005.937 1.598h.005c6.637 0 12.048-5.414 12.052-12.052a11.815 11.815 0 00-3.414-8.522z"/></svg>
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ maxWidth: 120 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '100%' }}>
-                      {l.nicho || '-'}
-                    </span>
-                  </td>
-                  <td style={{ maxWidth: 140 }}>
-                    {(l.site && (l.site.includes('.') || l.site.startsWith('http'))) ? (
-                      <a 
-                        href={l.site.trim().startsWith('http') ? l.site.trim() : `https://${l.site.trim()}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="link-btn"
-                        style={{ fontSize: 11, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        {l.site.replace(/^https?:\/\//, '')}
-                      </a>
-                    ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>{l.site || '-'}</span>}
-                  </td>
-                  <td style={{ position: 'relative' }}>
-                    <div 
-                      className="status-badge-interactive" 
-                      onClick={(e) => handleNextStatus(l, e)}
-                      title={`Clique para avançar de "${l.status || 'Novo'}" para o próximo status, ou na seta para escolher direto`}
-                    >
-                      <Badge status={l.status || 'Novo'}>
-                        <span
-                          className="status-badge-arrow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStatusMenuLeadId(prev => prev === l.id ? null : l.id);
-                          }}
-                          title="Escolher status diretamente"
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="6 9 12 15 18 9"/>
-                          </svg>
-                        </span>
-                      </Badge>
                     </div>
                     {statusMenuLeadId === l.id && (
-                      <div
+                      <div className="leads-status-menu"
                         onClick={e => e.stopPropagation()}
                         style={{
                           position: 'absolute',
@@ -2111,43 +2119,44 @@ export default function LeadsPage() {
                     </div>
                   </td>
                   <td>
-                    <div className="row-actions">
-                      <button
+                    <LeadActionsMenu name={l.nome}>
+                      <button type="button" role="menuitem"
                         className="row-btn"
                         onClick={() => addLeadInteracao(l.id, { tipo: 'resposta_recebida', texto: 'Resposta recebida' })}
                         title="Marcar resposta recebida"
                         style={{ color: (l.interacoes || []).some(i => i.tipo === 'resposta_recebida') ? 'var(--green)' : undefined }}
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 11 12 15 8"/></svg>
-                      </button>
-                      <button
+                      <span>Marcar resposta recebida</span></button>
+                      <button type="button" role="menuitem"
                         className="row-btn"
                         onClick={() => toggleLeadBotBarreira(l.id)}
                         title={l.botBarreira ? 'Remover flag Bot no WhatsApp' : 'Marcar Bot no WhatsApp'}
                         style={{ color: l.botBarreira ? 'var(--amber)' : undefined }}
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
-                      </button>
-                      <button className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
+                      <span>{l.botBarreira ? 'Remover Bot no WhatsApp' : 'Marcar Bot no WhatsApp'}</span></button>
+                      <button type="button" role="menuitem" className="row-btn" onClick={() => convertLeadToCliente(l.id)} title="Converter em Cliente" style={{ color: 'var(--green)' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
-                      </button>
-                      <button className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">
+                      <span>Converter em Cliente</span></button>
+                      <button type="button" role="menuitem" className="row-btn" onClick={() => copyLeadInfo(l)} title="Copiar dados">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      </button>
-                      <button className="row-btn" onClick={() => openModal('lead', l.id)} title="Editar">
+                      <span>Copiar dados</span></button>
+                      <button type="button" role="menuitem" className="row-btn" onClick={() => openModal('lead', l.id)} title="Editar">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-                      </button>
-                      <button className="row-btn del" onClick={() => deleteItem('leads', l.id, l.nome)} title="Excluir">
+                      <span>Editar</span></button>
+                      <button type="button" role="menuitem" className="row-btn del" onClick={() => deleteItem('leads', l.id, l.nome)} title="Excluir">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                      </button>
-                    </div>
+                      <span>Excluir</span></button>
+                    </LeadActionsMenu>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      </section>
       )}
 
       {effectiveViewMode === 'list' && (
@@ -2171,7 +2180,7 @@ export default function LeadsPage() {
                     type="number"
                     min="1"
                     max="1000"
-                    className="leads-page-size-custom-input"
+                    className="leads-page-size-custom-input" aria-label="Leads por página"
                     style={{ width: 34, fontSize: 11 }}
                     value={pageSize}
                     onChange={(e) => {

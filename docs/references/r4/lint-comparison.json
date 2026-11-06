@@ -1,0 +1,13 @@
+{
+  "before": {
+    "errors": 134,
+    "warnings": 15
+  },
+  "after": {
+    "errors": 134,
+    "warnings": 15
+  },
+  "added": [],
+  "removed": [],
+  "normalization": "file, rule, severity and diagnostic heading; source excerpts omitted because line numbers moved"
+}

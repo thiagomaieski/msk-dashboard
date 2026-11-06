@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useDash } from '../store/useStore';
 import { leadHasValidSiteOrInstagram } from '../utils/prequalUtils';
+import CustomSelect from './CustomSelect';
 
 export default function BulkBar() {
   const selectedItems = useDash(s => s.selectedItems);
@@ -27,7 +28,7 @@ export default function BulkBar() {
   if (!selectedItems.length) return null;
 
   return (
-    <div id="bulk-bar" style={{
+    <div id="bulk-bar" className={currentBulkCol === 'leads' ? 'leads-bulk-bar' : undefined} role="region" aria-label="Ações em massa" style={{
       position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
       background: 'var(--bg2)', border: '1px solid var(--border)',
       padding: '12px 24px', borderRadius: 100, display: 'flex',
@@ -72,6 +73,7 @@ export default function BulkBar() {
               type="button"
               className="btn btn-sm btn-secondary"
               onClick={() => setWithAi(v => !v)}
+              aria-pressed={withAi}
               disabled={isPrequaling}
               title="Incluir análise com IA após a pré-qualificação (respeita o teto diário)"
               style={{
@@ -86,8 +88,8 @@ export default function BulkBar() {
             >
               ✨ {withAi ? '+ IA ativo' : 'Sem IA'}
             </button>
-            <select
-              className="form-select"
+            <CustomSelect value="" variant="chip"
+              ariaLabel="Alterar status em massa"
               style={{ padding: '4px 8px', height: 30, fontSize: 12, width: 'auto' }}
               onChange={e => { bulkEditLeads('status', e.target.value); e.target.value = ''; }}
             >
@@ -95,15 +97,15 @@ export default function BulkBar() {
               {['Novo', 'Abordado', 'Em negociação', 'Follow-up', 'Fechado', 'Perdido'].map(s => (
                 <option key={s}>{s}</option>
               ))}
-            </select>
-            <select
-              className="form-select"
+            </CustomSelect>
+            <CustomSelect value="" variant="chip"
+              ariaLabel="Alterar nicho em massa"
               style={{ padding: '4px 8px', height: 30, fontSize: 12, width: 'auto' }}
               onChange={e => { bulkEditLeads('nicho', e.target.value); e.target.value = ''; }}
             >
               <option value="">Alterar Nicho...</option>
               {configData.nichos.map(n => <option key={n}>{n}</option>)}
-            </select>
+            </CustomSelect>
           </>
         )}
       </div>
