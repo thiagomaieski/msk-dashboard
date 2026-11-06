@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useDash, sortData, fmtBRL, fmtDate } from '../store/useStore';
-import { EmptyDiv } from '../components/shared';
+import { createPortal } from 'react-dom';
+import { Skeleton } from '../components/ui/Skeleton';
+import './ProjetosPage.css';
 import CustomSelect from '../components/CustomSelect';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import { FEATURES } from '../config/features';
@@ -27,8 +29,64 @@ function getProjetoFechadoEm(p) {
   return '';
 }
 
+
+// Local presentation wrapper. Commands still belong to the existing page handlers.
+function ProjectActionsMenu({ name, children }) {
+  const [position, setPosition] = useState(null);
+  const trigger = useRef(null);
+  const menu = useRef(null);
+  const close = () => {
+    setPosition(null);
+    trigger.current?.focus({ preventScroll: true });
+  };
+  useEffect(() => {
+    if (!position) return;
+    menu.current?.querySelector('button')?.focus({ preventScroll: true });
+    const outside = e => {
+      if (!menu.current?.contains(e.target) && !trigger.current?.contains(e.target)) setPosition(null);
+    };
+    const dismiss = e => {
+      if (e.type === 'scroll' && menu.current?.contains(e.target)) return;
+      setPosition(null);
+    };
+    document.addEventListener('pointerdown', outside);
+    window.addEventListener('resize', dismiss);
+    window.addEventListener('scroll', dismiss, true);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('scroll', dismiss, true);
+    };
+  }, [position]);
+  return <>
+    <button ref={trigger} type="button" className="projetos-actions-trigger"
+      aria-label={`Ações de ${name}`} aria-expanded={!!position} aria-haspopup="menu"
+      onClick={() => {
+        if (position) { close(); return; }
+        const rect = trigger.current.getBoundingClientRect();
+        setPosition({ left: Math.max(8, Math.min(rect.right - 208, window.innerWidth - 216)),
+          ...(rect.bottom + 200 > window.innerHeight ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }) });
+      }}>•••</button>
+    {position && createPortal(<div ref={menu} className="projetos-actions-menu" role="menu"
+      aria-label={`Ações de ${name}`} style={position}
+      onClick={e => { e.stopPropagation(); if (e.target.closest('button')) close(); }}
+      onKeyDown={e => {
+        const items = [...menu.current.querySelectorAll('button')];
+        const index = items.indexOf(document.activeElement);
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+        if (e.key === 'Tab') { setPosition(null); trigger.current?.focus({ preventScroll: true }); }
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+          e.preventDefault();
+          const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+          items[next]?.focus({ preventScroll: true });
+        }
+      }}>{children}</div>, document.body)}
+  </>;
+}
+
 export default function ProjetosPage() {
   const data = useDash(s => s.data);
+  const loading = useDash(s => s.loading);
   const openModal = useDash(s => s.openModal);
   const deleteItem = useDash(s => s.deleteItem);
   const openProjectView = useDash(s => s.openProjectView);
@@ -170,15 +228,19 @@ export default function ProjetosPage() {
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-title">Projetos</div>
+    <div className="projetos-page">
+      <div className="page-header projetos-header">
+        <div>
+          <div className="projetos-eyebrow">Gestão de projetos</div>
+          <h1 className="page-title">Projetos</h1>
+          <p className="projetos-description">Histórico, prazos e pagamentos em um só lugar.</p>
+        </div>
         <div className="page-actions">
           {selectedItems.length > 0 && currentBulkCol === 'projetos' && (
-            <div id="proj-bulk-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div id="proj-bulk-actions" role="region" aria-label="Ações em massa de projetos">
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{selectedItems.length} selecionado(s)</span>
               <button className="btn btn-sm btn-danger" onClick={bulkDelete}>Excluir</button>
-              <button className="btn btn-sm btn-secondary" style={{ padding: '0 6px' }} onClick={clearBulk}>
+              <button className="btn btn-sm btn-secondary" aria-label="Limpar seleção" onClick={clearBulk}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M18 6 6 18M6 6l12 12"/></svg>
               </button>
             </div>
@@ -199,13 +261,19 @@ export default function ProjetosPage() {
         </div>
       </div>
 
-      <div className="filters" style={{ alignItems: 'center' }}>
+      <section className="projetos-workspace" aria-label="Histórico de projetos">
+      <div className="projetos-toolbar-heading">
+        <h2>Histórico <span className="projetos-count">{data.projetos.length}</span></h2>
+        <span role="status">{loading && !data.projetos.length ? 'Carregando projetos...' : `${list.length} de ${data.projetos.length} projetos`}</span>
+      </div>
+      <div className="filters projetos-filters">
         <div className="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="filter-input" placeholder="Buscar projeto ou cliente..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="filter-input" aria-label="Buscar projeto ou cliente" placeholder="Buscar projeto ou cliente..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <CustomSelect
           variant="filter"
+          ariaLabel="Status"
           value={status}
           onChange={e => setStatus(e.target.value)}
           placeholder="Todos os status"
@@ -216,6 +284,7 @@ export default function ProjetosPage() {
         />
         <CustomSelect
           variant="filter"
+          ariaLabel="Pagamento"
           value={pag}
           onChange={e => setPag(e.target.value)}
           placeholder="Todos pagamentos"
@@ -226,6 +295,7 @@ export default function ProjetosPage() {
         />
         <CustomSelect
           variant="filter"
+          ariaLabel="Tipo"
           value={tipoFilter}
           onChange={e => setTipoFilter(e.target.value)}
           placeholder="Todos os tipos"
@@ -233,6 +303,7 @@ export default function ProjetosPage() {
         />
         <CustomSelect
           variant="filter"
+          ariaLabel="Origem"
           value={origemFilter}
           onChange={e => setOrigemFilter(e.target.value)}
           placeholder="Todas as origens"
@@ -240,6 +311,7 @@ export default function ProjetosPage() {
         />
         <CustomSelect
           variant="filter"
+          ariaLabel="Ordenar projetos"
           value={sort}
           onChange={handleSelectSortChange}
           options={[
@@ -252,49 +324,29 @@ export default function ProjetosPage() {
         />
       </div>
 
-      {!list.length ? (
+      {loading && !data.projetos.length ? (
+        <div className="projetos-loading" role="status" aria-label="Carregando projetos" aria-busy="true">
+          <Skeleton height={54} count={6} />
+        </div>
+      ) : !list.length ? (
         data.projetos.length === 0 ? (
-          <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'flex-start' }}>
-            <div 
-              className="proj-card empty card-in" 
-              onClick={() => openModal('projeto')}
-            >
-              <div style={{ 
-                width: 64, 
-                height: 64, 
-                borderRadius: '50%', 
-                background: 'var(--accent-bg)', 
-                position: 'relative',
-                color: 'var(--accent)',
-                marginBottom: 16,
-                flexShrink: 0
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 32, height: 32 }}>
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Comece seu primeiro projeto</div>
-                <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.5 }}>Organize seu histórico, prazos e pagamentos em um só lugar.</div>
-              </div>
-              <div className="btn btn-primary" style={{ marginTop: 8, pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 20px' }}>
-                <div style={{ position: 'relative', width: 14, height: 14, marginRight: 8 }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </div>
-                <span style={{ lineHeight: 1 }}>Novo Projeto</span>
-              </div>
-            </div>
+          <div className="projetos-empty">
+            <span className="projetos-empty-icon" aria-hidden="true">+</span>
+            <h3>Comece seu primeiro projeto</h3>
+            <p>Organize seu histórico, prazos e pagamentos em um só lugar.</p>
+            <button className="btn btn-primary" onClick={() => openModal('projeto')}>Novo Projeto</button>
           </div>
         ) : (
-          <EmptyDiv msg="Nenhum projeto encontrado" />
+          <div className="projetos-empty" role="status">
+            <h3>Nenhum projeto encontrado</h3>
+            <p>Revise a busca e os filtros para encontrar o projeto.</p>
+          </div>
         )
       ) : (
         <>
           {/* DESKTOP: Tabela de histórico */}
           <div className="desktop-only">
-            <Table>
+            <Table className="projetos-table" aria-label="Histórico de projetos">
               <TableHeader>
                 <tr>
                   <TableHead style={{ width: 36, padding: '10px 8px 10px 14px' }}>
@@ -310,6 +362,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'cliente'}
                     sortDirection={colSort?.key === 'cliente' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('cliente')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'cliente' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('cliente'); } }}
                   >
                     Cliente
                   </TableHead>
@@ -318,6 +373,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'descricao'}
                     sortDirection={colSort?.key === 'descricao' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('descricao')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'descricao' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('descricao'); } }}
                   >
                     Projeto
                   </TableHead>
@@ -326,6 +384,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'tipo'}
                     sortDirection={colSort?.key === 'tipo' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('tipo')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'tipo' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('tipo'); } }}
                   >
                     Tipo
                   </TableHead>
@@ -334,6 +395,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'valor'}
                     sortDirection={colSort?.key === 'valor' ? colSort.dir : 'desc'}
                     onSort={() => handleHeaderSort('valor')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'valor' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('valor'); } }}
                     style={{ textAlign: 'right' }}
                   >
                     Valor
@@ -343,6 +407,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'fechadoEm'}
                     sortDirection={colSort?.key === 'fechadoEm' ? colSort.dir : 'desc'}
                     onSort={() => handleHeaderSort('fechadoEm')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'fechadoEm' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('fechadoEm'); } }}
                   >
                     Fechado em
                   </TableHead>
@@ -351,6 +418,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'status'}
                     sortDirection={colSort?.key === 'status' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('status')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'status' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('status'); } }}
                   >
                     Status
                   </TableHead>
@@ -359,6 +429,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'pagamento'}
                     sortDirection={colSort?.key === 'pagamento' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('pagamento')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'pagamento' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('pagamento'); } }}
                   >
                     Pagamento
                   </TableHead>
@@ -367,6 +440,9 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'nf'}
                     sortDirection={colSort?.key === 'nf' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('nf')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'nf' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('nf'); } }}
                   >
                     NF
                   </TableHead>
@@ -375,11 +451,14 @@ export default function ProjetosPage() {
                     sorted={colSort?.key === 'origem'}
                     sortDirection={colSort?.key === 'origem' ? colSort.dir : 'asc'}
                     onSort={() => handleHeaderSort('origem')}
+                    tabIndex={0}
+                    aria-sort={colSort?.key === 'origem' ? (colSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort('origem'); } }}
                   >
                     Origem
                   </TableHead>
                   <TableHead>Site</TableHead>
-                  <TableHead style={{ width: 128, textAlign: 'right' }}>Ações</TableHead>
+                  <TableHead style={{ width: 56, textAlign: 'right' }}>Ações</TableHead>
                 </tr>
               </TableHeader>
               <TableBody>
@@ -423,6 +502,7 @@ export default function ProjetosPage() {
                       >
                         <input
                           type="checkbox"
+                          aria-label={`Selecionar ${p.descricao || p.cliente || 'projeto'}`}
                           checked={isSelected}
                           onChange={() => toggleSelect('projetos', p.id)}
                         />
@@ -432,9 +512,9 @@ export default function ProjetosPage() {
                       </TableCell>
                       <TableCell>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                          <button className="projetos-name" onClick={e => { e.stopPropagation(); openProjectView(p.id); }}>
                             {p.descricao || 'Sem projeto'}
-                          </span>
+                          </button>
                           {p.prazo && (
                             <span
                               style={{
@@ -460,7 +540,7 @@ export default function ProjetosPage() {
                         {fechadoEmStr ? fmtDate(fechadoEmStr) : '—'}
                       </TableCell>
                       <TableCell style={{ whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <div className="projetos-status-stack">
                           <span
                             className="indicator-glow-wrap"
                             style={{
@@ -469,7 +549,7 @@ export default function ProjetosPage() {
                               fontSize: 11,
                               fontWeight: 500,
                               color: sc,
-                              background: sc + '1a',
+                              background: 'color-mix(in srgb, currentColor 12%, transparent)',
                               borderRadius: 99,
                               padding: '3px 9px',
                             }}
@@ -504,7 +584,7 @@ export default function ProjetosPage() {
                             fontSize: 11,
                             fontWeight: 500,
                             color: pc,
-                            background: pc + '1a',
+                            background: 'color-mix(in srgb, currentColor 12%, transparent)',
                             borderRadius: 99,
                             padding: '3px 9px',
                           }}
@@ -562,52 +642,52 @@ export default function ProjetosPage() {
                         onClick={e => e.stopPropagation()}
                         style={{ whiteSpace: 'nowrap', padding: '6px 12px' }}
                       >
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            opacity: isHovered || isSelected ? 1 : 0.25,
-                            transition: 'opacity 120ms ease',
-                          }}
-                        >
+                        <ProjectActionsMenu name={p.descricao || p.cliente || 'projeto'}>
                           <button
                             className="row-btn"
                             onClick={() => openProjectView(p.id)}
+                            role="menuitem"
                             title="Ver detalhes"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
+                            <span>Ver detalhes</span>
                           </button>
                           <button
                             className="row-btn"
                             onClick={() => handleDuplicate(p)}
+                            role="menuitem"
                             title="Duplicar"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                             </svg>
+                            <span>Duplicar</span>
                           </button>
                           <button
                             className="row-btn"
                             onClick={() => openModal('projeto', p.id)}
+                            role="menuitem"
                             title="Editar"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/>
                             </svg>
+                            <span>Editar</span>
                           </button>
                           <button
                             className="row-btn del"
                             onClick={() => deleteItem('projetos', p.id, p.cliente)}
+                            role="menuitem"
                             title="Excluir"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                             </svg>
+                            <span>Excluir</span>
                           </button>
-                        </div>
+                        </ProjectActionsMenu>
                       </TableCell>
                     </TableRow>
                   );
@@ -695,6 +775,7 @@ export default function ProjetosPage() {
           </div>
         </>
       )}
+      </section>
     </div>
   );
 }
