@@ -1,0 +1,182 @@
+[
+  {
+    "name": "Ativos: 7",
+    "ok": true
+  },
+  {
+    "name": "Inativos: 5",
+    "ok": true
+  },
+  {
+    "name": "Todos: 12",
+    "ok": true
+  },
+  {
+    "name": "Busca emporio",
+    "ok": true
+  },
+  {
+    "name": "Busca 12345678000190",
+    "ok": true
+  },
+  {
+    "name": "Busca 48991234567",
+    "ok": true
+  },
+  {
+    "name": "Busca dermatologia",
+    "ok": true
+  },
+  {
+    "name": "Busca dra.camila@",
+    "ok": true
+  },
+  {
+    "name": "Vazio busca",
+    "ok": true
+  },
+  {
+    "name": "Ordenação Z-A",
+    "ok": true
+  },
+  {
+    "name": "Projeto legado por nome",
+    "ok": true
+  },
+  {
+    "name": "Projeto moderno por ID",
+    "ok": true
+  },
+  {
+    "name": "Mensalidade legada",
+    "ok": true
+  },
+  {
+    "name": "Mensalidade moderna",
+    "ok": true
+  },
+  {
+    "name": "Receita legada",
+    "ok": true
+  },
+  {
+    "name": "Receita moderna",
+    "ok": true
+  },
+  {
+    "name": "Faturado inclui vínculos antigos e ID",
+    "ok": true
+  },
+  {
+    "name": "Escape fecha e retorna foco",
+    "ok": true
+  },
+  {
+    "name": "Nome obrigatório não salva",
+    "ok": true
+  },
+  {
+    "name": "Documento incompleto",
+    "ok": true
+  },
+  {
+    "name": "CPF repetido inválido",
+    "ok": true
+  },
+  {
+    "name": "CPF válido e máscara",
+    "ok": true
+  },
+  {
+    "name": "CNPJ inválido",
+    "ok": true
+  },
+  {
+    "name": "CNPJ válido e máscara",
+    "ok": true
+  },
+  {
+    "name": "Consulta simulada preenche",
+    "ok": true
+  },
+  {
+    "name": "Telefone da consulta formatado",
+    "ok": true
+  },
+  {
+    "name": "Campos empresariais exibidos",
+    "ok": true
+  },
+  {
+    "name": "Conflito não sobrescreve",
+    "ok": true
+  },
+  {
+    "name": "Cancelar conflito mantém dados",
+    "ok": true
+  },
+  {
+    "name": "Aplicar conflito atualiza",
+    "ok": true
+  },
+  {
+    "name": "Criação somente em memória",
+    "ok": true
+  },
+  {
+    "name": "Edição pelo editingId sem duplicar",
+    "ok": true
+  },
+  {
+    "name": "Cancelar edição descarta rascunho",
+    "ok": true
+  },
+  {
+    "name": "Fallback proxy simulado",
+    "ok": true
+  },
+  {
+    "name": "Erro 404 sem fallback",
+    "ok": true
+  },
+  {
+    "name": "Erro 429 sem fallback",
+    "ok": true
+  },
+  {
+    "name": "Escape fecha formulário",
+    "ok": true
+  },
+  {
+    "name": "Foco circula no perfil",
+    "ok": true
+  },
+  {
+    "name": "Backdrop fecha perfil",
+    "ok": true
+  },
+  {
+    "name": "Status reage a projetos e mensalidades",
+    "ok": true
+  },
+  {
+    "name": "Carteira vazia com CTA",
+    "ok": true
+  },
+  {
+    "name": "CTA vazio abre criação",
+    "ok": true
+  },
+  {
+    "name": "Cópia por linha preserva documento e não abre perfil",
+    "ok": true
+  },
+  {
+    "name": "Edição individual por linha",
+    "ok": true
+  },
+  {
+    "name": "Foco circula no formulário desktop",
+    "ok": true
+  }
+]

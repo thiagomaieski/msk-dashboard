@@ -569,3 +569,11 @@ Consulta de cota passou a exigir clique explícito. Corrigido esvaziamento de st
 Build aprovado. Lint permanece em 134 erros e 17 avisos globais, com baseline de src em 134 erros e 15 avisos e sem diagnósticos novos. Playwright MCP com fixtures isoladas: 23 verificações funcionais, matriz de 24 capturas nas três seções e dois temas, testes adicionais de foco, upload simulado e navegação filtrada. Sem serviços externos ou gravações reais.
 
 [Relatório R4.2, diff, testes, capturas e limitações](r4.2-implementation.md). Aguardar aprovação visual e funcional. Não iniciar R5. Sem commit ou push.
+
+## 16. Status R5.1 (06/11/2026)
+
+R1, R2, R3.1, R4.1 e R4.2 aprovadas. R5.1 implementada para aprovação visual e funcional: ClientesPage redesenhada com padrão Solvik (cabeçalho hierárquico, contadores dinâmicos, abas Ativos/Inativos/Todos acessíveis, busca e ordenação preservadas, tabela responsiva com iniciais e ações diretas), perfil do cliente em Modal R1 de duas colunas (identificação, contatos e endereço à esquerda; faturamento, projetos, mensalidades e receitas à direita) e formulário ClienteForm com agrupamento visual em três seções lógicas, rodapé de ações fixado na rolagem e validações/máscaras de CPF/CNPJ e fallback BrasilAPI/proxy preservados.
+
+Build aprovado. Lint permanece sem novos diagnósticos (134 erros e 18 avisos globais, 134 erros e 15 avisos em src). Contratos de dados, stores e seletores 100% preservados.
+
+[Relatório R5.1, diff, testes, capturas e limitações](r5.1-implementation.md). Aguardar aprovação visual e funcional. Não iniciar R5.2. Sem commit ou push.

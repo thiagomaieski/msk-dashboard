@@ -27,7 +27,7 @@ export default function Modal({ mobile = false }) {
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
   const panelRef = useRef(null);
-  useDialogFocus(mobile && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
+  useDialogFocus((mobile || modalType === 'cliente') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 

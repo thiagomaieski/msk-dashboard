@@ -3,6 +3,8 @@ import { useDash, sortData, fmtBRL, getWaLink } from '../store/useStore';
 import CustomSelect from '../components/CustomSelect';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import { CopyButton } from '../components/ui/CopyButton';
+import { Modal } from '../components/ui/Modal';
+import './ClientesPage.css';
 import { EmptyDiv } from '../components/shared';
 
 const fmtDate = (d) => { if (!d) return '-'; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
@@ -60,64 +62,18 @@ function ClientePerfilModal({ cliente, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" style={{ maxWidth: 680, width: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '20px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>
-              {(cliente.nome || '?')[0].toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{cliente.nome}</div>
-              {cliente.segmento && <div style={{ fontSize: 12, color: 'var(--text3)' }}>{cliente.segmento}</div>}
-              {cliente.cpfCnpj && (
-                <div 
-                  onClick={() => {
-                    navigator.clipboard.writeText(cliente.cpfCnpj);
-                    useDash.getState().toast('CPF/CNPJ copiado!', 'success');
-                  }}
-                  title="Clique para copiar"
-                  style={{ 
-                    fontSize: 11, 
-                    color: 'var(--text3)', 
-                    fontFamily: 'var(--mono)', 
-                    cursor: 'pointer', 
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 6px',
-                    background: 'var(--bg3)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 4,
-                    marginTop: 4,
-                    transition: 'background .2s, color .2s'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'var(--accent-bg)';
-                    e.currentTarget.style.color = 'var(--accent)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'var(--bg3)';
-                    e.currentTarget.style.color = 'var(--text3)';
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  {formatCpfCnpj(cliente.cpfCnpj)}
-                </div>
-              )}
-            </div>
+    <Modal isOpen onClose={onClose} title="Perfil do cliente" description="Cadastro e histórico do relacionamento" size="lg" className="cliente-profile-modal"
+      footer={<button className="btn btn-primary" onClick={() => { onClose(); openModal('cliente', cliente.id); }}>Editar cliente</button>}>
+      <div className="cliente-profile-layout">
+        <aside className="cliente-profile-sidebar">
+          <div className="cliente-profile-identity">
+            <span className="cliente-avatar cliente-avatar-large" aria-hidden="true">{(cliente.nome || '?')[0].toUpperCase()}</span>
+            <h2>{cliente.nome}</h2>
+            {cliente.segmento && <p>{cliente.segmento}</p>}
+            {cliente.cpfCnpj && <div className="cliente-profile-document">{formatCpfCnpj(cliente.cpfCnpj)}<CopyButton text={cliente.cpfCnpj} showToast toastMsg="CPF/CNPJ copiado!" size="sm" /></div>}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { onClose(); openModal('cliente', cliente.id); }}>Editar</button>
-            <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onClose}>Fechar</button>
-          </div>
-        </div>
-
-        {/* Scrollable body */}
-        <div style={{ overflow: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Contato */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="cliente-profile-contacts">
             {cliente.telefone && (
               <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px' }}>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>Telefone</div>
@@ -139,12 +95,7 @@ function ClientePerfilModal({ cliente, onClose }) {
                 <a href={cliente.site.startsWith('http') ? cliente.site : 'https://' + cliente.site} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: 13 }}>{cliente.site}</a>
               </div>
             )}
-            {totalReceitas > 0 && (
-              <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>Total Faturado</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--green)' }}>{fmtBRL(totalReceitas)}</div>
-              </div>
-            )}
+
           </div>
 
           {/* Endereço */}
@@ -155,9 +106,17 @@ function ClientePerfilModal({ cliente, onClose }) {
             </div>
           )}
 
+        </aside>
+        <div className="cliente-profile-history">
+            {totalReceitas > 0 && (
+              <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>Total Faturado</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--green)' }}>{fmtBRL(totalReceitas)}</div>
+              </div>
+            )}
           {/* Projetos */}
           {projetos.length > 0 && (
-            <div>
+            <section className="cliente-history-section">
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.06em' }}>Projetos ({projetos.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {projetos.map(p => (
@@ -173,12 +132,12 @@ function ClientePerfilModal({ cliente, onClose }) {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Recorrências */}
           {recorrencias.length > 0 && (
-            <div>
+            <section className="cliente-history-section">
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.06em' }}>Mensalidades ({recorrencias.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {recorrencias.map(r => (
@@ -194,12 +153,12 @@ function ClientePerfilModal({ cliente, onClose }) {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Receitas recentes */}
           {receitas.length > 0 && (
-            <div>
+            <section className="cliente-history-section">
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.06em' }}>Últimas Receitas</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {receitas.map(r => (
@@ -212,8 +171,9 @@ function ClientePerfilModal({ cliente, onClose }) {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           )}
+
 
           {/* Observações */}
           {cliente.observacoes && (
@@ -222,9 +182,11 @@ function ClientePerfilModal({ cliente, onClose }) {
               <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{cliente.observacoes}</div>
             </div>
           )}
+
+          {projetos.length === 0 && recorrencias.length === 0 && receitas.length === 0 && <EmptyDiv msg="Nenhum projeto, mensalidade ou receita vinculada a este cliente" />}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -493,11 +455,11 @@ export default function ClientesPage() {
   );
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-title">Clientes</div>
+    <div className="clientes-page">
+      <div className="page-header clientes-header">
+        <div><div className="clientes-eyebrow">Relacionamento</div><h1 className="page-title">Clientes</h1><p className="clientes-description">Cadastro, contatos e histórico da sua carteira.</p></div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{todos.length} cliente(s)</span>
+          <span className="clientes-total"><strong>{todos.length}</strong> cliente(s)</span>
           <button className="btn btn-secondary" onClick={() => openModal('novoFechamento')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
               <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
@@ -512,17 +474,8 @@ export default function ClientesPage() {
       </div>
 
       {/* Abas Ativos | Inativos | Todos + Busca e Ordenação */}
-      <div className="filters" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-md, 8px)',
-            padding: 3,
-            gap: 2,
-          }}
-        >
+      <div className="filters clientes-toolbar" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div className="clientes-tabs" role="group" aria-label="Status dos clientes">
           {[
             { id: 'ativos', label: 'Ativos', count: ativos.length },
             { id: 'inativos', label: 'Inativos', count: inativos.length },
@@ -534,20 +487,8 @@ export default function ClientesPage() {
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '5px 12px',
-                  fontSize: 12,
-                  fontWeight: active ? 600 : 500,
-                  borderRadius: 'var(--r-sm, 6px)',
-                  border: 'none',
-                  background: active ? 'var(--bg3)' : 'transparent',
-                  color: active ? 'var(--text)' : 'var(--text3)',
-                  cursor: 'pointer',
-                  transition: 'all 120ms ease',
-                }}
+                className="clientes-tab"
+                aria-pressed={active}
               >
                 <span>{item.label}</span>
                 <span
@@ -574,6 +515,7 @@ export default function ClientesPage() {
           </svg>
           <input
             className="filter-input"
+            aria-label="Buscar clientes"
             placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -595,7 +537,7 @@ export default function ClientesPage() {
       </div>
 
       {totalClientes === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text3)' }}>
+        <div className="clientes-empty" style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text3)' }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 48, height: 48, margin: '0 auto 16px', opacity: .4 }}>
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -605,12 +547,12 @@ export default function ClientesPage() {
           <button className="btn btn-primary" onClick={() => openModal('cliente')}>Adicionar primeiro cliente</button>
         </div>
       ) : currentList.length === 0 ? (
-        <EmptyDiv msg="Nenhum cliente encontrado nesta visualização" />
+        <div className="clientes-empty"><EmptyDiv msg="Nenhum cliente encontrado nesta visualização" /></div>
       ) : (
         <>
           {/* DESKTOP: Tabela de consulta rápida */}
           <div className="desktop-only">
-            <Table>
+            <Table className="clientes-table" containerStyle={{ borderRadius: 'var(--radius-card)' }}>
               <TableHeader>
                 <tr>
                   <TableHead
@@ -661,7 +603,7 @@ export default function ClientesPage() {
                     onSort={() => handleHeaderSort('recorrencias')}
                     style={{ textAlign: 'center' }}
                   >
-                    Recorrências ativas
+                    Mensalidades ativas
                   </TableHead>
                   <TableHead
                     sortable
@@ -701,8 +643,9 @@ export default function ClientesPage() {
                       }}
                     >
                       <TableCell>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontWeight: 500, color: 'var(--text)' }}>{c.nome}</span>
+                        <div className="cliente-name-cell">
+                          <span className="cliente-avatar" aria-hidden="true">{(c.nome || '?')[0].toUpperCase()}</span>
+                          <button className="cliente-name-button" onClick={e => { e.stopPropagation(); setPerfilCliente(c); }}>{c.nome}</button>
                           {c.segmento && (
                             <span style={{ fontSize: 11, color: 'var(--text3)' }}>{c.segmento}</span>
                           )}
@@ -836,7 +779,7 @@ export default function ClientesPage() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,
-                            opacity: isHovered ? 1 : 0.25,
+                            opacity: 1,
                             transition: 'opacity 120ms ease',
                           }}
                         >

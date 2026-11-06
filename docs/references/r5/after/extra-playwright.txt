@@ -1,0 +1,32 @@
+async(page)=>{
+const out=[];const check=(name,ok)=>{out.push({name,ok});if(!ok)throw Error(name);};
+await page.getByRole('button',{name:'Novo Cliente',exact:true}).click();
+await page.getByLabel('CNPJ / CPF',{exact:true}).fill('12345678000195');
+await page.evaluate(()=>{window.r51Fetch=window.fetch;window.r51Requests=[];window.fetch=async(url,opts)=>{window.r51Requests.push(String(url));if(String(url).includes('brasilapi'))throw Error('Falha simulada');return window.r51Fetch(url,opts);};});
+await page.getByRole('button',{name:'Buscar dados',exact:true}).click();
+check('Fallback proxy simulado',await page.getByLabel('Nome / Empresa *',{exact:true}).inputValue()==='EXEMPLO DIGITAL'&&await page.evaluate(()=>window.r51Requests.some(x=>x.includes('proxy.php?action=cnpj'))));
+for(const [status,text] of [[404,'CNPJ não encontrado'],[429,'Limite de consultas']]){
+ await page.evaluate(status=>{window.r51Requests=[];window.fetch=async(url)=>{window.r51Requests.push(String(url));return new Response('{}',{status});};},status);
+ await page.getByRole('button',{name:'Buscar dados',exact:true}).click();
+ check('Erro '+status+' sem fallback',await page.getByText(new RegExp(text)).isVisible()&&await page.evaluate(()=>window.r51Requests.length===1));
+}
+await page.evaluate(()=>{window.fetch=window.r51Fetch;});
+await page.keyboard.press('Escape');
+check('Escape fecha formulário',await page.getByRole('dialog').count()===0);
+await page.getByRole('button',{name:'TechVibe Soluções Digitais',exact:true}).click();
+await page.getByRole('button',{name:'Editar cliente',exact:true}).focus();
+await page.keyboard.press('Tab');
+check('Foco circula no perfil',await page.getByRole('button',{name:'Fechar',exact:true}).evaluate(x=>x===document.activeElement));
+await page.mouse.click(20,20);
+check('Backdrop fecha perfil',await page.getByRole('dialog').count()===0);
+await page.evaluate(()=>{const d=structuredClone(window.r51Original);d.projetos=d.projetos.map(p=>({...p,status:'Concluído'}));d.recorrencia=d.recorrencia.map(r=>({...r,status:'Inativo'}));window.r5Store.setState({data:d});});
+await page.getByRole('button',{name:/^Ativos/}).click();
+check('Status reage a projetos e mensalidades',await page.getByText('Nenhum cliente encontrado nesta visualização').isVisible());
+await page.evaluate(()=>window.r5Store.setState({data:{...window.r51Original,clientes:[]}}));
+check('Carteira vazia com CTA',await page.getByRole('button',{name:'Adicionar primeiro cliente'}).isVisible());
+await page.getByRole('button',{name:'Adicionar primeiro cliente'}).click();
+check('CTA vazio abre criação',await page.locator('.cliente-form').isVisible());
+await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+await page.evaluate(v=>{window.r51Results.push(...v);window.r5Store.setState({data:window.r51Original});},out);
+return out;
+}

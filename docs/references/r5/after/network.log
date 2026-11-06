@@ -1,0 +1,10 @@
+33. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+115. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+188. [GET] http://127.0.0.1:5173/src/pages/ClientesPage.jsx?t=1793989821082 => [500] Internal Server Error
+225. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+296. [GET] http://127.0.0.1:5173/@vite/client => [FAILED] net::ERR_ABORTED
+297. [GET] http://127.0.0.1:5173/docs/references/r5/r5-fixture.jsx?t=1793989902962 => [FAILED] net::ERR_ABORTED
+298. [GET] http://127.0.0.1:5173/@react-refresh => [FAILED] net::ERR_ABORTED
+330. [GET] https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap => [FAILED] net::ERR_FAILED
+
+Note: 402 static requests not shown, run with "static" option to see them.

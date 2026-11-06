@@ -1,0 +1,74 @@
+[
+  {
+    "view": "list",
+    "theme": "dark",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "profile",
+    "theme": "dark",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "form",
+    "theme": "dark",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "list",
+    "theme": "light",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "profile",
+    "theme": "light",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "form",
+    "theme": "light",
+    "width": 1440,
+    "ok": true
+  },
+  {
+    "view": "list",
+    "theme": "dark",
+    "width": 1280,
+    "ok": true
+  },
+  {
+    "view": "profile",
+    "theme": "dark",
+    "width": 1280,
+    "ok": true
+  },
+  {
+    "view": "form",
+    "theme": "dark",
+    "width": 1280,
+    "ok": true
+  },
+  {
+    "view": "list",
+    "theme": "light",
+    "width": 1280,
+    "ok": true
+  },
+  {
+    "view": "profile",
+    "theme": "light",
+    "width": 1280,
+    "ok": true
+  },
+  {
+    "view": "form",
+    "theme": "light",
+    "width": 1280,
+    "ok": true
+  }
+]

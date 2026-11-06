@@ -1,0 +1,22 @@
+.modal:has(.cliente-form) { width: min(820px, 95vw); max-width: 820px; }
+.modal:has(.cliente-form) .modal-header { flex-shrink: 0; padding: 20px 24px; }
+.modal:has(.cliente-form) .modal-body { padding: 20px 24px 0; }
+.cliente-form { gap: 16px; }
+.cliente-form-section { display: grid; gap: 14px; padding: 18px; background: var(--surface-glass); border: 1px solid var(--border); border-radius: var(--radius-card); min-width: 0; }
+.cliente-form-section h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.cliente-form-hint { font-size: 12px; line-height: 1.5; color: var(--text3); margin: -8px 0 2px; }
+.cliente-form .form-label { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text2); }
+.cliente-form .form-input, .cliente-form .form-textarea { min-width: 0; border-radius: var(--radius-control); min-height: 40px; font-size: 13px; }
+.cliente-form .form-grid { gap: 14px; }
+.cliente-form .form-group { min-width: 0; margin-bottom: 0; }
+.cliente-form .form-label { margin-bottom: 0; }
+.cliente-form .form-actions { position: sticky; bottom: 0; background: var(--surface-floating); padding: 14px 0 18px; margin: 0 !important; z-index: 1; border-top: 1px solid var(--border); }
+.cliente-form .btn { border-radius: var(--radius-pill); min-height: 38px; }
+.cliente-form .btn-primary { background: var(--color-accent); color: var(--on-accent); border-color: var(--color-accent); }
+body.light .cliente-form .btn-primary { color: var(--on-accent); }
+.cliente-form [role="region"] { border-radius: var(--radius-tile) !important; }
+@media (max-width: 600px) {
+  .modal:has(.cliente-form) .modal-body { padding: 14px 12px 0; }
+  .cliente-form-section { padding: 14px; }
+  .cliente-form .form-grid-2 { grid-template-columns: minmax(0,1fr); }
+}

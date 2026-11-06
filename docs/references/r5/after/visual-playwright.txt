@@ -1,0 +1,25 @@
+async(page)=>{
+const results=[];const base='C:/Users/thi5x/Downloads/Dashboard Maieski/react-app/docs/references/r5/after/';
+for(const [width,height] of [[1440,900],[1280,800]]){
+ await page.setViewportSize({width,height});
+ for(const theme of ['dark','light']){
+  await page.evaluate(theme=>{document.body.classList.toggle('light',theme==='light');window.r5Store.setState({theme});},theme);
+  await page.getByRole('button',{name:/^Ativos/}).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({path:base+'list-'+theme+'-'+width+'.png'});
+  results.push({view:'list',theme,width,ok:await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&[...document.querySelectorAll('.clientes-table th')].every(x=>x.scrollWidth<=x.clientWidth+1))});
+  await page.getByRole('button',{name:'TechVibe Soluções Digitais',exact:true}).click();
+  await page.waitForTimeout(250);
+  await page.screenshot({path:base+'profile-'+theme+'-'+width+'.png'});
+  results.push({view:'profile',theme,width,ok:await page.getByRole('dialog').evaluate(x=>x.scrollWidth<=x.clientWidth)});
+  await page.getByRole('button',{name:'Editar cliente',exact:true}).click();
+  await page.locator('.cliente-form').waitFor();
+  await page.screenshot({path:base+'form-'+theme+'-'+width+'.png'});
+  results.push({view:'form',theme,width,ok:await page.getByRole('dialog').evaluate(x=>x.scrollWidth<=x.clientWidth)});
+  await page.getByLabel('instagram',{exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:base+'form-bottom-'+theme+'-'+width+'.png'});
+  await page.keyboard.press('Escape');
+ }
+}
+await page.evaluate(v=>window.r51Visual=v,results);return results;
+}

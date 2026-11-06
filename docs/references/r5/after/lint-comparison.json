@@ -1,0 +1,20 @@
+{
+  "before": {
+    "errors": 134,
+    "warnings": 18
+  },
+  "after": {
+    "errors": 134,
+    "warnings": 18
+  },
+  "srcBefore": {
+    "errors": 134,
+    "warnings": 15
+  },
+  "srcAfter": {
+    "errors": 134,
+    "warnings": 15
+  },
+  "added": [],
+  "removed": []
+}

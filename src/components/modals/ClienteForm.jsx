@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDash } from '../../store/useStore';
 import { auth } from '../../firebase';
 import CustomSelect from '../CustomSelect';
+import './ClienteForm.css';
 
 export function isValidCpf(raw = '') {
   const cpf = (raw || '').replace(/\D/g, '');
@@ -225,19 +226,22 @@ export default function ClienteForm({ item }) {
   };
 
   return (
-    <div className="form-grid">
+    <div className="form-grid cliente-form">
+      <section className="cliente-form-section">
+      <h3>Identificação</h3>
+      <p className="cliente-form-hint">Dados do cliente e consulta de CNPJ. Nome / Empresa é obrigatório.</p>
       <div className="form-grid form-grid-2">
         <div className="form-group">
-          <label className="form-label">Nome / Empresa *</label>
-          <input className="form-input" value={f.nome} onChange={u('nome')} />
+          <label className="form-label" htmlFor="cliente-nome">Nome / Empresa *</label>
+          <input className="form-input" id="cliente-nome" value={f.nome} onChange={u('nome')} />
         </div>
         <div className="form-group">
-          <label className="form-label">CNPJ / CPF</label>
+          <label className="form-label" htmlFor="cliente-cpfCnpj">CNPJ / CPF</label>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input
               className="form-input"
               style={{ flex: 1 }}
-              value={f.cpfCnpj}
+              id="cliente-cpfCnpj" value={f.cpfCnpj}
               onChange={e => {
                 const masked = maskCpfCnpjInput(e.target.value);
                 setCnpjError('');
@@ -299,7 +303,7 @@ export default function ClienteForm({ item }) {
       )}
 
       {pendingCnpjData && (
-        <div
+        <div role="region" aria-label="Confirmar dados do CNPJ" aria-live="polite"
           style={{
             padding: '12px 14px',
             borderRadius: 'var(--r-md, 8px)',
@@ -335,19 +339,22 @@ export default function ClienteForm({ item }) {
       {(f.razaoSocial || f.nomeFantasia) && (
         <div className="form-grid form-grid-2">
           <div className="form-group">
-            <label className="form-label">Razão Social</label>
-            <input className="form-input" value={f.razaoSocial} onChange={u('razaoSocial')} />
+            <label className="form-label" htmlFor="cliente-razaoSocial">Razão Social</label>
+            <input className="form-input" id="cliente-razaoSocial" value={f.razaoSocial} onChange={u('razaoSocial')} />
           </div>
           <div className="form-group">
-            <label className="form-label">Nome Fantasia</label>
-            <input className="form-input" value={f.nomeFantasia} onChange={u('nomeFantasia')} />
+            <label className="form-label" htmlFor="cliente-nomeFantasia">Nome Fantasia</label>
+            <input className="form-input" id="cliente-nomeFantasia" value={f.nomeFantasia} onChange={u('nomeFantasia')} />
           </div>
         </div>
       )}
 
+      </section>
+      <section className="cliente-form-section">
+      <h3>Contato e cadastro</h3>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" value={f.email} onChange={u('email')} /></div>
-        <div className="form-group"><label className="form-label">Telefone</label><input className="form-input" value={f.telefone} onChange={u('telefone')} /></div>
+        <div className="form-group"><label className="form-label" htmlFor="cliente-email">E-mail</label><input className="form-input" id="cliente-email" value={f.email} onChange={u('email')} /></div>
+        <div className="form-group"><label className="form-label" htmlFor="cliente-telefone">Telefone</label><input className="form-input" id="cliente-telefone" value={f.telefone} onChange={u('telefone')} /></div>
       </div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Como Conheceu</label>
@@ -355,11 +362,13 @@ export default function ClienteForm({ item }) {
             {CONH.map(s => <option key={s}>{s}</option>)}
           </CustomSelect>
         </div>
-        <div className="form-group"><label className="form-label">Segmento</label><input className="form-input" value={f.segmento} onChange={u('segmento')} /></div>
+        <div className="form-group"><label className="form-label" htmlFor="cliente-segmento">Segmento</label><input className="form-input" id="cliente-segmento" value={f.segmento} onChange={u('segmento')} /></div>
       </div>
-      <div className="form-group"><label className="form-label">Endereço Completo</label><input className="form-input" value={f.endereco} onChange={u('endereco')} /></div>
-      <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={f.observacoes} onChange={u('observacoes')} /></div>
+      <div className="form-group"><label className="form-label" htmlFor="cliente-endereco">Endereço Completo</label><input className="form-input" id="cliente-endereco" value={f.endereco} onChange={u('endereco')} /></div>
+      <div className="form-group"><label className="form-label" htmlFor="cliente-observacoes">Observações</label><textarea className="form-textarea" style={{ minHeight: 60 }} id="cliente-observacoes" value={f.observacoes} onChange={u('observacoes')} /></div>
       
+      </section>
+      <section className="cliente-form-section">
       <div className="form-group" style={{ marginTop: 8 }}>
         <label className="form-label" style={{ marginBottom: 12 }}>Links e Redes Sociais</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -371,11 +380,12 @@ export default function ClienteForm({ item }) {
           ].map(({ key, icon, placeholder }) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 600 }}>{icon}</span>
-              <input className="form-input" placeholder={placeholder} value={f[key]} onChange={u(key)} style={{ flex: 1 }} />
+              <input aria-label={key} className="form-input" placeholder={placeholder} value={f[key]} onChange={u(key)} style={{ flex: 1 }} />
             </div>
           ))}
         </div>
       </div>
+      </section>
       <div className="form-actions" style={{ marginTop: 8 }}>
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
         <button className="btn btn-primary" onClick={handleSave}>Salvar</button>

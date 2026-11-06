@@ -1,0 +1,670 @@
+/* eslint-disable */
+// Local test entry only. Never imported by production. Network completely isolated.
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import '/src/index.css';
+import { useDash } from '/src/store/useStore';
+
+const original = useDash.getState();
+const user = { uid: 'r5-local-only', email: 'fixture-r5@example.invalid' };
+
+window.r5Calls = [];
+const record = (action, ...args) => window.r5Calls.push({ action, args, time: Date.now() });
+
+// Mock synthetic clients (12 realistic businesses/professionals, zero real data)
+const syntheticClientes = [
+  {
+    id: 'cli-001',
+    nome: 'TechVibe Soluções Digitais',
+    razaoSocial: 'TechVibe Tecnologia e Serviços Ltda',
+    nomeFantasia: 'TechVibe Soluções',
+    cpfCnpj: '12.345.678/0001-90',
+    email: 'contato@techvibe.example.invalid',
+    telefone: '(48) 99123-4567',
+    conheceu: 'Google',
+    segmento: 'Tecnologia / SaaS',
+    site: 'https://techvibe.example.invalid',
+    instagram: '@techvibedigital',
+    endereco: 'Rodovia SC-401, 4000, Bloco Tech, Saco Grande, Florianópolis/SC - CEP 88032-005',
+    observacoes: 'Cliente corporativo com contrato anual. Desenvolvimento do novo portal web e manutenção contínua.',
+    criadoEm: '2026-05-10T14:30:00Z',
+    modificadoEm: '2026-10-15T10:00:00Z',
+  },
+  {
+    id: 'cli-002',
+    nome: 'Dra. Camila Vasconcelos',
+    razaoSocial: 'Camila Vasconcelos Dermatologia Ltda',
+    nomeFantasia: 'Clínica Dra. Camila Vasconcelos',
+    cpfCnpj: '123.456.789-00',
+    email: 'dra.camila@clinica.example.invalid',
+    telefone: '(11) 98765-4321',
+    conheceu: 'Instagram',
+    segmento: 'Saúde / Dermatologia',
+    site: 'https://dracamilavasconcelos.example.invalid',
+    instagram: '@dracamiladermato',
+    endereco: 'Av. Brigadeiro Faria Lima, 2000, 14º andar, Itaim Bibi, São Paulo/SP - CEP 01451-001',
+    observacoes: 'Reformulação da landing page e tráfego pago para captação de procedimentos estéticos.',
+    criadoEm: '2026-06-01T09:00:00Z',
+    modificadoEm: '2026-10-20T11:00:00Z',
+  },
+  {
+    id: 'cli-003',
+    nome: 'Studio Arquitetura & Design',
+    razaoSocial: 'Studio Arquitetura & Urbanismo Ltda',
+    nomeFantasia: 'Studio Arquitetura & Design',
+    cpfCnpj: '23.456.789/0001-01',
+    email: 'contato@studioarq.example.invalid',
+    telefone: '(41) 99888-7766',
+    conheceu: 'Indicação',
+    segmento: 'Arquitetura & Urbanismo',
+    site: 'https://studioarq.example.invalid',
+    instagram: '@studioarqdesign',
+    endereco: 'Rua Comendador Araújo, 500, Batel, Curitiba/PR - CEP 80420-000',
+    observacoes: 'Portfólio interativo para apresentação de projetos arquitetônicos residenciais e comerciais.',
+    criadoEm: '2026-06-15T16:00:00Z',
+    modificadoEm: '2026-09-10T14:00:00Z',
+  },
+  {
+    id: 'cli-004',
+    nome: 'Empório & Café Bistrô',
+    razaoSocial: 'Empório & Café Bistrô Eireli',
+    nomeFantasia: 'Empório Bistrô',
+    cpfCnpj: '34.567.890/0001-12',
+    email: 'gerencia@emporio.example.invalid',
+    telefone: '(19) 98111-2233',
+    conheceu: 'Facebook',
+    segmento: 'Gastronomia & Eventos',
+    site: 'https://emporio.example.invalid',
+    instagram: '@emporiocafebistro',
+    endereco: 'Rua Coronel Quirino, 850, Cambuí, Campinas/SP - CEP 13025-001',
+    observacoes: 'Cardápio digital integrado e sistema de reservas online. Projeto finalizado.',
+    criadoEm: '2026-07-02T10:15:00Z',
+    modificadoEm: '2026-08-05T17:00:00Z',
+  },
+  {
+    id: 'cli-005',
+    nome: 'Vanguard Logística Integrada',
+    razaoSocial: 'Vanguard Transportes e Logística S/A',
+    nomeFantasia: 'Vanguard Logística',
+    cpfCnpj: '45.678.901/0001-23',
+    email: 'operacoes@vanguardlog.example.invalid',
+    telefone: '(47) 99222-3344',
+    conheceu: 'Meta ADS',
+    segmento: 'Transporte e Logística',
+    site: 'https://vanguardlog.example.invalid',
+    endereco: 'Rua Dona Francisca, 8300, Distrito Industrial, Joinville/SC - CEP 89219-600',
+    observacoes: 'Desenvolvimento do portal logístico com área de rastreamento para clientes.',
+    criadoEm: '2026-08-20T11:45:00Z',
+    modificadoEm: '2026-10-01T15:20:00Z',
+  },
+  {
+    id: 'cli-006',
+    nome: 'Lumina Odontologia Estética',
+    razaoSocial: 'Lumina Clínica Odontológica Ltda',
+    nomeFantasia: 'Lumina Odontologia',
+    cpfCnpj: '56.789.012/0001-34',
+    email: 'recepcao@luminaodonto.example.invalid',
+    telefone: '(31) 98333-4455',
+    conheceu: 'Google Maps',
+    segmento: 'Saúde / Odontologia',
+    site: 'https://luminaodonto.example.invalid',
+    instagram: '@luminaodontologia',
+    endereco: 'Av. do Contorno, 6500, Funcionários, Belo Horizonte/MG - CEP 30110-044',
+    observacoes: 'Site entregue no primeiro semestre; cliente inativo sem novos projetos no momento.',
+    criadoEm: '2026-04-12T13:20:00Z',
+    modificadoEm: '2026-06-30T18:00:00Z',
+  },
+  {
+    id: 'cli-007',
+    nome: 'Casa Serena Móveis Planejados',
+    razaoSocial: 'Casa Serena Decorações e Marcenaria Ltda',
+    nomeFantasia: 'Casa Serena Móveis',
+    cpfCnpj: '67.890.123/0001-45',
+    email: 'vendas@casaserena.example.invalid',
+    telefone: '(51) 99444-5566',
+    conheceu: 'Instagram',
+    segmento: 'Comércio / Decoração',
+    site: 'https://casaserena.example.invalid',
+    instagram: '@casaserenamoveis',
+    endereco: 'Av. Goethe, 350, Moinhos de Vento, Porto Alegre/RS - CEP 90430-100',
+    observacoes: 'E-commerce em desenvolvimento para venda direta de peças selecionadas de decoração.',
+    criadoEm: '2026-09-05T08:30:00Z',
+    modificadoEm: '2026-11-01T12:00:00Z',
+  },
+  {
+    id: 'cli-008',
+    nome: 'Advocacia Silveira & Associados',
+    razaoSocial: 'Silveira Sociedade de Advogados',
+    nomeFantasia: 'Advocacia Silveira',
+    cpfCnpj: '78.901.234/0001-56',
+    email: 'contato@silveiraadv.example.invalid',
+    telefone: '(61) 98555-6677',
+    conheceu: 'Indicação',
+    segmento: 'Jurídico',
+    site: 'https://silveiraadv.example.invalid',
+    endereco: 'Setor de Autarquias Sul, Quadra 4, Bloco A, Brasília/DF - CEP 70070-900',
+    observacoes: 'Redesign e adequação LGPD do portal institucional do escritório.',
+    criadoEm: '2026-08-10T15:10:00Z',
+    modificadoEm: '2026-10-18T16:00:00Z',
+  },
+  {
+    id: 'cli-009',
+    nome: 'Solaris Energia Renovável',
+    razaoSocial: 'Solaris Instalações Fotovoltaicas Ltda',
+    nomeFantasia: 'Solaris Energia',
+    cpfCnpj: '89.012.345/0001-67',
+    email: 'projetos@solarisenergia.example.invalid',
+    telefone: '(16) 99666-7788',
+    conheceu: 'Google',
+    segmento: 'Energia Solar',
+    site: 'https://solarisenergia.example.invalid',
+    endereco: 'Av. Presidente Vargas, 1200, Jardim América, Ribeirão Preto/SP - CEP 14020-260',
+    observacoes: 'Projeto pausado a pedido da diretoria durante reestruturação societária.',
+    criadoEm: '2026-05-25T10:40:00Z',
+    modificadoEm: '2026-07-15T11:20:00Z',
+  },
+  {
+    id: 'cli-010',
+    nome: 'Ótica Central da Cidade',
+    razaoSocial: 'Ótica Central do Litoral Ltda',
+    nomeFantasia: 'Ótica Central',
+    cpfCnpj: '90.123.456/0001-78',
+    email: 'contato@oticacentral.example.invalid',
+    telefone: '(13) 98777-8899',
+    conheceu: 'Outro',
+    segmento: 'Comércio / Varejo Ótico',
+    endereco: 'Rua XV de Novembro, 110, Centro, Santos/SP - CEP 11010-150',
+    observacoes: 'Campanha de Black Friday cancelada.',
+    criadoEm: '2026-08-01T14:00:00Z',
+    modificadoEm: '2026-09-01T15:30:00Z',
+  },
+  {
+    id: 'cli-011',
+    nome: 'Bella Pelle Estética Avançada',
+    cpfCnpj: '987.654.321-99',
+    email: 'contato@bellapelle.example.invalid',
+    telefone: '(21) 99888-0011',
+    conheceu: 'Instagram',
+    segmento: 'Saúde / Estética',
+    site: 'https://bellapelle.example.invalid',
+    instagram: '@bellapelleestetica',
+    endereco: 'Rua Visconde de Pirajá, 444, Sala 302, Ipanema, Rio de Janeiro/RJ - CEP 22410-002',
+    observacoes: 'Landing page focada em conversão para WhatsApp e agendamento de avaliações.',
+    criadoEm: '2026-10-05T09:15:00Z',
+    modificadoEm: '2026-11-03T14:45:00Z',
+  },
+  {
+    id: 'cli-012',
+    nome: 'Nova Terra Paisagismo',
+    cpfCnpj: '01.234.567/0001-89',
+    email: 'contato@novaterra.example.invalid',
+    telefone: '(15) 98122-3344',
+    conheceu: 'Indicação',
+    segmento: 'Paisagismo & Jardinagem',
+    endereco: 'Rodovia Raposo Tavares, Km 104, Sorocaba/SP - CEP 18052-775',
+    observacoes: 'Cliente finalizou projeto no ano anterior sem novos contratos.',
+    criadoEm: '2026-03-20T11:00:00Z',
+    modificadoEm: '2026-05-15T16:00:00Z',
+  },
+];
+
+// Mock synthetic projects
+const syntheticProjetos = [
+  {
+    id: 'proj-001',
+    cliente: 'TechVibe Soluções Digitais',
+    clienteId: 'cli-001',
+    descricao: 'Portal Web Institucional e Blog',
+    tipo: 'Site',
+    tipoProjeto: 'Site',
+    valor: 6800,
+    fechadoEm: '2026-10-15',
+    prazo: '2026-12-10',
+    origem: 'Lead (prospecção)',
+    status: 'Em andamento',
+    pagamento: 'Parcial (50%)',
+    nf: 'pendente',
+    siteUrl: 'https://techvibe.example.invalid',
+    anotacoes: 'Estrutura com 6 páginas institucionais, área de cases e blog em headless CMS. Acessos do cliente configurados no painel DNS.',
+    tarefas: [
+      { titulo: 'Ajustar layout responsivo da home', col: 'feito', prio: 'Alta' },
+      { titulo: 'Configurar blog em headless CMS', col: 'andamento', prio: 'Alta' },
+      { titulo: 'Otimizar pontuação PageSpeed mobile', col: 'afazer', prio: 'Média' },
+    ],
+    arquivos: [],
+    criadoEm: '2026-10-15T10:00:00Z',
+    modificadoEm: '2026-10-15T10:00:00Z',
+  },
+  {
+    id: 'proj-002',
+    cliente: 'Dra. Camila Vasconcelos',
+    clienteId: 'cli-002',
+    descricao: 'Landing Page de Alta Conversão',
+    tipo: 'Landing page',
+    tipoProjeto: 'Landing page',
+    valor: 3200,
+    fechadoEm: '2026-10-20',
+    prazo: '2026-11-20',
+    origem: 'Instagram',
+    status: 'Em andamento',
+    pagamento: 'Pago',
+    nf: 'sim',
+    siteUrl: 'https://dracamilavasconcelos.example.invalid',
+    anotacoes: 'Foco em agendamento de consultas via WhatsApp. Integração com Meta Pixel e Google Tag Manager.',
+    tarefas: [
+      { titulo: 'Criar wireframe da landing page', col: 'feito', prio: 'Alta' },
+      { titulo: 'Implementar formulário e botão WhatsApp', col: 'andamento', prio: 'Alta' },
+    ],
+    arquivos: [],
+    criadoEm: '2026-10-20T11:00:00Z',
+    modificadoEm: '2026-10-20T11:00:00Z',
+  },
+  {
+    id: 'proj-003',
+    cliente: 'Studio Arquitetura & Design',
+    clienteId: 'cli-003',
+    descricao: 'Website Portfólio de Arquitetura',
+    tipo: 'Site',
+    tipoProjeto: 'Site',
+    valor: 5400,
+    fechadoEm: '2026-09-10',
+    prazo: '2026-10-30', // Prazo vencido -> Atrasado propositalmente para validar badge
+    origem: 'Indicação',
+    status: 'Aguardando cliente',
+    pagamento: 'Parcial (50%)',
+    nf: 'pendente',
+    siteUrl: 'https://studioarq.example.invalid',
+    anotacoes: 'Cliente precisa enviar fotografias finais dos projetos residenciais para inclusão na galeria.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-09-10T14:00:00Z',
+    modificadoEm: '2026-09-10T14:00:00Z',
+  },
+  {
+    id: 'proj-004',
+    cliente: 'Empório & Café Bistrô',
+    clienteId: 'cli-004',
+    descricao: 'Cardápio Digital e Sistema de Pedidos',
+    tipo: 'Sistema',
+    tipoProjeto: 'Sistema',
+    valor: 4500,
+    fechadoEm: '2026-08-05',
+    prazo: '2026-09-15',
+    origem: 'Cliente antigo',
+    status: 'Concluído',
+    pagamento: 'Pago',
+    nf: 'sim',
+    siteUrl: 'https://emporio.example.invalid',
+    anotacoes: 'Entregue e homologado com equipe do bistrô. Funcionamento via QR Code em todas as mesas.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-08-05T17:00:00Z',
+    modificadoEm: '2026-09-15T18:00:00Z',
+  },
+  {
+    id: 'proj-005',
+    cliente: 'Vanguard Logística Integrada',
+    clienteId: 'cli-005',
+    descricao: 'Plataforma de Rastreamento e Cargas',
+    tipo: 'Sistema',
+    tipoProjeto: 'Sistema',
+    valor: 12500,
+    fechadoEm: '2026-10-01',
+    prazo: '2026-12-20',
+    origem: 'Lead (prospecção)',
+    status: 'Aguardando Aprovação',
+    pagamento: 'Parcial (50%)',
+    nf: 'pendente',
+    siteUrl: 'https://vanguardlog.example.invalid',
+    anotacoes: 'Etapa de testes de carga e segurança concluída. Aguardando aprovação da diretoria de operações.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-10-01T15:20:00Z',
+    modificadoEm: '2026-10-01T15:20:00Z',
+  },
+  {
+    id: 'proj-006',
+    cliente: 'Casa Serena Móveis Planejados',
+    clienteId: 'cli-007',
+    descricao: 'Loja Virtual de Decoração e Móveis',
+    tipo: 'Loja virtual',
+    tipoProjeto: 'Loja virtual',
+    valor: 8900,
+    fechadoEm: '2026-11-01',
+    prazo: '2026-12-30',
+    origem: 'Indicação',
+    status: 'Em andamento',
+    pagamento: 'Pendente',
+    nf: 'nao',
+    siteUrl: 'https://casaserena.example.invalid',
+    anotacoes: 'Catálogo de 150 produtos e integração com gateway de pagamento.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-11-01T12:00:00Z',
+    modificadoEm: '2026-11-01T12:00:00Z',
+  },
+  {
+    id: 'proj-007',
+    cliente: 'Advocacia Silveira & Associados',
+    clienteId: 'cli-008',
+    descricao: 'Redesign de Portal Jurídico e Artigos',
+    tipo: 'Site',
+    tipoProjeto: 'Site',
+    valor: 4200,
+    fechadoEm: '2026-10-18',
+    prazo: '2026-11-28',
+    origem: 'Cliente antigo',
+    status: 'Em andamento',
+    pagamento: 'Pago',
+    nf: 'sim',
+    siteUrl: 'https://silveiraadv.example.invalid',
+    anotacoes: 'Adequação às diretrizes de publicidade da OAB e otimização para busca orgânica (SEO).',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-10-18T16:00:00Z',
+    modificadoEm: '2026-10-18T16:00:00Z',
+  },
+  {
+    id: 'proj-008',
+    cliente: 'Solaris Energia Renovável',
+    clienteId: 'cli-009',
+    descricao: 'Portal Comercial e Calculadora Solar',
+    tipo: 'Landing page',
+    tipoProjeto: 'Landing page',
+    valor: 3800,
+    fechadoEm: '2026-07-15',
+    prazo: '2026-08-30',
+    origem: 'Lead (prospecção)',
+    status: 'Pausado',
+    pagamento: 'Parcial (50%)',
+    nf: 'pendente',
+    siteUrl: 'https://solarisenergia.example.invalid',
+    anotacoes: 'Projeto pausado a pedido do cliente durante reestruturação societária.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-07-15T11:20:00Z',
+    modificadoEm: '2026-07-15T11:20:00Z',
+  },
+  {
+    id: 'proj-009',
+    cliente: 'Ótica Central da Cidade',
+    clienteId: 'cli-010',
+    descricao: 'Landing Page Black Friday e Campanhas',
+    tipo: 'Landing page',
+    tipoProjeto: 'Landing page',
+    valor: 2200,
+    fechadoEm: '2026-09-01',
+    prazo: '2026-09-20',
+    origem: 'Outro',
+    status: 'Cancelado',
+    pagamento: 'Pendente',
+    nf: 'nao',
+    siteUrl: '',
+    anotacoes: 'Cancelado antes do início da fase de desenvolvimento.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-09-01T15:30:00Z',
+    modificadoEm: '2026-09-01T15:30:00Z',
+  },
+  {
+    id: 'proj-010',
+    cliente: 'Bella Pelle Estética Avançada',
+    clienteId: 'cli-011',
+    descricao: 'Página de Agendamentos e Procedimentos',
+    tipo: 'Landing page',
+    tipoProjeto: 'Landing page',
+    valor: 2900,
+    fechadoEm: '2026-11-03',
+    prazo: '2026-11-25',
+    origem: 'Instagram',
+    status: 'Em andamento',
+    pagamento: 'Pendente',
+    nf: 'pendente',
+    siteUrl: 'https://bellapelle.example.invalid',
+    anotacoes: 'Integração direta com agenda WhatsApp.',
+    tarefas: [],
+    arquivos: [],
+    criadoEm: '2026-11-03T14:45:00Z',
+    modificadoEm: '2026-11-03T14:45:00Z',
+  },
+];
+
+// Mock synthetic recurrences
+const syntheticRecorrencia = [
+  {
+    id: 'rec-001',
+    cliente: 'TechVibe Soluções Digitais',
+    clienteId: 'cli-001',
+    plano: 'Manutenção & Hospedagem Cloud',
+    valor: 450,
+    periodicidade: 'Mensal',
+    status: 'Ativo',
+    vencimento: 10,
+    dataInicio: '2026-05-10',
+  },
+  {
+    id: 'rec-002',
+    cliente: 'Studio Arquitetura & Design',
+    clienteId: 'cli-003',
+    plano: 'Hospedagem & Suporte Técnico',
+    valor: 250,
+    periodicidade: 'Mensal',
+    status: 'Ativo',
+    vencimento: 15,
+    dataInicio: '2026-06-15',
+  },
+  {
+    id: 'rec-003',
+    cliente: 'Vanguard Logística Integrada',
+    clienteId: 'cli-005',
+    plano: 'Suporte e SLA 24/7',
+    valor: 1200,
+    periodicidade: 'Mensal',
+    status: 'Ativo',
+    vencimento: 5,
+    dataInicio: '2026-08-20',
+  },
+  {
+    id: 'rec-004',
+    cliente: 'Bella Pelle Estética Avançada',
+    clienteId: 'cli-011',
+    plano: 'Gestão e Atualizações Web',
+    valor: 350,
+    periodicidade: 'Mensal',
+    status: 'Ativo',
+    vencimento: 20,
+    dataInicio: '2026-10-05',
+  },
+];
+
+// Mock synthetic revenues (negocio)
+const syntheticNegocio = [
+  {
+    id: 'neg-001',
+    tipo: 'Receita',
+    entidade: 'TechVibe Soluções Digitais',
+    clienteId: 'cli-001',
+    projetoId: 'proj-001',
+    descricao: 'Entrada Projeto Portal Institucional (50%)',
+    valor: 3400,
+    data: '2026-10-15',
+    categoria: 'Trabalho Fixo',
+    nf: 'sim',
+  },
+  {
+    id: 'neg-002',
+    tipo: 'Receita',
+    entidade: 'Dra. Camila Vasconcelos',
+    clienteId: 'cli-002',
+    projetoId: 'proj-002',
+    descricao: 'Desenvolvimento Landing Page Dra. Camila',
+    valor: 3200,
+    data: '2026-10-20',
+    categoria: 'Trabalho Fixo',
+    nf: 'sim',
+  },
+  {
+    id: 'neg-003',
+    tipo: 'Receita',
+    entidade: 'Studio Arquitetura & Design',
+    clienteId: 'cli-003',
+    projetoId: 'proj-003',
+    descricao: 'Sinal 50% Website Studio Arquitetura',
+    valor: 2700,
+    data: '2026-09-10',
+    categoria: 'Trabalho Fixo',
+    nf: 'pendente',
+  },
+  {
+    id: 'neg-004',
+    tipo: 'Receita',
+    entidade: 'Empório & Café Bistrô',
+    clienteId: 'cli-004',
+    projetoId: 'proj-004',
+    descricao: 'Pagamento Integral Cardápio Digital',
+    valor: 4500,
+    data: '2026-08-05',
+    categoria: 'Trabalho Fixo',
+    nf: 'sim',
+  },
+  {
+    id: 'neg-005',
+    tipo: 'Receita',
+    entidade: 'Vanguard Logística Integrada',
+    clienteId: 'cli-005',
+    projetoId: 'proj-005',
+    descricao: 'Parcela 1/2 Plataforma Logística',
+    valor: 6250,
+    data: '2026-10-01',
+    categoria: 'Trabalho Fixo',
+    nf: 'sim',
+  },
+  {
+    id: 'neg-006',
+    tipo: 'Receita',
+    entidade: 'Advocacia Silveira & Associados',
+    clienteId: 'cli-008',
+    projetoId: 'proj-007',
+    descricao: 'Redesign Portal Advocacia Silveira',
+    valor: 4200,
+    data: '2026-10-18',
+    categoria: 'Trabalho Fixo',
+    nf: 'sim',
+  },
+];
+
+// Block external fetches to BrasilAPI and proxy.php in this isolated session
+const originalFetch = window.fetch;
+window.fetch = async (url, options = {}) => {
+  const urlStr = String(url);
+  record('fetch_intercepted', urlStr);
+  if (urlStr.includes('brasilapi.com.br/api/cnpj') || urlStr.includes('action=cnpj')) {
+    record('brasilapi_blocked', urlStr);
+    return new Response(JSON.stringify({
+      razao_social: 'EMPRESA EXEMPLO SINTETICA LTDA',
+      nome_fantasia: 'EXEMPLO DIGITAL',
+      email: 'contato@exemplo.example.invalid',
+      ddd_telefone_1: '4833334444',
+      descricao_tipo_de_logradouro: 'Rua',
+      logradouro: 'das Flores',
+      numero: '100',
+      complemento: 'Sala 201',
+      bairro: 'Centro',
+      municipio: 'Florianópolis',
+      uf: 'SC',
+      cep: '88010-000',
+      descricao_situacao_cadastral: 'ATIVA',
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  return originalFetch(url, options);
+};
+
+// Safe state setter
+useDash.setState({
+  initAuth: () => {},
+  authReady: true,
+  appReady: true,
+  requiresSetup: false,
+  currentUser: user,
+  profile: { name: 'Auditoria R5 Local', email: user.email },
+  activePage: 'clientes',
+  checkNotifications: () => {},
+  fetchUptimeData: () => {},
+  refreshAiUsage: () => {},
+  theme: 'dark',
+  data: {
+    ...original.data,
+    clientes: syntheticClientes,
+    projetos: syntheticProjetos,
+    recorrencia: syntheticRecorrencia,
+    negocio: syntheticNegocio,
+    pessoal: [],
+    lembretes: [],
+    despesasFixas: [],
+    leads: [],
+  },
+  configData: {
+    ...original.configData,
+    nichos: ['Tecnologia', 'Saúde', 'Arquitetura', 'Gastronomia', 'Comércio', 'Jurídico'],
+    theme: 'dark',
+  },
+  toggleTheme: () => {
+    const isLight = document.body.classList.toggle('light');
+    const next = isLight ? 'light' : 'dark';
+    useDash.setState(s => ({
+      theme: next,
+      configData: { ...s.configData, theme: next }
+    }));
+    record('toggleTheme', next);
+  },
+  saveCliente: async (fields) => {
+    record('saveCliente', fields);
+    useDash.setState(s => {
+      const id = s.editingId.clientes;
+      const exists = s.data.clientes.some(c => c.id === id);
+      const nextList = exists
+        ? s.data.clientes.map(c => c.id === id ? { ...c, ...fields } : c)
+        : [{ ...fields, id: 'cli-local-' + Date.now() }, ...s.data.clientes];
+      return { data: { ...s.data, clientes: nextList }, modalOpen: false, modalType: null };
+    });
+    useDash.getState().toast('Cliente salvo localmente (isolado)');
+  },
+  saveProjeto: async (fields) => {
+    record('saveProjeto', fields);
+    useDash.setState(s => {
+      const exists = s.data.projetos.some(p => p.id === fields.id);
+      const nextList = exists
+        ? s.data.projetos.map(p => p.id === fields.id ? { ...p, ...fields } : p)
+        : [{ ...fields, id: fields.id || 'proj-local-' + Date.now() }, ...s.data.projetos];
+      return { data: { ...s.data, projetos: nextList }, modalOpen: false, modalType: null };
+    });
+    useDash.getState().toast('Projeto salvo localmente (isolado)');
+  },
+  duplicarProjeto: async (id) => {
+    record('duplicarProjeto', id);
+    const proj = useDash.getState().data.projetos.find(p => p.id === id);
+    if (!proj) return;
+    const copy = { ...proj, id: 'proj-dup-' + Date.now(), descricao: `${proj.descricao} (Cópia)` };
+    useDash.setState(s => ({ data: { ...s.data, projetos: [copy, ...s.data.projetos] } }));
+    useDash.getState().toast('Projeto duplicado (isolado)');
+  },
+  deleteItem: async (col, id, label) => {
+    record('deleteItem', col, id, label);
+    // Safe mock: does not delete persistently
+    useDash.getState().toast(`Simulação: ${label} seria movido para a lixeira`);
+  },
+  bulkDelete: async () => {
+    record('bulkDelete');
+    useDash.getState().toast('Simulação: exclusão em massa cancelada na auditoria');
+  },
+  reportAutomaticError: (...args) => record('error', ...args),
+});
+
+document.body.classList.remove('light');
+window.r5Store = useDash;
+window.syntheticClientes = syntheticClientes;
+window.syntheticProjetos = syntheticProjetos;
+
+const { default: App } = await import('/src/App.jsx');
+createRoot(document.getElementById('root')).render(<App />);
+
