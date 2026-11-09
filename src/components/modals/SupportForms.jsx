@@ -332,95 +332,89 @@ export function AtividadeManutencaoForm({ recorrenciaId, atividade }) {
   if (!rec) return <div style={{ padding: 20, color: 'var(--text3)' }}>Recorrência não encontrada.</div>;
 
   return (
-    <div className="form-grid">
+    <div className="form-grid atividade-manutencao-form">
       {/* Contexto do cliente */}
-      <div style={{
-        background: 'var(--bg2)',
-        borderRadius: 8,
-        padding: '10px 14px',
-        fontSize: 13,
-        border: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-      }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, color: 'var(--text3)', flexShrink: 0 }}>
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-        <span>
+      <div className="atividade-context-card">
+        <span className="atividade-context-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </span>
+        <div className="atividade-context-info">
           <strong style={{ color: 'var(--text)' }}>{rec.cliente}</strong>
-          {rec.plano && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>— {rec.plano}</span>}
+          {rec.plano && <span style={{ color: 'var(--text3)' }}>— {rec.plano}</span>}
           {rec.limiteHoras && (
-            <span style={{
-              marginLeft: 10,
-              fontSize: 11,
-              background: 'var(--accent-bg)',
-              color: 'var(--accent)',
-              borderRadius: 4,
-              padding: '2px 7px',
-              fontWeight: 600,
-            }}>
+            <span className="atividade-limite-pill">
               {rec.limiteHoras}h/mês
             </span>
           )}
-        </span>
+        </div>
       </div>
 
-      {/* Descrição */}
-      <div className="form-group">
-        <label className="form-label">Descrição da atividade *</label>
-        <input
-          ref={descRef}
-          id="atividade-descricao"
-          className="form-input"
-          value={f.descricao}
-          onChange={e => setF(p => ({ ...p, descricao: e.target.value }))}
-          placeholder="Ex: Correção do banner do Obituário"
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSave()}
-        />
-      </div>
+      <section className="recorrencia-form-section" aria-label="Dados da atividade de manutenção">
+        <div className="recorrencia-form-section-head">
+          <h3>Detalhes da atividade</h3>
+          <span className="recorrencia-form-tag">Manutenção</span>
+        </div>
 
-      <div className="form-grid form-grid-2">
-        {/* Tempo gasto */}
+        {/* Descrição */}
         <div className="form-group">
-          <label className="form-label">
-            Tempo gasto (minutos) *
-            {f.minutos && parseInt(f.minutos) > 0 && (
-              <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--accent)', fontSize: 12 }}>
-                = {formatMinutes(parseInt(f.minutos))}
-              </span>
-            )}
+          <label className="form-label" htmlFor="atividade-descricao">
+            Descrição da atividade <span className="recorrencia-form-req" aria-hidden="true">*</span>
           </label>
           <input
-            id="atividade-minutos"
+            ref={descRef}
+            id="atividade-descricao"
             className="form-input"
-            type="number"
-            min="1"
-            step="1"
-            value={f.minutos}
-            onChange={e => setF(p => ({ ...p, minutos: e.target.value }))}
-            placeholder="Ex: 18"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
+            value={f.descricao}
+            onChange={e => setF(p => ({ ...p, descricao: e.target.value }))}
+            placeholder="Ex: Correção do banner do Obituário"
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSave()}
           />
         </div>
 
-        {/* Data */}
-        <div className="form-group">
-          <label className="form-label">Data da atividade</label>
-          <input
-            id="atividade-data"
-            className="form-input"
-            type="date"
-            value={f.data}
-            max={today}
-            onChange={e => setF(p => ({ ...p, data: e.target.value }))}
-          />
+        <div className="form-grid form-grid-2">
+          {/* Tempo gasto */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="atividade-minutos">
+              <span>Tempo gasto (minutos) <span className="recorrencia-form-req" aria-hidden="true">*</span></span>
+              {f.minutos && parseInt(f.minutos) > 0 && (
+                <span className="atividade-tempo-converted">
+                  = {formatMinutes(parseInt(f.minutos))}
+                </span>
+              )}
+            </label>
+            <input
+              id="atividade-minutos"
+              className="form-input"
+              type="number"
+              min="1"
+              step="1"
+              value={f.minutos}
+              onChange={e => setF(p => ({ ...p, minutos: e.target.value }))}
+              placeholder="Ex: 18"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            />
+          </div>
+
+          {/* Data */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="atividade-data">Data da atividade</label>
+            <input
+              id="atividade-data"
+              className="form-input"
+              type="date"
+              value={f.data}
+              max={today}
+              onChange={e => setF(p => ({ ...p, data: e.target.value }))}
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className="form-actions">
-        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={handleSave}>
+        <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button type="button" className="btn btn-primary" onClick={handleSave}>
           {isEditing ? 'Salvar alterações' : 'Registrar atividade'}
         </button>
       </div>

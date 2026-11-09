@@ -27,7 +27,7 @@ export default function Modal({ mobile = false }) {
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
   const panelRef = useRef(null);
-  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
+  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 
@@ -105,7 +105,7 @@ function ModalContent({ type }) {
 
   if (type === 'lead') return <LeadForm item={data.leads.find(x => x.id === editingId.leads)} />;
   if (type === 'projeto') return <ProjetoForm key={editingId.projetos || 'new'} item={data.projetos.find(x => x.id === editingId.projetos)} />;
-  if (type === 'recorrencia') return <RecorrenciaForm item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
+  if (type === 'recorrencia') return <RecorrenciaForm key={editingId.recorrencia || 'new'} item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
   if (type === 'negocioReceita' || type === 'transacao') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
   if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
   if (type === 'parcela') return <ParcelaForm item={data.negocio.find(x => x.id === editingId.negocio)} />;
@@ -131,7 +131,7 @@ function ModalContent({ type }) {
     const atividade = rec && editingId.atividadeManutencaoId
       ? (rec.atividades || []).find(a => a.id === editingId.atividadeManutencaoId)
       : null;
-    return <AtividadeManutencaoForm recorrenciaId={editingId.recorrencia} atividade={atividade} />;
+    return <AtividadeManutencaoForm key={editingId.atividadeManutencaoId || 'new'} recorrenciaId={editingId.recorrencia} atividade={atividade} />;
   }
   if (type === 'novoFechamento') {
     const lead = editingId.novoFechamentoLeadId

@@ -663,9 +663,100 @@ useDash.setState({
     record('toggleTheme', next);
   },
   saveRecorrencia: async (fields) => {
-    record('saveRecorrencia', fields);
+    const { editingId } = useDash.getState();
+    const editId = editingId?.recorrencia || null;
+    const now = new Date().toISOString();
+    let savedItem;
+    if (editId) {
+      useDash.setState(s => ({
+        data: {
+          ...s.data,
+          recorrencia: s.data.recorrencia.map(r => {
+            if (r.id !== editId) return r;
+            savedItem = { ...r, ...fields, id: editId, modificadoEm: now };
+            return savedItem;
+          })
+        }
+      }));
+    } else {
+      savedItem = { id: `rec_local_${Date.now()}`, ...fields, criadoEm: now, modificadoEm: now };
+      useDash.setState(s => ({
+        data: {
+          ...s.data,
+          recorrencia: [savedItem, ...s.data.recorrencia]
+        }
+      }));
+    }
+    record('saveRecorrencia', fields, savedItem);
     useDash.getState().toast('Simulação: Recorrência salva localmente');
     useDash.getState().closeModal();
+  },
+  saveAtividadeManutencao: async (recorrenciaId, atividade, closeModalAfter = true) => {
+    const { data, toast, closeModal } = useDash.getState();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+
+    if (!atividade.descricao?.trim()) return toast('Descrição da atividade é obrigatória.', 'error');
+    const minutos = parseInt(atividade.minutos) || 0;
+    if (minutos <= 0) return toast('Informe o tempo gasto em minutos (mínimo 1 minuto).', 'error');
+    if (!atividade.data) return toast('Data da atividade é obrigatória.', 'error');
+
+    const atividades = Array.isArray(rec.atividades) ? [...rec.atividades] : [];
+    const now = new Date().toISOString();
+
+    let novasAtividades;
+    if (atividade.id) {
+      novasAtividades = atividades.map(a =>
+        a.id === atividade.id
+          ? { ...a, descricao: atividade.descricao.trim(), minutos, data: atividade.data, modificadoEm: now }
+          : a
+      );
+    } else {
+      const novaAtividade = {
+        id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        descricao: atividade.descricao.trim(),
+        minutos,
+        data: atividade.data,
+        limiteHorasNaEpoca: rec.limiteHoras || null,
+        criadoEm: now,
+        modificadoEm: now,
+      };
+      novasAtividades = [novaAtividade, ...atividades];
+    }
+
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        recorrencia: s.data.recorrencia.map(r =>
+          r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+        )
+      }
+    }));
+    record('saveAtividadeManutencao', recorrenciaId, atividade, novasAtividades);
+    if (closeModalAfter) closeModal();
+    toast(atividade.id ? 'Atividade atualizada!' : 'Atividade registrada!');
+  },
+  deleteAtividadeManutencao: async (recorrenciaId, atividadeId) => {
+    const { data, toast, showConfirm } = useDash.getState();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+
+    const confirmed = await showConfirm('Excluir atividade?', 'O tempo registrado será removido do controle do mês.', false);
+    if (!confirmed) return;
+
+    const novasAtividades = (rec.atividades || []).filter(a => a.id !== atividadeId);
+    const now = new Date().toISOString();
+
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        recorrencia: s.data.recorrencia.map(r =>
+          r.id === recorrenciaId ? { ...r, atividades: novasAtividades, modificadoEm: now } : r
+        )
+      }
+    }));
+    record('deleteAtividadeManutencao', recorrenciaId, atividadeId, novasAtividades);
+    toast('Atividade excluída!');
   },
   saveNegocio: async (fields) => {
     record('saveNegocio', fields);
