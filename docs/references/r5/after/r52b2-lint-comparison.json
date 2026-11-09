@@ -1,0 +1,16 @@
+{
+  "before": {
+    "e": 134,
+    "w": 18
+  },
+  "after": {
+    "e": 133,
+    "w": 18
+  },
+  "addedCount": 0,
+  "removedCount": 1,
+  "added": [],
+  "removed": [
+    "src/pages/ProjetosPage.jsx:no-unused-vars:2:'id' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u."
+  ]
+}

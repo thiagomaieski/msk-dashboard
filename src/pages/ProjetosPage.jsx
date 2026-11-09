@@ -141,12 +141,14 @@ export default function ProjetosPage() {
   };
 
   const handleDuplicate = async (p) => {
-    if (window.confirm('Duplicar este projeto?')) {
-      const { id, ...copia } = p;
-      copia.descricao = (copia.descricao || '') + ' (Cópia)';
-      copia.status = 'Em andamento';
-      copia.criadoEm = undefined;
-      await useDash.getState().saveProjeto(copia);
+    const label = p.descricao || p.cliente || 'Projeto';
+    const confirmed = await useDash.getState().showConfirm(
+      'Duplicar este projeto?',
+      `Uma cópia de "${label}" será criada com status "Em andamento" e pagamento "Pendente", copiando cliente, valor, tipo, origem, datas, NF, site e anotações. Tarefas, arquivos vinculados e receitas financeiras não serão levados para o novo projeto.`,
+      false
+    );
+    if (confirmed) {
+      await useDash.getState().duplicarProjeto(p.id);
     }
   };
 
