@@ -657,6 +657,26 @@ useDash.setState({
     record('bulkDelete');
     useDash.getState().toast('Simulação: exclusão em massa cancelada na auditoria');
   },
+  updateProjectField: async (id, field, value) => {
+    record('updateProjectField', id, field, value);
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        projetos: s.data.projetos.map(p => p.id === id ? { ...p, [field]: value } : p),
+      },
+    }));
+    useDash.getState().toast('Anotação salva localmente (isolado)');
+  },
+  updateProjectTarefas: async (tarefas) => {
+    const activeProjectView = useDash.getState().activeProjectView;
+    record('updateProjectTarefas', activeProjectView, tarefas);
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        projetos: s.data.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p),
+      },
+    }));
+  },
   reportAutomaticError: (...args) => record('error', ...args),
 });
 
