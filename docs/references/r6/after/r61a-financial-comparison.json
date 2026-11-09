@@ -1,0 +1,1152 @@
+{
+  "timestamp": "2026-11-09T16:44:29.656Z",
+  "logicBlockIdentical": true,
+  "nfModalBlockIdentical": true,
+  "allScenariosMatch": true,
+  "scenarios": [
+    {
+      "scenario": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 6,
+          "nfsEmitidas": 3,
+          "pagas": 4,
+          "aReceber": 15350,
+          "aReceberFmt": "R$ 15.350,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 6,
+          "nfsEmitidas": 3,
+          "pagas": 4,
+          "aReceber": 15350,
+          "aReceberFmt": "R$ 15.350,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 4,
+          "nfsEmitidas": 2,
+          "pagas": 0,
+          "aReceber": 7100,
+          "aReceberFmt": "R$ 7.100,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 4,
+          "nfsEmitidas": 2,
+          "pagas": 0,
+          "aReceber": 7100,
+          "aReceberFmt": "R$ 7.100,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": true,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": true,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 6,
+          "nfsEmitidas": 2,
+          "pagas": 0,
+          "aReceber": 22450,
+          "aReceberFmt": "R$ 22.450,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-10",
+        "mostrarForaRenovacao": true,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 6,
+          "nfsEmitidas": 2,
+          "pagas": 0,
+          "aReceber": 22450,
+          "aReceberFmt": "R$ 22.450,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-05",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-05",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 5,
+          "nfsEmitidas": 0,
+          "pagas": 0,
+          "aReceber": 8050,
+          "aReceberFmt": "R$ 8.050,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-05",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 5,
+          "nfsEmitidas": 0,
+          "pagas": 0,
+          "aReceber": 8050,
+          "aReceberFmt": "R$ 8.050,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Inativo",
+        "search": "",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Inativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 1,
+          "nfsEmitidas": 0,
+          "pagas": 0,
+          "aReceber": 0,
+          "aReceberFmt": "R$ 0,00"
+        },
+        "rows": [
+          {
+            "id": "rec-007",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 800,
+            "valorFmt": "R$ 800,00",
+            "vencimento": "-",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Inativo",
+        "search": "",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 1,
+          "nfsEmitidas": 0,
+          "pagas": 0,
+          "aReceber": 0,
+          "aReceberFmt": "R$ 0,00"
+        },
+        "rows": [
+          {
+            "id": "rec-007",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 800,
+            "valorFmt": "R$ 800,00",
+            "vencimento": "-",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "",
+        "search": "",
+        "sort": "valorDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "",
+        "search": "",
+        "sort": "valorDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 7,
+          "nfsEmitidas": 3,
+          "pagas": 4,
+          "aReceber": 15350,
+          "aReceberFmt": "R$ 15.350,00"
+        },
+        "rows": [
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-007",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 800,
+            "valorFmt": "R$ 800,00",
+            "vencimento": "-",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "",
+        "search": "",
+        "sort": "valorDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 7,
+          "nfsEmitidas": 3,
+          "pagas": 4,
+          "aReceber": 15350,
+          "aReceberFmt": "R$ 15.350,00"
+        },
+        "rows": [
+          {
+            "id": "rec-005",
+            "cliente": "SolarPrime Energia Sustentável",
+            "periodicidade": "Anual",
+            "valor": 14400,
+            "valorFmt": "R$ 14.400,00",
+            "vencimento": "25/11/2026",
+            "isPaid": false,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-004",
+            "cliente": "Vanguard Logística Integrada",
+            "periodicidade": "Mensal",
+            "valor": 3400,
+            "valorFmt": "R$ 3.400,00",
+            "vencimento": "20/04/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-002",
+            "cliente": "Dra. Camila Vasconcelos",
+            "periodicidade": "Mensal",
+            "valor": 1200,
+            "valorFmt": "R$ 1.200,00",
+            "vencimento": "15/03/2026",
+            "isPaid": true,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-006",
+            "cliente": "Lumina Odontologia Especializada",
+            "periodicidade": "Semestral",
+            "valor": 950,
+            "valorFmt": "R$ 950,00",
+            "vencimento": "10/11/2026",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-007",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 800,
+            "valorFmt": "R$ 800,00",
+            "vencimento": "-",
+            "isPaid": false,
+            "nfEmitida": false,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          },
+          {
+            "id": "rec-003",
+            "cliente": "Studio Arquitetura & Design",
+            "periodicidade": "Mensal",
+            "valor": 650,
+            "valorFmt": "R$ 650,00",
+            "vencimento": "05/02/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    },
+    {
+      "scenario": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "Tech",
+        "sort": "criadoDesc"
+      },
+      "before": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "Tech",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 1,
+          "nfsEmitidas": 1,
+          "pagas": 1,
+          "aReceber": 0,
+          "aReceberFmt": "R$ 0,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "after": {
+        "mesSelecionado": "2026-11",
+        "mostrarForaRenovacao": false,
+        "status": "Ativo",
+        "search": "Tech",
+        "sort": "criadoDesc",
+        "totalMensal": 22450,
+        "totalMensalFmt": "R$ 22.450,00",
+        "ativosCount": 6,
+        "totalAnual": 101500,
+        "totalAnualFmt": "R$ 101.500,00",
+        "resumoMes": {
+          "total": 1,
+          "nfsEmitidas": 1,
+          "pagas": 1,
+          "aReceber": 0,
+          "aReceberFmt": "R$ 0,00"
+        },
+        "rows": [
+          {
+            "id": "rec-001",
+            "cliente": "TechVibe Soluções Digitais",
+            "periodicidade": "Mensal",
+            "valor": 1850,
+            "valorFmt": "R$ 1.850,00",
+            "vencimento": "10/01/2026",
+            "isPaid": true,
+            "nfEmitida": true,
+            "numeroNf": "",
+            "consumoLabel": "0min / undefinedh",
+            "consumoPercentual": null
+          }
+        ]
+      },
+      "exactMatch": true
+    }
+  ]
+}
