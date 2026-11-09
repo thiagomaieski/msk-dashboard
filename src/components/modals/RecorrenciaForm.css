@@ -1,5 +1,6 @@
 .modal-overlay:has(.recorrencia-form),
-.modal-overlay:has(.atividade-manutencao-form) {
+.modal-overlay:has(.atividade-manutencao-form),
+.modal-overlay:has(.pagar-recorrencia-form) {
   background: var(--scrim);
   backdrop-filter: blur(8px);
 }
@@ -29,8 +30,19 @@
   box-shadow: var(--shadow-overlay);
 }
 
+.modal:has(.pagar-recorrencia-form) {
+  width: min(580px, 94vw);
+  max-width: 580px;
+  max-height: calc(100dvh - 32px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
 .modal:has(.recorrencia-form) .modal-header,
-.modal:has(.atividade-manutencao-form) .modal-header {
+.modal:has(.atividade-manutencao-form) .modal-header,
+.modal:has(.pagar-recorrencia-form) .modal-header {
   flex-shrink: 0;
   padding: 12px 22px;
   background: var(--surface-floating);
@@ -38,7 +50,8 @@
 }
 
 .modal:has(.recorrencia-form) .modal-title,
-.modal:has(.atividade-manutencao-form) .modal-title {
+.modal:has(.atividade-manutencao-form) .modal-title,
+.modal:has(.pagar-recorrencia-form) .modal-title {
   font-size: 18.5px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -46,7 +59,8 @@
 }
 
 .modal:has(.recorrencia-form) .modal-close,
-.modal:has(.atividade-manutencao-form) .modal-close {
+.modal:has(.atividade-manutencao-form) .modal-close,
+.modal:has(.pagar-recorrencia-form) .modal-close {
   width: 34px;
   height: 34px;
   border-radius: var(--radius-pill);
@@ -59,14 +73,22 @@
   transition: background var(--t-fast, 150ms), color var(--t-fast, 150ms);
 }
 
+.modal:has(.recorrencia-form) .modal-close:focus,
+.modal:has(.atividade-manutencao-form) .modal-close:focus,
+.modal:has(.pagar-recorrencia-form) .modal-close:focus {
+  outline: none;
+}
+
 .modal:has(.recorrencia-form) .modal-close:hover,
-.modal:has(.atividade-manutencao-form) .modal-close:hover {
+.modal:has(.atividade-manutencao-form) .modal-close:hover,
+.modal:has(.pagar-recorrencia-form) .modal-close:hover {
   background: var(--bg4);
   color: var(--text);
 }
 
 .modal:has(.recorrencia-form) .modal-body,
-.modal:has(.atividade-manutencao-form) .modal-body {
+.modal:has(.atividade-manutencao-form) .modal-body,
+.modal:has(.pagar-recorrencia-form) .modal-body {
   padding: 10px 22px 0;
 }
 
@@ -167,7 +189,8 @@
 }
 
 .recorrencia-form .form-grid,
-.atividade-manutencao-form .form-grid {
+.atividade-manutencao-form .form-grid,
+.pagar-recorrencia-form .form-grid {
   gap: 10px;
 }
 
@@ -184,14 +207,16 @@
 }
 
 .recorrencia-form .form-group,
-.atividade-manutencao-form .form-group {
+.atividade-manutencao-form .form-group,
+.pagar-recorrencia-form .form-group {
   min-width: 0;
   margin-bottom: 0;
   gap: 3px;
 }
 
 .recorrencia-form .form-label,
-.atividade-manutencao-form .form-label {
+.atividade-manutencao-form .form-label,
+.pagar-recorrencia-form .form-label {
   text-transform: none;
   letter-spacing: 0;
   font-size: 11.5px;
@@ -220,7 +245,11 @@
 .recorrencia-form .custom-select-form,
 body.light .recorrencia-form .custom-select-form,
 .atividade-manutencao-form .form-input,
-.atividade-manutencao-form .form-textarea {
+.atividade-manutencao-form .form-textarea,
+.pagar-recorrencia-form .form-input,
+.pagar-recorrencia-form .form-textarea,
+.pagar-recorrencia-form .custom-select-form,
+body.light .pagar-recorrencia-form .custom-select-form {
   min-width: 0;
   border-radius: var(--radius-control);
   min-height: 36px;
@@ -243,24 +272,33 @@ body.light .recorrencia-form .custom-select-form,
 .recorrencia-form .form-input:focus,
 .recorrencia-form .form-textarea:focus,
 .atividade-manutencao-form .form-input:focus,
-.atividade-manutencao-form .form-textarea:focus {
+.atividade-manutencao-form .form-textarea:focus,
+.pagar-recorrencia-form .form-input:focus,
+.pagar-recorrencia-form .form-textarea:focus {
   border-color: var(--accent);
   box-shadow: var(--focus-ring);
 }
 
-.recorrencia-form .number-stepper {
+.recorrencia-form .number-stepper,
+.pagar-recorrencia-form .number-stepper {
   padding: 0;
   border: none;
   background: transparent;
   border-radius: var(--radius-control);
 }
 
-.recorrencia-form .number-stepper .form-input {
+.recorrencia-form .number-stepper .form-input,
+.pagar-recorrencia-form .number-stepper .form-input {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
-.recorrencia-form .number-stepper-actions {
+.pagar-recorrencia-form .number-stepper .pagar-valor-liquido-input {
+  color: var(--green);
+}
+
+.recorrencia-form .number-stepper-actions,
+.pagar-recorrencia-form .number-stepper-actions {
   width: 26px;
   background: var(--surface-control);
   border-left: 1px solid var(--border);
@@ -311,7 +349,8 @@ body.light .recorrencia-form .custom-select-form,
 }
 
 .recorrencia-form .form-actions,
-.atividade-manutencao-form .form-actions {
+.atividade-manutencao-form .form-actions,
+.pagar-recorrencia-form .form-actions {
   position: sticky;
   bottom: 0;
   background: var(--surface-floating);
@@ -323,7 +362,8 @@ body.light .recorrencia-form .custom-select-form,
 }
 
 .recorrencia-form .rec-modal-left .btn,
-.atividade-manutencao-form .btn {
+.atividade-manutencao-form .btn,
+.pagar-recorrencia-form .btn {
   border-radius: var(--radius-pill);
   min-height: 36px;
   padding: 0 18px;
@@ -332,14 +372,16 @@ body.light .recorrencia-form .custom-select-form,
 }
 
 .recorrencia-form .btn-primary,
-.atividade-manutencao-form .btn-primary {
+.atividade-manutencao-form .btn-primary,
+.pagar-recorrencia-form .btn-primary {
   background: var(--color-accent);
   color: var(--on-accent);
   border-color: var(--color-accent);
 }
 
 body.light .recorrencia-form .btn-primary,
-body.light .atividade-manutencao-form .btn-primary {
+body.light .atividade-manutencao-form .btn-primary,
+body.light .pagar-recorrencia-form .btn-primary {
   color: var(--on-accent);
 }
 
@@ -794,6 +836,117 @@ body.light .atividade-manutencao-form .btn-primary {
   padding: 1px 7px;
   border-radius: var(--radius-pill);
   font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE REGISTRAR PAGAMENTO (SupportForms)
+   ══════════════════════════════════════════════════════ */
+
+.pagar-recorrencia-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pagar-context-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.pagar-context-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pagar-context-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 26%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pagar-context-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pagar-context-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pagar-context-cliente {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.pagar-context-plano {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.3;
+}
+
+.pagar-context-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pagar-context-pill.is-comp {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.pagar-context-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.pagar-context-amount-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+.pagar-context-amount-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 /* Responsividade */

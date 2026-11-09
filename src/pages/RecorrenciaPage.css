@@ -762,6 +762,382 @@ body.light .recorrencia-page .btn-primary {
 
 .recorrencia-page > .modal-overlay {
   display: flex;
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL / POPOVER DADOS DA NF (NFS-e)
+   ══════════════════════════════════════════════════════ */
+
+.recorrencia-page .recorrencia-nf-modal {
+  width: min(700px, 95vw);
+  max-width: 700px;
+  max-height: calc(100dvh - 32px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-header {
+  flex-shrink: 0;
+  padding: 12px 22px;
+  background: var(--surface-floating);
+  border-bottom: 1px solid var(--border);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  color: var(--text3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast, 150ms), color var(--t-fast, 150ms);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.recorrencia-page .recorrencia-nf-modal-body {
+  padding: 12px 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-modal-context-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.nf-modal-context-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nf-modal-context-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nf-modal-context-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nf-modal-context-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nf-modal-context-cliente {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.nf-modal-comp-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-context-plano {
+  font-size: 11.5px;
+  color: var(--text3);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-context-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nf-modal-num-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.nf-modal-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nf-modal-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0;
+}
+
+.nf-modal-section-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.nf-modal-emission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.72fr) minmax(0, 0.78fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.nf-modal-status-field,
+.nf-modal-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nf-modal-field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+}
+
+.nf-modal-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  border: 1px solid var(--border-strong);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.nf-modal-toggle-pill.is-issued {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 32%, transparent);
+}
+
+.nf-modal-toggle-pill input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nf-modal-toggle-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorrencia-page .nf-modal-input {
+  min-width: 0;
+  border-radius: var(--radius-control);
+  min-height: 36px;
+  height: 36px;
+  font-size: 12px;
+  background: var(--surface-control);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  padding: 5px 10px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-page .nf-modal-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.recorrencia-page .nf-modal-input.is-readonly,
+.recorrencia-page .nf-modal-input[readonly] {
+  cursor: default;
+  color: var(--text2);
+  user-select: text;
+  background: var(--surface-control);
+}
+
+.nf-modal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.nf-modal-data-tile {
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nf-modal-data-tile.is-full {
+  grid-column: 1 / -1;
+}
+
+.nf-modal-data-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nf-modal-data-label {
+  font-size: 9.8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+.nf-modal-data-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.nf-modal-data-value.is-mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-data-value.is-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-data-value.is-desc {
+  white-space: normal;
+  word-break: break-word;
+  font-weight: 500;
+}
+
+.nf-modal-copy-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.recorrencia-page .nf-modal-copy-btn {
+  min-height: 26px !important;
+  height: 26px;
+  padding: 0 9px !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  border-radius: var(--radius-pill) !important;
+  flex-shrink: 0;
+}
+
+.recorrencia-page .nf-modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-floating);
+  padding: 8px 0 12px;
+  margin: 0 !important;
+  border-top: 1px solid var(--border);
+  gap: 8px;
+}
+
+.recorrencia-page .nf-modal-actions .btn {
+  border-radius: var(--radius-pill);
+  min-height: 36px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.recorrencia-page .nf-modal-save-btn {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: var(--accent-bg);
+}
+
+.recorrencia-page .nf-modal-save-btn:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* Adaptação para 1280px desktop */

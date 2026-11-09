@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { useDash } from '../../store/useStore';
+import { useDash, fmtBRL } from '../../store/useStore';
+import CustomSelect from '../CustomSelect';
 import { NumberStepper } from '../shared';
-import { formatMinutes } from '../../utils/timeUtils';
+import { formatMinutes, formatMesAnoLabel } from '../../utils/timeUtils';
+import './RecorrenciaForm.css';
 
 // ── CSV INFO MODAL ──
 export function CsvInfoModal() {
@@ -195,6 +197,9 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
   const rec = data.recorrencia.find(r => r.id === recorrenciaId);
   const today = new Date().toISOString().split('T')[0];
   const initialComp = editingId?.pagarCompetencia || today.substring(0, 7);
+  const categoriasReceita = (configData.categoriasReceita && configData.categoriasReceita.length > 0)
+    ? configData.categoriasReceita
+    : ['Receita Recorrente', 'Trabalho Fixo', 'Freelancer', 'Comissão', 'Bonificação', 'Presente'];
 
   const [f, setF] = useState({
     descricao: rec ? (rec.plano || `Recorrência ${rec.cliente}`) : '',
@@ -230,67 +235,170 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
 
   if (!rec) return <div style={{ padding: 20, color: 'var(--text3)' }}>Recorrência não encontrada.</div>;
 
+  const competenciaAtiva = f.competencia || f.referenciaMes || initialComp;
+  const competenciaFmt = competenciaAtiva && competenciaAtiva.includes('-')
+    ? `${competenciaAtiva.slice(5, 7)}/${competenciaAtiva.slice(0, 4)}`
+    : competenciaAtiva;
+
   return (
-    <div className="form-grid">
-      <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px', fontSize: 13, border: '1px solid var(--border)' }}>
-        <strong>{rec.cliente}</strong> — {rec.plano} — <span style={{ color: 'var(--accent)', fontWeight: 700 }}>R$ {parseFloat(rec.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-      </div>
-
-      <div className="form-grid form-grid-2">
-        <div className="form-group">
-          <label className="form-label">Data do Pagamento</label>
-          <input className="form-input" type="date" value={f.data} onChange={u('data')} />
+    <div className="form-grid pagar-recorrencia-form">
+      {/* Identificação do cliente e contrato */}
+      <div className="pagar-context-card" aria-label="Identificação do contrato">
+        <div className="pagar-context-left">
+          <span className="pagar-context-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 15, height: 15 }}>
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </span>
+          <div className="pagar-context-info">
+            <div className="pagar-context-title-row">
+              <strong className="pagar-context-cliente">{rec.cliente}</strong>
+              {rec.periodicidade && (
+                <span className="pagar-context-pill">{rec.periodicidade}</span>
+              )}
+              {competenciaFmt && (
+                <span className="pagar-context-pill is-comp" title={formatMesAnoLabel(competenciaAtiva)}>
+                  Comp. {competenciaFmt}
+                </span>
+              )}
+            </div>
+            <span className="pagar-context-plano">{rec.plano || 'Contrato recorrente'}</span>
+          </div>
         </div>
-        <div className="form-group">
-          <label className="form-label">Referência (Mês)</label>
-          <input className="form-input" type="month" value={f.referenciaMes} onChange={u('referenciaMes')} />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div className="form-group">
-          <label className="form-label">Valor Bruto</label>
-          <NumberStepper mode="currency" value={f.valor} onChange={handleValorChange} min={0} className="form-input" style={{ fontWeight: 700 }} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Valor Líquido</label>
-          <NumberStepper mode="currency" value={f.valorLiquido} onChange={v => setF(p => ({ ...p, valorLiquido: v }))} min={0} className="form-input" style={{ fontWeight: 700, color: 'var(--green)' }} />
-        </div>
-      </div>
-
-      <div className="form-grid form-grid-2">
-        <div className="form-group">
-          <label className="form-label">Forma de Pagamento</label>
-          <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
-            {['PIX', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">NF</label>
-          <select className="form-select" value={f.nf} onChange={u('nf')}>
-            <option value="nao">Não</option>
-            <option value="sim">Sim</option>
-            <option value="pendente">Pendente</option>
-          </select>
+        <div className="pagar-context-amount">
+          <span className="pagar-context-amount-label">Valor do contrato</span>
+          <strong className="pagar-context-amount-value">{fmtBRL(rec.valor)}</strong>
         </div>
       </div>
 
-      <div className="form-grid form-grid-2">
-        <div className="form-group">
-          <label className="form-label">Categoria</label>
-          <select className="form-select" value={f.categoria} onChange={u('categoria')}>
-            {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
-          </select>
+      {/* Competência, data de recebimento e valores */}
+      <section className="recorrencia-form-section" aria-label="Competência, data e valores do pagamento">
+        <div className="recorrencia-form-section-head">
+          <h3>Competência, recebimento e valores</h3>
+          <span className="recorrencia-form-tag">Financeiro</span>
         </div>
-        <div className="form-group">
-          <label className="form-label">Observações <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(opcional)</span></label>
-          <input className="form-input" value={f.observacoes} onChange={u('observacoes')} placeholder="Opcional" />
+
+        <div className="form-grid form-grid-2">
+          <div className="form-group">
+            <label className="form-label" htmlFor="pagar-data-recebimento">Data do pagamento</label>
+            <input
+              id="pagar-data-recebimento"
+              className="form-input"
+              type="date"
+              value={f.data}
+              onChange={u('data')}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="pagar-competencia-mes">Referência (Mês / Competência)</label>
+            <input
+              id="pagar-competencia-mes"
+              className="form-input"
+              type="month"
+              value={f.referenciaMes}
+              onChange={u('referenciaMes')}
+            />
+          </div>
         </div>
-      </div>
+
+        <div className="form-grid form-grid-2">
+          <div className="form-group">
+            <label className="form-label" htmlFor="pagar-valor-bruto">Valor bruto</label>
+            <NumberStepper
+              inputId="pagar-valor-bruto"
+              mode="currency"
+              value={f.valor}
+              onChange={handleValorChange}
+              min={0}
+              className="form-input"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="pagar-valor-liquido">Valor líquido</label>
+            <NumberStepper
+              inputId="pagar-valor-liquido"
+              mode="currency"
+              value={f.valorLiquido}
+              onChange={v => setF(p => ({ ...p, valorLiquido: v }))}
+              min={0}
+              className="form-input pagar-valor-liquido-input"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Método de pagamento e informações complementares */}
+      <section className="recorrencia-form-section" aria-label="Método de pagamento e informações complementares">
+        <div className="recorrencia-form-section-head">
+          <h3>Método e informações complementares</h3>
+          <span className="recorrencia-form-tag">Conciliação</span>
+        </div>
+
+        <div className="form-grid form-grid-2">
+          <div className="form-group">
+            <label className="form-label">Forma de pagamento</label>
+            <CustomSelect
+              variant="form"
+              ariaLabel="Forma de pagamento"
+              value={f.formaPagamento}
+              onChange={u('formaPagamento')}
+            >
+              {['PIX', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência', 'Dinheiro'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </CustomSelect>
+          </div>
+          <div className="form-group">
+            <label className="form-label">NF</label>
+            <CustomSelect
+              variant="form"
+              ariaLabel="Status da NF"
+              value={f.nf}
+              onChange={u('nf')}
+            >
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+              <option value="pendente">Pendente</option>
+            </CustomSelect>
+          </div>
+        </div>
+
+        <div className="form-grid form-grid-2">
+          <div className="form-group">
+            <label className="form-label">Categoria</label>
+            <CustomSelect
+              variant="form"
+              ariaLabel="Categoria da receita"
+              value={f.categoria}
+              onChange={u('categoria')}
+            >
+              {categoriasReceita.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </CustomSelect>
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="pagar-observacoes">
+              Observações <span className="recorrencia-form-opt">(opcional)</span>
+            </label>
+            <input
+              id="pagar-observacoes"
+              className="form-input"
+              value={f.observacoes}
+              onChange={u('observacoes')}
+              placeholder="Opcional"
+            />
+          </div>
+        </div>
+      </section>
 
       <div className="form-actions">
-        <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-        <button className="btn btn-primary" onClick={() => registrarPagamentoRecorrencia(recorrenciaId, f)}>
+        <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => registrarPagamentoRecorrencia(recorrenciaId, f)}
+        >
           Registrar Pagamento
         </button>
       </div>

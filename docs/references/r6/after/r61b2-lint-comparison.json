@@ -1,0 +1,20 @@
+{
+  "srcBefore": {
+    "errors": 133,
+    "warnings": 15
+  },
+  "srcAfter": {
+    "errors": 133,
+    "warnings": 15
+  },
+  "allBefore": {
+    "errors": 133,
+    "warnings": 19
+  },
+  "allAfter": {
+    "errors": 133,
+    "warnings": 19
+  },
+  "newErrors": 0,
+  "newWarnings": 0
+}

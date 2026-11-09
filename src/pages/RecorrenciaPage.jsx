@@ -610,7 +610,19 @@ export default function RecorrenciaPage() {
         const descricao = resolveDescricaoNf(activePopoverRec, mesSelecionado);
         const valorFormatado = fmtBRL(activePopoverRec.valor);
         const valorNumerico = Number(activePopoverRec.valor || 0).toFixed(2).replace('.', ',');
-        const compNf = activePopoverRec.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '' };
+        const compNf = activePopoverRec.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '', nfEmitidaEm: null };
+        const competenciaFmt = `${mesSelecionado.slice(5, 7)}/${mesSelecionado.slice(0, 4)}`;
+        const formatNfDate = (isoOrDateStr) => {
+          if (!isoOrDateStr) return '';
+          if (typeof isoOrDateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(isoOrDateStr)) {
+            const [y, m, d] = isoOrDateStr.split('-');
+            return `${d}/${m}/${y}`;
+          }
+          const d = new Date(isoOrDateStr);
+          if (isNaN(d.getTime())) return '';
+          return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        };
+        const formattedEmitidaDate = formatNfDate(compNf.nfEmitidaEm);
 
         const copyAllText = [
           `Cliente: ${nomeTomador}`,
@@ -620,86 +632,206 @@ export default function RecorrenciaPage() {
           `Valor: ${valorFormatado}`,
         ].join('\n');
 
+        const handleSaveNfModal = () => {
+          const numEl = document.getElementById('nf-modal-numero');
+          const chkEl = document.getElementById('nf-modal-emitida');
+          const nextNum = numEl ? numEl.value.trim() : (compNf.nfNumero || '');
+          const nextEmitida = chkEl ? chkEl.checked : !!compNf.nfEmitida;
+          const effectiveEmitida = nextEmitida || Boolean(nextNum);
+
+          updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, {
+            nfEmitida: effectiveEmitida,
+            nfNumero: nextNum,
+          });
+          toast('Dados da NFS-e salvos na competência!');
+        };
+
         return (
           <div
-            className="modal-overlay"
+            className="modal-overlay recorrencia-nf-overlay open"
             style={{ zIndex: 1100 }}
             onClick={e => { if (e.target === e.currentTarget) setNfPopoverId(null); }}
           >
-            <div className="modal" style={{ maxWidth: 500, width: '94%' }}>
+            <div
+              className="modal recorrencia-nf-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Dados da NF — ${activePopoverRec.cliente} (${competenciaFmt})`}
+            >
               <div className="modal-header">
                 <div className="modal-title">
-                  Dados da NF — {activePopoverRec.cliente} ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})
+                  Dados da NF — {activePopoverRec.cliente} ({competenciaFmt})
                 </div>
-                <button className="modal-close" onClick={() => setNfPopoverId(null)}>
+                <button className="modal-close" onClick={() => setNfPopoverId(null)} title="Fechar modal">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* 1. Cliente */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>1. Cliente / Razão Social</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, marginTop: 2 }}>{nomeTomador}</div>
-                  </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(nomeTomador, 'Cliente')}>Copiar</button>
-                </div>
 
-                {/* 2. CPF/CNPJ */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>2. CPF / CNPJ</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--mono)', marginTop: 2 }}>
-                      {rawDoc ? `${rawDoc} • ${formattedDoc}` : '—'}
+              <div className="modal-body recorrencia-nf-modal-body">
+                {/* Contexto da Competência e Status de Emissão */}
+                <div className="nf-modal-context-card">
+                  <div className="nf-modal-context-left">
+                    <span className="nf-modal-context-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
+                    </span>
+                    <div className="nf-modal-context-info">
+                      <div className="nf-modal-context-title-row">
+                        <strong className="nf-modal-context-cliente">{activePopoverRec.cliente}</strong>
+                        <span className="nf-modal-comp-pill">{formatMesAnoLabel(mesSelecionado)}</span>
+                      </div>
+                      <span className="nf-modal-context-plano">
+                        {activePopoverRec.plano || 'Serviços recorrentes'}
+                        {compNf.nfEmitida && formattedEmitidaDate ? ` • Emitida em ${formattedEmitidaDate}` : ''}
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(rawDoc, 'CPF/CNPJ (só dígitos)')}>Só dígitos</button>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(formattedDoc, 'CPF/CNPJ formatado')}>Formatado</button>
+                  <div className="nf-modal-context-right">
+                    <Badge variant={compNf.nfEmitida ? 'success' : 'warning'} size="sm" dot>
+                      {compNf.nfEmitida ? 'Emitida' : 'Pendente'}
+                    </Badge>
+                    {compNf.nfNumero && (
+                      <span className="nf-modal-num-chip">Nº {compNf.nfNumero}</span>
+                    )}
                   </div>
                 </div>
 
-                {/* 3. Código do serviço */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>3. Código do serviço (NFS-e)</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--mono)', marginTop: 2 }}>{codigoServico}</div>
+                {/* Controle de Emissão na Competência (Status, Número e Data) */}
+                <section className="nf-modal-section" aria-label="Controle de emissão da NFS-e na competência">
+                  <div className="nf-modal-section-head">
+                    <h3>Controle de emissão ({competenciaFmt})</h3>
+                    <span className="nf-modal-section-tag">Competência isolada</span>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(codigoServico, 'Código do serviço')}>Copiar</button>
-                </div>
 
-                {/* 4. Descrição */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>4. Descrição do serviço</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 2, wordBreak: 'break-word' }}>{descricao}</div>
+                  <div className="nf-modal-emission-grid">
+                    <div className="nf-modal-status-field">
+                      <span className="nf-modal-field-label">Status de emissão</span>
+                      <label className={`nf-modal-toggle-pill ${compNf.nfEmitida ? 'is-issued' : 'is-pending'}`}>
+                        <input
+                          id="nf-modal-emitida"
+                          type="checkbox"
+                          checked={!!compNf.nfEmitida}
+                          onChange={e => {
+                            updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, {
+                              nfEmitida: e.target.checked,
+                            });
+                          }}
+                        />
+                        <span>Marcar NF como emitida nesta competência</span>
+                      </label>
+                    </div>
+
+                    <div className="nf-modal-input-field">
+                      <label className="nf-modal-field-label" htmlFor="nf-modal-numero">Número da NFS-e</label>
+                      <input
+                        id="nf-modal-numero"
+                        type="text"
+                        className="form-input nf-modal-input"
+                        placeholder="Ex: 2026/089"
+                        defaultValue={compNf.nfNumero || ''}
+                        key={`nf_num_${activePopoverRec.id}_${mesSelecionado}_${compNf.nfNumero || ''}`}
+                        onBlur={e => {
+                          const val = e.target.value.trim();
+                          if (val !== (compNf.nfNumero || '')) {
+                            updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, { nfNumero: val });
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveNfModal();
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="nf-modal-input-field">
+                      <label className="nf-modal-field-label" htmlFor="nf-modal-data">Data de emissão</label>
+                      <input
+                        id="nf-modal-data"
+                        type="text"
+                        className="form-input nf-modal-input is-readonly"
+                        readOnly
+                        value={compNf.nfEmitida ? (formattedEmitidaDate || 'Hoje (automático)') : 'Pendente de emissão'}
+                        title="Data registrada automaticamente pela store ao emitir a NFS-e"
+                      />
+                    </div>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(descricao, 'Descrição')}>Copiar</button>
-                </div>
+                </section>
 
-                {/* 5. Valor */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>5. Valor</div>
-                    <div style={{ fontSize: 14, color: 'var(--green)', fontWeight: 700, marginTop: 2 }}>{valorFormatado}</div>
+                {/* Dados Fiscais para Emissão (1 a 5) */}
+                <section className="nf-modal-section" aria-label="Dados fiscais para emissão da NFS-e">
+                  <div className="nf-modal-section-head">
+                    <h3>Dados fiscais para emissão (NFS-e)</h3>
+                    <span className="nf-modal-section-tag">Cópia rápida</span>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(valorNumerico, 'Valor')}>Copiar</button>
-                </div>
 
-                {/* Controle rápido de NF emitida no próprio modal */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!compNf.nfEmitida}
-                      onChange={e => updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, { nfEmitida: e.target.checked })}
-                    />
-                    Marcar NF como emitida nesta competência
-                  </label>
-                </div>
+                  <div className="nf-modal-cards-grid">
+                    {/* 1. Cliente */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">1. Cliente / Razão Social</div>
+                        <div className="nf-modal-data-value">{nomeTomador}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(nomeTomador, 'Cliente')}>Copiar</button>
+                    </div>
 
-                <div className="form-actions" style={{ marginTop: 6 }}>
+                    {/* 2. CPF/CNPJ */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">2. CPF / CNPJ</div>
+                        <div className="nf-modal-data-value is-mono">
+                          {rawDoc ? `${rawDoc} • ${formattedDoc}` : '—'}
+                        </div>
+                      </div>
+                      <div className="nf-modal-copy-group">
+                        <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(rawDoc, 'CPF/CNPJ (só dígitos)')}>Só dígitos</button>
+                        <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(formattedDoc, 'CPF/CNPJ formatado')}>Formatado</button>
+                      </div>
+                    </div>
+
+                    {/* 3. Código do serviço */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">3. Código do serviço (NFS-e)</div>
+                        <div className="nf-modal-data-value is-mono">{codigoServico}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(codigoServico, 'Código do serviço')}>Copiar</button>
+                    </div>
+
+                    {/* 4. Descrição resolvida */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">4. Descrição do serviço</div>
+                        <div className="nf-modal-data-value is-desc">{descricao}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(descricao, 'Descrição')}>Copiar</button>
+                    </div>
+
+                    {/* 5. Valor (largura completa) */}
+                    <div className="nf-modal-data-tile is-full">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">5. Valor</div>
+                        <div className="nf-modal-data-value is-amount">{valorFormatado}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(valorNumerico, 'Valor')}>Copiar</button>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="form-actions nf-modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setNfPopoverId(null)}>Fechar</button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary nf-modal-save-btn"
+                    onClick={handleSaveNfModal}
+                  >
+                    Salvar NF
+                  </button>
                   <button
                     type="button"
                     className="btn btn-primary"

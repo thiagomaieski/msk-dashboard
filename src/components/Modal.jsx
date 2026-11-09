@@ -27,7 +27,7 @@ export default function Modal({ mobile = false }) {
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
   const panelRef = useRef(null);
-  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
+  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao' || modalType === 'pagarRecorrencia') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 
@@ -109,7 +109,7 @@ function ModalContent({ type }) {
   if (type === 'negocioReceita' || type === 'transacao') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
   if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
   if (type === 'parcela') return <ParcelaForm item={data.negocio.find(x => x.id === editingId.negocio)} />;
-  if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm recorrenciaId={editingId.recorrencia} />;
+  if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm key={`${editingId.recorrencia || 'new'}_${editingId.pagarCompetencia || ''}`} recorrenciaId={editingId.recorrencia} />;
   if (type === 'pessoalReceita') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Receita" />;
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'pessoalInvestimento') return <PessoalInvestimentoForm item={data.pessoal.find(x => x.id === editingId.pessoal)} />;

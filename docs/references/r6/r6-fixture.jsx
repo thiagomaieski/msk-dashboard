@@ -774,29 +774,100 @@ useDash.setState({
     useDash.getState().closeModal();
   },
   registrarPagamentoRecorrencia: async (recorrenciaId, fields) => {
-    record('registrarPagamentoRecorrencia', recorrenciaId, fields);
-    useDash.getState().toast('Simulação: Pagamento registrado');
-    useDash.getState().closeModal();
-  },
-  updateRecorrenciaCompetenciaNf: async (recorrenciaId, compKey, patch) => {
-    record('updateRecorrenciaCompetenciaNf', recorrenciaId, compKey, patch);
+    const { data, toast, closeModal } = useDash.getState();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec) return toast('Recorrência não encontrada', 'error');
+
+    const valorBruto = parseFloat(fields.valor) || 0;
+    const valorNet = parseFloat(fields.valorLiquido) || valorBruto;
+    const taxaGateway = Math.max(0, valorBruto - valorNet);
+    const now = new Date();
+    const fallbackMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const competenciaVal = fields.competencia || fields.referenciaMes || fallbackMonth;
+    const nowIso = now.toISOString();
+
+    const local = {
+      id: 'temp_' + Date.now(),
+      tipo: 'Receita',
+      descricao: fields.descricao || (rec.plano || `Recorrência ${rec.cliente || ''}`).trim(),
+      valor: valorBruto,
+      valorLiquido: valorNet,
+      taxaGateway: taxaGateway.toFixed(2),
+      data: fields.data || nowIso.split('T')[0],
+      categoria: fields.categoria || 'Receita Recorrente',
+      entidade: rec.cliente || '',
+      clienteId: rec.clienteId || '',
+      nf: fields.nf || 'pendente',
+      formaPagamento: fields.formaPagamento || 'PIX',
+      observacoes: fields.observacoes || '',
+      origemAutomatica: 'recorrencia',
+      recorrenciaId,
+      competencia: competenciaVal,
+      referenciaMes: competenciaVal,
+      criadoEm: nowIso,
+      modificadoEm: nowIso,
+    };
+
+    let newRenovacao = null;
+    if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) {
+      const parts = rec.renovacao.split('-');
+      if (parts.length === 3) {
+        let nextYear = parseInt(parts[0], 10);
+        let nextMonth = parseInt(parts[1], 10);
+        if (rec.periodicidade === 'Semestral') {
+          nextMonth += 6;
+          if (nextMonth > 12) {
+            nextMonth -= 12;
+            nextYear += 1;
+          }
+        } else {
+          nextYear += 1;
+        }
+        const nextMonthStr = String(nextMonth).padStart(2, '0');
+        newRenovacao = `${nextYear}-${nextMonthStr}-${parts[2]}`;
+      }
+    }
+
     useDash.setState(s => ({
       data: {
         ...s.data,
-        recorrencia: s.data.recorrencia.map(r => {
-          if (r.id !== recorrenciaId) return r;
-          const prevComp = r.competencias?.[compKey] || {};
-          return {
-            ...r,
-            competencias: {
-              ...(r.competencias || {}),
-              [compKey]: { ...prevComp, ...patch }
-            }
-          };
-        })
+        negocio: [local, ...s.data.negocio],
+        recorrencia: newRenovacao
+          ? s.data.recorrencia.map(x => x.id === recorrenciaId ? { ...x, renovacao: newRenovacao, modificadoEm: nowIso } : x)
+          : s.data.recorrencia,
       }
     }));
-    useDash.getState().toast('NF atualizada localmente');
+
+    record('registrarPagamentoRecorrencia', recorrenciaId, fields, local, newRenovacao);
+    closeModal();
+    toast('Pagamento registrado em Finanças Negócio!');
+  },
+  updateRecorrenciaCompetenciaNf: async (recorrenciaId, compKey, patch) => {
+    const { data } = useDash.getState();
+    const rec = data.recorrencia.find(r => r.id === recorrenciaId);
+    if (!rec || !compKey) return;
+    const prevMap = rec.competencias || {};
+    const prevComp = prevMap[compKey] || { nfEmitida: false, nfNumero: '', nfEmitidaEm: null };
+    const nextEmitida = patch.nfEmitida !== undefined ? !!patch.nfEmitida : !!prevComp.nfEmitida;
+    const nextComp = {
+      ...prevComp,
+      ...patch,
+      nfEmitida: nextEmitida,
+      nfNumero: patch.nfNumero !== undefined ? String(patch.nfNumero) : (prevComp.nfNumero || ''),
+      nfEmitidaEm: nextEmitida ? (prevComp.nfEmitidaEm || new Date().toISOString()) : null,
+    };
+    const nextCompetencias = { ...prevMap, [compKey]: nextComp };
+    const now = new Date().toISOString();
+
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        recorrencia: s.data.recorrencia.map(r =>
+          r.id === recorrenciaId ? { ...r, competencias: nextCompetencias, modificadoEm: now } : r
+        )
+      }
+    }));
+    record('updateRecorrenciaCompetenciaNf', recorrenciaId, compKey, patch, nextComp);
   },
   toggleNegocioPago: async (id, pago) => {
     record('toggleNegocioPago', id, pago);
