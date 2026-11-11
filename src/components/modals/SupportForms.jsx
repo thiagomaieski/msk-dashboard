@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useDash, fmtBRL } from '../../store/useStore';
+import { useDash, fmtBRL, isRecorrenciaPaidInCompetencia } from '../../store/useStore';
 import CustomSelect from '../CustomSelect';
 import { NumberStepper } from '../shared';
 import { formatMinutes, formatMesAnoLabel } from '../../utils/timeUtils';
@@ -214,6 +214,18 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
     categoria: (configData.categoriasReceita || [])[0] || 'Receita Recorrente',
   });
 
+  const submitting = useDash(s => s.pagamentoRecorrenciaSubmitting);
+  const setSubmitting = useDash(s => s.setPagamentoRecorrenciaSubmitting);
+  const handlePagamento = async () => {
+    if (useDash.getState().pagamentoRecorrenciaSubmitting) return;
+    setSubmitting(true);
+    try {
+      await registrarPagamentoRecorrencia(recorrenciaId, f);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const u = (k) => (e) => {
     const val = e.target.value;
     if (k === 'referenciaMes') {
@@ -236,6 +248,7 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
   if (!rec) return <div style={{ padding: 20, color: 'var(--text3)' }}>Recorrência não encontrada.</div>;
 
   const competenciaAtiva = f.competencia || f.referenciaMes || initialComp;
+  const jaPago = isRecorrenciaPaidInCompetencia(rec, competenciaAtiva, data.negocio);
   const competenciaFmt = competenciaAtiva && competenciaAtiva.includes('-')
     ? `${competenciaAtiva.slice(5, 7)}/${competenciaAtiva.slice(0, 4)}`
     : competenciaAtiva;
@@ -392,14 +405,19 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
         </div>
       </section>
 
+      {jaPago && (
+        <p role="alert">Esta competência já está paga. Selecione uma competência pendente.</p>
+      )}
+
       <div className="form-actions">
-        <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+        <button type="button" className="btn btn-secondary" disabled={submitting} onClick={closeModal}>Cancelar</button>
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => registrarPagamentoRecorrencia(recorrenciaId, f)}
+          disabled={submitting || jaPago}
+          onClick={handlePagamento}
         >
-          Registrar Pagamento
+          {submitting ? 'Registrando...' : 'Registrar Pagamento'}
         </button>
       </div>
     </div>

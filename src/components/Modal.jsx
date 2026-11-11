@@ -23,6 +23,7 @@ export default function Modal({ mobile = false }) {
   const modalTitle = useDash(s => s.modalTitle);
   const modalSize = useDash(s => s.modalSize);
   const closeModal = useDash(s => s.closeModal);
+  const paymentSubmitting = useDash(s => s.pagamentoRecorrenciaSubmitting);
   const data = useDash(s => s.data);
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
@@ -83,7 +84,7 @@ export default function Modal({ mobile = false }) {
                 <span>Salvar</span>
               </button>
             )}
-            <button className="modal-close" onClick={closeModal} title="Fechar modal (Esc)">
+            <button className="modal-close" disabled={modalType === 'pagarRecorrencia' && paymentSubmitting} onClick={closeModal} title="Fechar modal (Esc)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
