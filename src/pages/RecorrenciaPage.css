@@ -1,0 +1,1214 @@
+.recorrencia-page {
+  min-width: 0;
+  padding-bottom: 64px;
+}
+
+.recorrencia-header {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.recorrencia-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recorrencia-eyebrow {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.recorrencia-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.recorrencia-page .page-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.recorrencia-description {
+  margin: 1px 0 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.recorrencia-page .btn {
+  border-radius: var(--radius-pill);
+  min-height: 38px;
+}
+
+.recorrencia-page .btn-primary {
+  background: var(--color-accent);
+  color: var(--on-accent);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+body.light .recorrencia-page .btn-primary {
+  color: var(--on-accent);
+}
+
+/* Seletor de competência em pílula */
+.recorrencia-competencia-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  padding: 4px 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.recorrencia-competencia-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  color: var(--text2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease;
+}
+
+.recorrencia-competencia-nav:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.recorrencia-competencia-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  min-width: 130px;
+  text-align: center;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.recorrencia-mes-atual-btn {
+  min-height: 26px !important;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 10px;
+  margin-left: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.recorrencia-mes-atual-btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* KPI Grid Solvik */
+.recorrencia-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.recorrencia-page .recorrencia-kpi-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recorrencia-page .recorrencia-kpi-card:hover {
+  background: var(--surface-glass);
+  transform: translateY(-1px);
+}
+
+.recorrencia-page .recorrencia-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.recorrencia-page .recorrencia-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+}
+
+.recorrencia-page .recorrencia-kpi-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recorrencia-page .recorrencia-kpi-value {
+  font-size: clamp(20px, 1.8vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Workspace principal */
+.recorrencia-workspace {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 15px 18px;
+  min-width: 0;
+  box-shadow: var(--shadow-card);
+}
+
+/* Barra de resumo da competência */
+.recorrencia-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  font-size: 12.5px;
+}
+
+.recorrencia-summary-metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-summary-month {
+  font-weight: 600;
+  color: var(--text);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.recorrencia-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.recorrencia-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  user-select: none;
+  transition: border-color var(--t-fast) ease, background var(--t-fast) ease;
+}
+
+.recorrencia-toggle-pill:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.recorrencia-toggle-pill input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Cabeçalho da listagem e Filtros */
+.recorrencia-toolbar-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.recorrencia-toolbar-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+
+.recorrencia-toolbar-heading > span {
+  color: var(--text3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-count {
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text2);
+}
+
+.recorrencia-page .recorrencia-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px 186px;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.recorrencia-filters .search-wrap {
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.recorrencia-filters .search-wrap input {
+  width: 100%;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-control);
+}
+
+.recorrencia-filters .custom-select-trigger {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  border-radius: var(--radius-pill);
+  justify-content: space-between;
+}
+
+/* Tabela de Recorrência */
+.recorrencia-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.recorrencia-table th,
+.recorrencia-table td {
+  padding: 9px 6px !important;
+  vertical-align: middle;
+}
+
+.recorrencia-table th {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: normal !important;
+  line-height: 1.2;
+}
+
+.recorrencia-table td {
+  font-family: var(--sans) !important;
+  font-size: 12.5px;
+  white-space: normal !important;
+  word-break: normal;
+  overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Larguras de colunas calibradas para 1440px e 1280px sem overflow */
+.recorrencia-table th:nth-child(1),
+.recorrencia-table td:nth-child(1) {
+  width: 30px !important;
+  padding-left: 10px !important;
+  padding-right: 4px !important;
+}
+
+.recorrencia-table th:nth-child(2) { width: 15%; }
+.recorrencia-table th:nth-child(3) { width: 140px; }
+.recorrencia-table th:nth-child(4) { width: 16%; }
+.recorrencia-table th:nth-child(5) { width: 88px; }
+.recorrencia-table th:nth-child(6) { width: 92px; }
+.recorrencia-table th:nth-child(7) { width: 70px; }
+.recorrencia-table th:nth-child(8) { width: 98px; }
+.recorrencia-table th:nth-child(9) { width: 88px; }
+.recorrencia-table th:nth-child(10) { width: 72px; }
+.recorrencia-table th:nth-child(11) { width: 196px; text-align: right; }
+
+.recorrencia-table input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* Coluna 2: Cliente */
+.recorrencia-col-cliente {
+  cursor: pointer;
+}
+
+.recorrencia-client-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recorrencia-client-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.recorrencia-client-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.recorrencia-client-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.25;
+}
+
+.recorrencia-client-name:hover {
+  color: var(--accent);
+}
+
+.recorrencia-client-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.recorrencia-period-chip {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.recorrencia-reajuste-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.recorrencia-reajuste-chip.is-overdue {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+}
+
+.recorrencia-reajuste-chip.is-soon {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent);
+}
+
+/* Coluna 3: CPF / CNPJ */
+.recorrencia-doc-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.recorrencia-doc-text {
+  font-family: var(--font-mono);
+  font-size: 10.6px;
+  color: var(--text2);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.recorrencia-copy-btn {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recorrencia-doc-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.recorrencia-doc-register {
+  background: var(--accent-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recorrencia-doc-register:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Coluna 4: Plano e horas */
+.recorrencia-plano-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recorrencia-plano-name {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.28;
+}
+
+.recorrencia-page .manutencao-badge {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+}
+
+.recorrencia-page .manutencao-badge-track {
+  width: 28px;
+}
+
+/* Coluna 5: Valor */
+.recorrencia-col-valor {
+  white-space: nowrap !important;
+}
+
+.recorrencia-valor-amount {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Coluna 6: Próx. Vencimento */
+.recorrencia-venc-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 5px;
+}
+
+.recorrencia-venc-date {
+  font-size: 11.5px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recorrencia-venc-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.recorrencia-venc-chip.is-overdue {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+}
+
+.recorrencia-venc-chip.is-soon {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent);
+}
+
+.recorrencia-muted {
+  color: var(--text3);
+}
+
+/* Coluna 7: Pago */
+.recorrencia-pay-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.recorrencia-pay-pill.is-paid {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
+}
+
+.recorrencia-pay-pill.is-pending {
+  background: var(--surface-control);
+  color: var(--text3);
+  border: 1px solid var(--border);
+}
+
+/* Coluna 8: NF */
+.recorrencia-nf-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.recorrencia-nf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recorrencia-nf-check.is-issued {
+  color: var(--green);
+}
+
+.recorrencia-nf-check.is-pending {
+  color: var(--text3);
+  font-weight: 500;
+}
+
+.recorrencia-nf-input {
+  width: 74px !important;
+  height: 22px !important;
+  padding: 1px 7px !important;
+  font-size: 10.5px !important;
+  font-family: var(--font-mono) !important;
+  border-radius: var(--radius-pill) !important;
+  background: var(--surface-control) !important;
+}
+
+/* Coluna 9: Método */
+.recorrencia-metodo-pill {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text2);
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 6px;
+  line-height: 1.2;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Coluna 11: Ações (sempre visíveis em linha única no padrão Solvik) */
+.recorrencia-page .recorrencia-row-actions {
+  opacity: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.recorrencia-action-pill {
+  min-height: 24px !important;
+  height: 24px;
+  font-size: 10.5px !important;
+  font-weight: 600;
+  padding: 0 7px !important;
+  border-radius: var(--radius-pill) !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.recorrencia-action-pill.is-pay {
+  color: var(--green) !important;
+  background: var(--green-bg) !important;
+  border-color: color-mix(in srgb, var(--green) 28%, transparent) !important;
+}
+
+.recorrencia-action-pill.is-pay:hover {
+  background: color-mix(in srgb, var(--green) 20%, transparent) !important;
+}
+
+.recorrencia-icon-btn {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Estados vazios e carregamento */
+.recorrencia-loading {
+  padding: 12px 0;
+}
+
+.recorrencia-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 20px;
+}
+
+.recorrencia-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.recorrencia-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.recorrencia-empty p {
+  font-size: 13px;
+  color: var(--text3);
+  margin: 0;
+}
+
+.recorrencia-page :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.recorrencia-page > .modal-overlay {
+  display: flex;
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL / POPOVER DADOS DA NF (NFS-e)
+   ══════════════════════════════════════════════════════ */
+
+.recorrencia-page .recorrencia-nf-modal {
+  width: min(700px, 95vw);
+  max-width: 700px;
+  max-height: calc(100dvh - 32px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-header {
+  flex-shrink: 0;
+  padding: 12px 22px;
+  background: var(--surface-floating);
+  border-bottom: 1px solid var(--border);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  color: var(--text3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast, 150ms), color var(--t-fast, 150ms);
+}
+
+.recorrencia-page .recorrencia-nf-modal .modal-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.recorrencia-page .recorrencia-nf-modal-body {
+  padding: 12px 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-modal-context-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.nf-modal-context-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nf-modal-context-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nf-modal-context-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nf-modal-context-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nf-modal-context-cliente {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.nf-modal-comp-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-context-plano {
+  font-size: 11.5px;
+  color: var(--text3);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-context-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nf-modal-num-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.nf-modal-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nf-modal-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0;
+}
+
+.nf-modal-section-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.nf-modal-emission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.72fr) minmax(0, 0.78fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.nf-modal-status-field,
+.nf-modal-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nf-modal-field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+}
+
+.nf-modal-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  border: 1px solid var(--border-strong);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.nf-modal-toggle-pill.is-issued {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 32%, transparent);
+}
+
+.nf-modal-toggle-pill input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nf-modal-toggle-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorrencia-page .nf-modal-input {
+  min-width: 0;
+  border-radius: var(--radius-control);
+  min-height: 36px;
+  height: 36px;
+  font-size: 12px;
+  background: var(--surface-control);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  padding: 5px 10px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-page .nf-modal-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.recorrencia-page .nf-modal-input.is-readonly,
+.recorrencia-page .nf-modal-input[readonly] {
+  cursor: default;
+  color: var(--text2);
+  user-select: text;
+  background: var(--surface-control);
+}
+
+.nf-modal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.nf-modal-data-tile {
+  background: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nf-modal-data-tile.is-full {
+  grid-column: 1 / -1;
+}
+
+.nf-modal-data-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nf-modal-data-label {
+  font-size: 9.8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+.nf-modal-data-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.nf-modal-data-value.is-mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-data-value.is-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-modal-data-value.is-desc {
+  white-space: normal;
+  word-break: break-word;
+  font-weight: 500;
+}
+
+.nf-modal-copy-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.recorrencia-page .nf-modal-copy-btn {
+  min-height: 26px !important;
+  height: 26px;
+  padding: 0 9px !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  border-radius: var(--radius-pill) !important;
+  flex-shrink: 0;
+}
+
+.recorrencia-page .nf-modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-floating);
+  padding: 8px 0 12px;
+  margin: 0 !important;
+  border-top: 1px solid var(--border);
+  gap: 8px;
+}
+
+.recorrencia-page .nf-modal-actions .btn {
+  border-radius: var(--radius-pill);
+  min-height: 36px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.recorrencia-page .nf-modal-save-btn {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: var(--accent-bg);
+}
+
+.recorrencia-page .nf-modal-save-btn:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* Adaptação para 1280px desktop */
+@media (max-width: 1360px) and (min-width: 1025px) {
+  .recorrencia-table th,
+  .recorrencia-table td {
+    padding: 8px 4px !important;
+  }
+
+  .recorrencia-client-avatar {
+    display: none;
+  }
+
+  .recorrencia-table th:nth-child(1),
+  .recorrencia-table td:nth-child(1) {
+    width: 26px !important;
+    padding-left: 8px !important;
+  }
+
+  .recorrencia-table th:nth-child(2) { width: 13%; }
+  .recorrencia-table th:nth-child(3) { width: 126px; }
+  .recorrencia-table th:nth-child(4) { width: 15%; }
+  .recorrencia-table th:nth-child(5) { width: 80px; }
+  .recorrencia-table th:nth-child(6) { width: 84px; }
+  .recorrencia-table th:nth-child(7) { width: 64px; }
+  .recorrencia-table th:nth-child(8) { width: 88px; }
+  .recorrencia-table th:nth-child(9) { width: 84px; }
+  .recorrencia-table th:nth-child(10) { width: 66px; }
+  .recorrencia-table th:nth-child(11) { width: 184px; padding-right: 8px !important; }
+
+  .recorrencia-doc-text {
+    font-size: 9.8px;
+  }
+
+  .recorrencia-page .recorrencia-row-actions {
+    gap: 3px;
+  }
+
+  .recorrencia-action-pill {
+    font-size: 10px !important;
+    padding: 0 6px !important;
+  }
+
+  .recorrencia-icon-btn {
+    width: 22px !important;
+    height: 22px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .recorrencia-page .page-title {
+    font-size: 26px;
+  }
+
+  .recorrencia-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recorrencia-workspace {
+    padding: 14px;
+  }
+
+  .recorrencia-page .recorrencia-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .recorrencia-filters .search-wrap {
+    grid-column: 1 / -1;
+  }
+
+  .recorrencia-table {
+    min-width: 980px;
+  }
+}

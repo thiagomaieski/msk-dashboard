@@ -1,0 +1,990 @@
+.modal-overlay:has(.recorrencia-form),
+.modal-overlay:has(.atividade-manutencao-form),
+.modal-overlay:has(.pagar-recorrencia-form) {
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+}
+
+.modal:has(.recorrencia-form) {
+  width: min(840px, 95vw);
+  max-width: 840px;
+  max-height: calc(100dvh - 28px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
+.modal:has(.recorrencia-form.rec-modal-split) {
+  width: min(1160px, 96vw);
+  max-width: 1160px;
+}
+
+.modal:has(.atividade-manutencao-form) {
+  width: min(520px, 94vw);
+  max-width: 520px;
+  max-height: calc(100dvh - 32px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
+.modal:has(.pagar-recorrencia-form) {
+  width: min(580px, 94vw);
+  max-width: 580px;
+  max-height: calc(100dvh - 32px);
+  background: var(--surface-floating);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+}
+
+.modal:has(.recorrencia-form) .modal-header,
+.modal:has(.atividade-manutencao-form) .modal-header,
+.modal:has(.pagar-recorrencia-form) .modal-header {
+  flex-shrink: 0;
+  padding: 12px 22px;
+  background: var(--surface-floating);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal:has(.recorrencia-form) .modal-title,
+.modal:has(.atividade-manutencao-form) .modal-title,
+.modal:has(.pagar-recorrencia-form) .modal-title {
+  font-size: 18.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.modal:has(.recorrencia-form) .modal-close,
+.modal:has(.atividade-manutencao-form) .modal-close,
+.modal:has(.pagar-recorrencia-form) .modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  color: var(--text3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast, 150ms), color var(--t-fast, 150ms);
+}
+
+.modal:has(.recorrencia-form) .modal-close:focus,
+.modal:has(.atividade-manutencao-form) .modal-close:focus,
+.modal:has(.pagar-recorrencia-form) .modal-close:focus {
+  outline: none;
+}
+
+.modal:has(.recorrencia-form) .modal-close:hover,
+.modal:has(.atividade-manutencao-form) .modal-close:hover,
+.modal:has(.pagar-recorrencia-form) .modal-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.modal:has(.recorrencia-form) .modal-body,
+.modal:has(.atividade-manutencao-form) .modal-body,
+.modal:has(.pagar-recorrencia-form) .modal-body {
+  padding: 10px 22px 0;
+}
+
+/* ── Layout do Formulário de Recorrência ── */
+.recorrencia-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.recorrencia-form.rec-modal-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) 1px minmax(0, 0.94fr);
+  gap: 0;
+  align-items: start;
+}
+
+.recorrencia-form .rec-modal-left {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.recorrencia-form.rec-modal-split .rec-modal-left {
+  padding-right: 18px;
+}
+
+.recorrencia-form .rec-modal-divider {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+  margin: 0;
+}
+
+.recorrencia-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.recorrencia-form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.recorrencia-form-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recorrencia-form-subsection + .recorrencia-form-subsection {
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+}
+
+.recorrencia-form-pair > .recorrencia-form-subsection + .recorrencia-form-subsection {
+  padding-top: 0;
+  border-top: none;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+
+.recorrencia-form-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recorrencia-form-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0;
+}
+
+.recorrencia-form-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.recorrencia-form .form-grid,
+.atividade-manutencao-form .form-grid,
+.pagar-recorrencia-form .form-grid {
+  gap: 10px;
+}
+
+.recorrencia-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recorrencia-form-nf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.76fr) minmax(0, 1.24fr);
+  gap: 10px;
+}
+
+.recorrencia-form .form-group,
+.atividade-manutencao-form .form-group,
+.pagar-recorrencia-form .form-group {
+  min-width: 0;
+  margin-bottom: 0;
+  gap: 3px;
+}
+
+.recorrencia-form .form-label,
+.atividade-manutencao-form .form-label,
+.pagar-recorrencia-form .form-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text2);
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.recorrencia-form-req {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.recorrencia-form-opt {
+  font-weight: 400;
+  color: var(--text3);
+  font-size: 11px;
+}
+
+.recorrencia-form .form-input,
+.recorrencia-form .form-textarea,
+.recorrencia-form .custom-select-form,
+body.light .recorrencia-form .custom-select-form,
+.atividade-manutencao-form .form-input,
+.atividade-manutencao-form .form-textarea,
+.pagar-recorrencia-form .form-input,
+.pagar-recorrencia-form .form-textarea,
+.pagar-recorrencia-form .custom-select-form,
+body.light .pagar-recorrencia-form .custom-select-form {
+  min-width: 0;
+  border-radius: var(--radius-control);
+  min-height: 36px;
+  height: 36px;
+  font-size: 12.5px;
+  background: var(--surface-control);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  padding: 6px 11px;
+  color: var(--text);
+}
+
+.recorrencia-form .form-textarea {
+  height: auto;
+  min-height: 44px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.recorrencia-form .form-input:focus,
+.recorrencia-form .form-textarea:focus,
+.atividade-manutencao-form .form-input:focus,
+.atividade-manutencao-form .form-textarea:focus,
+.pagar-recorrencia-form .form-input:focus,
+.pagar-recorrencia-form .form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.recorrencia-form .number-stepper,
+.pagar-recorrencia-form .number-stepper {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-control);
+}
+
+.recorrencia-form .number-stepper .form-input,
+.pagar-recorrencia-form .number-stepper .form-input {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.pagar-recorrencia-form .number-stepper .pagar-valor-liquido-input {
+  color: var(--green);
+}
+
+.recorrencia-form .number-stepper-actions,
+.pagar-recorrencia-form .number-stepper-actions {
+  width: 26px;
+  background: var(--surface-control);
+  border-left: 1px solid var(--border);
+  border-radius: 0 calc(var(--radius-control) - 1px) calc(var(--radius-control) - 1px) 0;
+}
+
+.recorrencia-form-nf-hint {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.recorrencia-form-nf-hint code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg4);
+  color: var(--text2);
+}
+
+.recorrencia-form-nocli {
+  font-size: 11.5px;
+  color: var(--amber);
+  margin-top: 4px;
+  padding: 7px 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: var(--radius-control);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.35;
+}
+
+.recorrencia-form-nocli-link {
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.recorrencia-form-nocli-link:hover {
+  opacity: 0.8;
+}
+
+.recorrencia-form .form-actions,
+.atividade-manutencao-form .form-actions,
+.pagar-recorrencia-form .form-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-floating);
+  padding: 8px 0 10px;
+  margin: 0 !important;
+  z-index: 2;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+
+.recorrencia-form .rec-modal-left .btn,
+.atividade-manutencao-form .btn,
+.pagar-recorrencia-form .btn {
+  border-radius: var(--radius-pill);
+  min-height: 36px;
+  padding: 0 18px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.recorrencia-form .btn-primary,
+.atividade-manutencao-form .btn-primary,
+.pagar-recorrencia-form .btn-primary {
+  background: var(--color-accent);
+  color: var(--on-accent);
+  border-color: var(--color-accent);
+}
+
+body.light .recorrencia-form .btn-primary,
+body.light .atividade-manutencao-form .btn-primary,
+body.light .pagar-recorrencia-form .btn-primary {
+  color: var(--on-accent);
+}
+
+/* ══════════════════════════════════════════════════════
+   PAINEL DE ATIVIDADES DE MANUTENÇÃO (SPLIT VIEW)
+   ══════════════════════════════════════════════════════ */
+
+.recorrencia-form .manutencao-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 18px;
+  padding-bottom: 12px;
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.recorrencia-form .manutencao-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 9px 12px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.recorrencia-form .manutencao-title-group {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.recorrencia-form .manutencao-title-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recorrencia-form .manutencao-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.recorrencia-form .manutencao-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.recorrencia-form .manutencao-subtitle {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.recorrencia-form .manutencao-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.recorrencia-form .manutencao-pdf-btn,
+.recorrencia-form .manutencao-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* Barra de competência das atividades */
+.recorrencia-form .manutencao-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recorrencia-form .manutencao-mes-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  padding: 3px 7px;
+  box-shadow: var(--shadow-card);
+}
+
+.recorrencia-form .mes-nav-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  color: var(--text2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.recorrencia-form .mes-nav-btn:hover:not(:disabled) {
+  background: var(--bg4);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.recorrencia-form .mes-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.recorrencia-form .mes-nav-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 118px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-form .mes-nav-hoje {
+  background: var(--accent-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: var(--radius-pill);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+.recorrencia-form .mes-nav-hoje:hover {
+  background: var(--color-accent);
+  color: var(--on-accent);
+}
+
+.recorrencia-form .manutencao-count-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* KPIs de consumo mensal */
+.recorrencia-form .manutencao-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.recorrencia-form .manutencao-kpis.is-unlimited {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recorrencia-form .manutencao-kpi {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  box-shadow: var(--shadow-card);
+}
+
+.recorrencia-form .manutencao-kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.recorrencia-form .manutencao-kpi-value {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Barra de progresso de utilização */
+.recorrencia-form .manutencao-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 9px 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.recorrencia-form .manutencao-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recorrencia-form .manutencao-progress-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.recorrencia-form .manutencao-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.recorrencia-form .manutencao-progress-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--bg4);
+  overflow: hidden;
+}
+
+.recorrencia-form .manutencao-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lista de atividades por competência */
+.recorrencia-form .manutencao-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recorrencia-form .manutencao-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 295px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.recorrencia-form .manutencao-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 18px;
+  color: var(--text3);
+  font-size: 12.5px;
+  text-align: center;
+  background: var(--surface-glass);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+
+.recorrencia-form .manutencao-empty-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recorrencia-form .manutencao-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 9px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.recorrencia-form .manutencao-item:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-control);
+}
+
+.recorrencia-form .manutencao-item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 72px;
+}
+
+.recorrencia-form .manutencao-item-data {
+  font-size: 11px;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-form .manutencao-item-tempo {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-form .manutencao-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.recorrencia-form .manutencao-item-desc {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recorrencia-form .manutencao-item-epoca {
+  font-size: 10px;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+}
+
+.recorrencia-form .manutencao-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 1;
+}
+
+.recorrencia-form .manutencao-item-actions .row-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.recorrencia-form .manutencao-item-actions .row-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--bg4);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE APONTAMENTO DE ATIVIDADE (SupportForms)
+   ══════════════════════════════════════════════════════ */
+
+.atividade-manutencao-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.atividade-context-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 10px 14px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-card);
+}
+
+.atividade-context-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.atividade-context-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.atividade-limite-pill {
+  font-size: 11px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.atividade-tempo-converted {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 11.5px;
+  background: var(--accent-bg);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE REGISTRAR PAGAMENTO (SupportForms)
+   ══════════════════════════════════════════════════════ */
+
+.pagar-recorrencia-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pagar-context-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-tile);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.pagar-context-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pagar-context-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 26%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pagar-context-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pagar-context-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pagar-context-cliente {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.pagar-context-plano {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.3;
+}
+
+.pagar-context-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pagar-context-pill.is-comp {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.pagar-context-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.pagar-context-amount-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+.pagar-context-amount-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Responsividade */
+@media (max-width: 960px) {
+  .recorrencia-form.rec-modal-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .recorrencia-form .rec-modal-divider {
+    display: none;
+  }
+  .recorrencia-form.rec-modal-split .rec-modal-left {
+    padding-right: 0;
+  }
+  .recorrencia-form .manutencao-panel {
+    padding-left: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 720px) {
+  .modal:has(.recorrencia-form) .modal-body,
+  .modal:has(.atividade-manutencao-form) .modal-body {
+    padding: 12px 14px 0;
+  }
+  .recorrencia-form-pair,
+  .recorrencia-form-grid-3,
+  .recorrencia-form .form-grid-2,
+  .atividade-manutencao-form .form-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .recorrencia-form-pair > .recorrencia-form-subsection + .recorrencia-form-subsection {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .recorrencia-form .manutencao-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

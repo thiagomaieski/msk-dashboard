@@ -23,11 +23,12 @@ export default function Modal({ mobile = false }) {
   const modalTitle = useDash(s => s.modalTitle);
   const modalSize = useDash(s => s.modalSize);
   const closeModal = useDash(s => s.closeModal);
+  const paymentSubmitting = useDash(s => s.pagamentoRecorrenciaSubmitting);
   const data = useDash(s => s.data);
   const editingId = useDash(s => s.editingId);
   const overlayClickRef = useRef(false);
   const panelRef = useRef(null);
-  useDialogFocus((mobile || modalType === 'cliente') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
+  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao' || modalType === 'pagarRecorrencia') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 
@@ -83,7 +84,7 @@ export default function Modal({ mobile = false }) {
                 <span>Salvar</span>
               </button>
             )}
-            <button className="modal-close" onClick={closeModal} title="Fechar modal (Esc)">
+            <button className="modal-close" disabled={modalType === 'pagarRecorrencia' && paymentSubmitting} onClick={closeModal} title="Fechar modal (Esc)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
@@ -104,12 +105,12 @@ function ModalContent({ type }) {
   const closeModal = useDash(s => s.closeModal);
 
   if (type === 'lead') return <LeadForm item={data.leads.find(x => x.id === editingId.leads)} />;
-  if (type === 'projeto') return <ProjetoForm item={data.projetos.find(x => x.id === editingId.projetos)} />;
-  if (type === 'recorrencia') return <RecorrenciaForm item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
+  if (type === 'projeto') return <ProjetoForm key={editingId.projetos || 'new'} item={data.projetos.find(x => x.id === editingId.projetos)} />;
+  if (type === 'recorrencia') return <RecorrenciaForm key={editingId.recorrencia || 'new'} item={data.recorrencia.find(x => x.id === editingId.recorrencia)} />;
   if (type === 'negocioReceita' || type === 'transacao') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Receita" />;
   if (type === 'negocioDespesa') return <FinancaForm item={data.negocio.find(x => x.id === editingId.negocio)} defaultTipo="Despesa" />;
   if (type === 'parcela') return <ParcelaForm item={data.negocio.find(x => x.id === editingId.negocio)} />;
-  if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm recorrenciaId={editingId.recorrencia} />;
+  if (type === 'pagarRecorrencia') return <PagarRecorrenciaForm key={`${editingId.recorrencia || 'new'}_${editingId.pagarCompetencia || ''}`} recorrenciaId={editingId.recorrencia} />;
   if (type === 'pessoalReceita') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Receita" />;
   if (type === 'pessoalDespesa') return <PessoalForm item={data.pessoal.find(x => x.id === editingId.pessoal)} defaultTipo="Despesa" />;
   if (type === 'pessoalInvestimento') return <PessoalInvestimentoForm item={data.pessoal.find(x => x.id === editingId.pessoal)} />;
@@ -131,7 +132,7 @@ function ModalContent({ type }) {
     const atividade = rec && editingId.atividadeManutencaoId
       ? (rec.atividades || []).find(a => a.id === editingId.atividadeManutencaoId)
       : null;
-    return <AtividadeManutencaoForm recorrenciaId={editingId.recorrencia} atividade={atividade} />;
+    return <AtividadeManutencaoForm key={editingId.atividadeManutencaoId || 'new'} recorrenciaId={editingId.recorrencia} atividade={atividade} />;
   }
   if (type === 'novoFechamento') {
     const lead = editingId.novoFechamentoLeadId

@@ -1,7 +1,10 @@
 import { db, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, writeBatch } from '../../firebase';
-import { uDoc, uCol, getCurrentMonthKey, buildMonthlyDate, fmtDateISO } from '../storeUtils';
+import { uDoc, uCol, getCurrentMonthKey, buildMonthlyDate, fmtDateISO, isRecorrenciaPaidInCompetencia } from '../storeUtils';
 
-export const createFinanceSlice = (set, get) => ({
+export const createFinanceSlice = (set, get) => {
+  // Local serialization only; separate tabs/devices require server-side idempotency.
+  const pagamentosEmAndamento = new Set();
+  return ({
   saveRecorrencia: async (fields) => {
     if (!fields.cliente) return get().toast('Cliente obrigatório', 'error');
     await get().saveGeneric('recorrencia', { ...fields, modificadoEm: serverTimestamp() }, 'Cliente');
@@ -147,64 +150,83 @@ export const createFinanceSlice = (set, get) => ({
     const valorBruto = parseFloat(fields.valor) || 0;
     const valorNet = parseFloat(fields.valorLiquido) || valorBruto;
     const taxaGateway = Math.max(0, valorBruto - valorNet);
-    const competenciaVal = fields.competencia || fields.referenciaMes || getCurrentMonthKey();
+    const competenciaVal = fields.competencia ?? fields.referenciaMes ?? getCurrentMonthKey();
+    if (typeof competenciaVal !== 'string' || competenciaVal.length !== 7 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(competenciaVal)) {
+      toast('Competência inválida. Use o formato YYYY-MM.', 'error');
+      return false;
+    }
+    const paymentKey = JSON.stringify([recorrenciaId, competenciaVal]);
+    if (pagamentosEmAndamento.has(paymentKey)) {
+      toast('Já existe um pagamento em processamento para esta recorrência e competência.', 'error');
+      return false;
+    }
+    if (isRecorrenciaPaidInCompetencia(rec, competenciaVal, data.negocio)) {
+      toast('A competência ' + competenciaVal + ' desta recorrência já está paga. Nenhuma nova receita foi criada.', 'error');
+      return false;
+    }
+    pagamentosEmAndamento.add(paymentKey);
+    try {
 
-    const payload = {
-      tipo: 'Receita',
-      descricao: fields.descricao || (rec.plano || `Recorrência ${rec.cliente || ''}`).trim(),
-      valor: valorBruto,
-      valorLiquido: valorNet,
-      taxaGateway: taxaGateway.toFixed(2),
-      data: fields.data || fmtDateISO(),
-      categoria: fields.categoria || 'Receita Recorrente',
-      entidade: rec.cliente || '',
-      clienteId: rec.clienteId || '',
-      nf: fields.nf || 'pendente',
-      formaPagamento: fields.formaPagamento || 'PIX',
-      observacoes: fields.observacoes || '',
-      origemAutomatica: 'recorrencia',
-      recorrenciaId,
-      competencia: competenciaVal,
-      referenciaMes: competenciaVal,
-      modificadoEm: serverTimestamp(),
-      criadoEm: serverTimestamp(),
-    };
-    const local = { ...payload, id: 'temp_' + Date.now(), criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
-    set(s => ({ realData: { ...s.realData, negocio: [local, ...s.realData.negocio] } }));
-    get()._refreshData();
-    closeModal();
-    toast('Pagamento registrado em Finanças Negócio!');
-    
-    import('../../firebase').then(({ addDoc }) => {
-      addDoc(uCol('negocio'), payload).then(r => {
-        set(s => ({ realData: { ...s.realData, negocio: s.realData.negocio.map(x => x.id === local.id ? { ...x, id: r.id } : x) } }));
-        get()._refreshData();
-      }).catch(e => toast('Sync Error: ' + e.message, 'error'));
-    });
+      const payload = {
+        tipo: 'Receita',
+        descricao: fields.descricao || (rec.plano || `Recorrência ${rec.cliente || ''}`).trim(),
+        valor: valorBruto,
+        valorLiquido: valorNet,
+        taxaGateway: taxaGateway.toFixed(2),
+        data: fields.data || fmtDateISO(),
+        categoria: fields.categoria || 'Receita Recorrente',
+        entidade: rec.cliente || '',
+        clienteId: rec.clienteId || '',
+        nf: fields.nf || 'pendente',
+        formaPagamento: fields.formaPagamento || 'PIX',
+        observacoes: fields.observacoes || '',
+        origemAutomatica: 'recorrencia',
+        recorrenciaId,
+        competencia: competenciaVal,
+        referenciaMes: competenciaVal,
+        modificadoEm: serverTimestamp(),
+        criadoEm: serverTimestamp(),
+      };
+      let saved;
+      try {
+        saved = await addDoc(uCol('negocio'), payload);
+      } catch (e) {
+        toast('Erro ao registrar pagamento: ' + e.message, 'error');
+        return false;
+      }
+      const local = { ...payload, id: saved.id, criadoEm: new Date().toISOString(), modificadoEm: new Date().toISOString() };
+      set(s => ({ pagamentoRecorrenciaSubmitting: false, realData: { ...s.realData, negocio: [local, ...s.realData.negocio.filter(x => x.id !== saved.id)] } }));
+      get()._refreshData();
+      closeModal();
+      toast('Pagamento registrado em Finanças Negócio!');
 
-    if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) {
-      const parts = rec.renovacao.split('-');
-      if (parts.length === 3) {
-        let nextYear = parseInt(parts[0], 10);
-        let nextMonth = parseInt(parts[1], 10);
+      if ((rec.periodicidade === 'Anual' || rec.periodicidade === 'Semestral') && rec.renovacao) {
+        const parts = rec.renovacao.split('-');
+        if (parts.length === 3) {
+          let nextYear = parseInt(parts[0], 10);
+          let nextMonth = parseInt(parts[1], 10);
         
-        if (rec.periodicidade === 'Semestral') {
-          nextMonth += 6;
-          if (nextMonth > 12) {
-            nextMonth -= 12;
+          if (rec.periodicidade === 'Semestral') {
+            nextMonth += 6;
+            if (nextMonth > 12) {
+              nextMonth -= 12;
+              nextYear += 1;
+            }
+          } else {
             nextYear += 1;
           }
-        } else {
-          nextYear += 1;
-        }
         
-        const nextMonthStr = String(nextMonth).padStart(2, '0');
-        const newRenovacao = `${nextYear}-${nextMonthStr}-${parts[2]}`;
-        updateDoc(uDoc('recorrencia', recorrenciaId), { renovacao: newRenovacao, modificadoEm: serverTimestamp() }).catch(() => {});
-        set(s => ({
-          realData: { ...s.realData, recorrencia: s.realData.recorrencia.map(x => x.id === recorrenciaId ? { ...x, renovacao: newRenovacao } : x) }
-        }));
+          const nextMonthStr = String(nextMonth).padStart(2, '0');
+          const newRenovacao = `${nextYear}-${nextMonthStr}-${parts[2]}`;
+          updateDoc(uDoc('recorrencia', recorrenciaId), { renovacao: newRenovacao, modificadoEm: serverTimestamp() }).catch(() => {});
+          set(s => ({
+            realData: { ...s.realData, recorrencia: s.realData.recorrencia.map(x => x.id === recorrenciaId ? { ...x, renovacao: newRenovacao } : x) }
+          }));
+        }
       }
+      return true;
+    } finally {
+      pagamentosEmAndamento.delete(paymentKey);
     }
   },
 
@@ -541,4 +563,5 @@ export const createFinanceSlice = (set, get) => ({
     get()._refreshData();
     toast('Atividade excluída!');
   },
-});
+  });
+};

@@ -30,6 +30,8 @@ export const createUISlice = (set, get) => ({
   _firedReminders: new Set(),
   
   modalOpen: false,
+  pagamentoRecorrenciaSubmitting: false,
+  setPagamentoRecorrenciaSubmitting: (value) => set({ pagamentoRecorrenciaSubmitting: value }),
   modalType: null,
   modalTitle: '',
   modalSize: null,
@@ -236,6 +238,7 @@ export const createUISlice = (set, get) => ({
   },
 
   openModal: (type, id = null, extra = null) => {
+    if (get().modalType === 'pagarRecorrencia' && get().pagamentoRecorrenciaSubmitting) return;
     const map = {
       lead: 'leads', projeto: 'projetos', recorrencia: 'recorrencia',
       negocioReceita: 'negocio', negocioDespesa: 'negocio',
@@ -292,7 +295,10 @@ export const createUISlice = (set, get) => ({
       },
     }));
   },
-  closeModal: () => set({ modalOpen: false, modalType: null, modalSize: null }),
+  closeModal: () => {
+    if (get().modalType === 'pagarRecorrencia' && get().pagamentoRecorrenciaSubmitting) return;
+    set({ modalOpen: false, modalType: null, modalSize: null });
+  },
   setModalSize: (size) => set({ modalSize: size }),
 
   toggleSelect: (colName, id) => {

@@ -632,9 +632,10 @@ useDash.setState({
   saveProjeto: async (fields) => {
     record('saveProjeto', fields);
     useDash.setState(s => {
-      const exists = s.data.projetos.some(p => p.id === fields.id);
+      const id = fields.id || s.editingId.projetos;
+      const exists = id && s.data.projetos.some(p => p.id === id);
       const nextList = exists
-        ? s.data.projetos.map(p => p.id === fields.id ? { ...p, ...fields } : p)
+        ? s.data.projetos.map(p => p.id === id ? { ...p, ...fields } : p)
         : [{ ...fields, id: fields.id || 'proj-local-' + Date.now() }, ...s.data.projetos];
       return { data: { ...s.data, projetos: nextList }, modalOpen: false, modalType: null };
     });
@@ -644,9 +645,20 @@ useDash.setState({
     record('duplicarProjeto', id);
     const proj = useDash.getState().data.projetos.find(p => p.id === id);
     if (!proj) return;
-    const copy = { ...proj, id: 'proj-dup-' + Date.now(), descricao: `${proj.descricao} (Cópia)` };
+    const { id: _origId, criadoEm: _c, modificadoEm: _m, tarefas: _t, arquivos: _a, ...rest } = proj;
+    const copy = {
+      ...rest,
+      id: 'proj-dup-' + Date.now(),
+      descricao: `(Cópia) ${rest.descricao || ''}`,
+      status: 'Em andamento',
+      pagamento: 'Pendente',
+      tarefas: [],
+      arquivos: [],
+      criadoEm: new Date().toISOString(),
+      modificadoEm: new Date().toISOString(),
+    };
     useDash.setState(s => ({ data: { ...s.data, projetos: [copy, ...s.data.projetos] } }));
-    useDash.getState().toast('Projeto duplicado (isolado)');
+    useDash.getState().toast('Projeto duplicado!');
   },
   deleteItem: async (col, id, label) => {
     record('deleteItem', col, id, label);
@@ -656,6 +668,26 @@ useDash.setState({
   bulkDelete: async () => {
     record('bulkDelete');
     useDash.getState().toast('Simulação: exclusão em massa cancelada na auditoria');
+  },
+  updateProjectField: async (id, field, value) => {
+    record('updateProjectField', id, field, value);
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        projetos: s.data.projetos.map(p => p.id === id ? { ...p, [field]: value } : p),
+      },
+    }));
+    useDash.getState().toast('Anotação salva localmente (isolado)');
+  },
+  updateProjectTarefas: async (tarefas) => {
+    const activeProjectView = useDash.getState().activeProjectView;
+    record('updateProjectTarefas', activeProjectView, tarefas);
+    useDash.setState(s => ({
+      data: {
+        ...s.data,
+        projetos: s.data.projetos.map(p => p.id === activeProjectView ? { ...p, tarefas } : p),
+      },
+    }));
   },
   reportAutomaticError: (...args) => record('error', ...args),
 });

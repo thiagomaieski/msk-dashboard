@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useDash, sortData, fmtBRL, getRecorrenciaVencimento, isRecorrenciaPaidInCompetencia } from '../store/useStore';
-import { Badge, EmptyState } from '../components/shared';
+import { Badge } from '../components/ui/Badge';
+import { Skeleton } from '../components/ui/Skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import CustomSelect from '../components/CustomSelect';
 import { formatMinutes, getMesAtualKey, formatMesAnoLabel, navegarMes, calcularConsumoMes } from '../utils/timeUtils';
 import { maskCpfCnpjInput } from '../components/modals/ClienteForm';
+import './RecorrenciaPage.css';
 
 function resolveDescricaoNf(rec, competenciaKey) {
   const [ano = '', mes = ''] = (competenciaKey || '').split('-');
@@ -143,55 +146,52 @@ export default function RecorrenciaPage() {
   };
 
   const activePopoverRec = nfPopoverId ? (data.recorrencia || []).find(r => r.id === nfPopoverId) : null;
+  const loading = useDash(s => s.loading);
+  const totalContractsCount = (data.recorrencia || []).length;
 
   return (
-    <div>
-      <div className="page-header" style={{ flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div className="page-title">Fechamento do Mês</div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'var(--bg2)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm, 8px)',
-              padding: '4px 8px',
-            }}
-          >
-            <button
-              type="button"
-              className="btn-icon"
-              style={{ width: 26, height: 26 }}
-              onClick={() => setMesSelecionado(prev => navegarMes(prev, -1))}
-              title="Mês anterior"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 125, textAlign: 'center', color: 'var(--text)' }}>
-              {formatMesAnoLabel(mesSelecionado)}
-            </span>
-            <button
-              type="button"
-              className="btn-icon"
-              style={{ width: 26, height: 26 }}
-              onClick={() => setMesSelecionado(prev => navegarMes(prev, 1))}
-              title="Próximo mês"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-            {mesSelecionado !== mesAtual && (
+    <div className="recorrencia-page">
+      <div className="page-header recorrencia-header">
+        <div className="recorrencia-title-group">
+          <div className="recorrencia-eyebrow">Receita recorrente</div>
+          <div className="recorrencia-title-row">
+            <h1 className="page-title">Fechamento do Mês</h1>
+            <div className="recorrencia-competencia-pill" role="group" aria-label="Seletor de competência">
               <button
                 type="button"
-                className="btn btn-sm btn-secondary"
-                style={{ fontSize: 11, padding: '2px 8px', marginLeft: 4 }}
-                onClick={() => setMesSelecionado(mesAtual)}
+                className="btn-icon recorrencia-competencia-nav"
+                onClick={() => setMesSelecionado(prev => navegarMes(prev, -1))}
+                title="Mês anterior"
+                aria-label="Mês anterior"
               >
-                Mês atual
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M15 18l-6-6 6-6"/></svg>
               </button>
-            )}
+              <span className="recorrencia-competencia-label">
+                {formatMesAnoLabel(mesSelecionado)}
+              </span>
+              <button
+                type="button"
+                className="btn-icon recorrencia-competencia-nav"
+                onClick={() => setMesSelecionado(prev => navegarMes(prev, 1))}
+                title="Próximo mês"
+                aria-label="Próximo mês"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+              {mesSelecionado !== mesAtual && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary recorrencia-mes-atual-btn"
+                  onClick={() => setMesSelecionado(mesAtual)}
+                >
+                  Mês atual
+                </button>
+              )}
+            </div>
           </div>
+          <p className="recorrencia-description">
+            Contratos ativos, conciliação mensal de recebimentos e controle de NFS-e.
+          </p>
         </div>
 
         <div className="page-actions">
@@ -206,403 +206,399 @@ export default function RecorrenciaPage() {
       </div>
 
       {/* KPIs Compactos */}
-      <div className="dash-kpi-row shell-recurrence-summary" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 16 }}>
-        <div className="recorrencia-kpi-card" style={{ padding: '14px 18px' }}>
-          <div className="recorrencia-kpi-header" style={{ marginBottom: 6 }}>
+      <div className="dash-kpi-row shell-recurrence-summary recorrencia-kpi-grid">
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
             <span className="recorrencia-kpi-label">Receita Mensal (MRR)</span>
             <div className="recorrencia-kpi-icon" style={{ color: 'var(--green)', background: 'var(--green-bg)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
           </div>
-          <div className="recorrencia-kpi-value" style={{ color: 'var(--green)', fontSize: 20 }}>{fmtBRL(totalMensal)}</div>
+          <div className="recorrencia-kpi-value" style={{ color: 'var(--green)' }}>{fmtBRL(totalMensal)}</div>
         </div>
 
-        <div className="recorrencia-kpi-card" style={{ padding: '14px 18px' }}>
-          <div className="recorrencia-kpi-header" style={{ marginBottom: 6 }}>
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
             <span className="recorrencia-kpi-label">Clientes Ativos</span>
             <div className="recorrencia-kpi-icon" style={{ color: 'var(--accent)', background: 'var(--accent-bg)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
           </div>
-          <div className="recorrencia-kpi-value" style={{ fontSize: 20 }}>{ativosCount}</div>
+          <div className="recorrencia-kpi-value">{ativosCount}</div>
         </div>
 
-        <div className="recorrencia-kpi-card" style={{ padding: '14px 18px' }}>
-          <div className="recorrencia-kpi-header" style={{ marginBottom: 6 }}>
+        <div className="recorrencia-kpi-card">
+          <div className="recorrencia-kpi-header">
             <span className="recorrencia-kpi-label">Receita Anual Estimada (ARR)</span>
             <div className="recorrencia-kpi-icon" style={{ color: 'var(--blue)', background: 'var(--blue-bg)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
           </div>
-          <div className="recorrencia-kpi-value" style={{ fontSize: 20 }}>{fmtBRL(totalAnual)}</div>
+          <div className="recorrencia-kpi-value">{fmtBRL(totalAnual)}</div>
         </div>
       </div>
 
-      {/* Barra de resumo do mês selecionado */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          padding: '10px 16px',
-          marginBottom: 16,
-          background: 'var(--bg2)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-sm, 8px)',
-          fontSize: 13,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text2)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatMesAnoLabel(mesSelecionado)}:</span>
-          <span>
-            <strong style={{ color: resumoMes.nfsEmitidas === resumoMes.total && resumoMes.total > 0 ? 'var(--green)' : 'var(--text)' }}>
-              {resumoMes.nfsEmitidas} de {resumoMes.total}
-            </strong>{' '}
-            NFs emitidas
-          </span>
-          <span style={{ color: 'var(--text3)' }}>•</span>
-          <span>
-            <strong style={{ color: resumoMes.pagas === resumoMes.total && resumoMes.total > 0 ? 'var(--green)' : 'var(--text)' }}>
-              {resumoMes.pagas}
-            </strong>{' '}
-            pagas
-          </span>
-          <span style={{ color: 'var(--text3)' }}>•</span>
-          <span>
-            <strong style={{ color: resumoMes.aReceber > 0 ? 'var(--amber, #f59e0b)' : 'var(--green)' }}>
-              {fmtBRL(resumoMes.aReceber)}
-            </strong>{' '}
-            a receber
+      <section className="recorrencia-workspace" aria-label="Contratos recorrentes">
+        {/* Barra de resumo do mês selecionado */}
+        <div className="recorrencia-summary-bar">
+          <div className="recorrencia-summary-metrics">
+            <span className="recorrencia-summary-month">{formatMesAnoLabel(mesSelecionado)}</span>
+            <span className="recorrencia-summary-chip">
+              <strong style={{ color: resumoMes.nfsEmitidas === resumoMes.total && resumoMes.total > 0 ? 'var(--green)' : 'var(--text)' }}>
+                {resumoMes.nfsEmitidas} de {resumoMes.total}
+              </strong>{' '}
+              NFs emitidas
+            </span>
+            <span className="recorrencia-summary-chip">
+              <strong style={{ color: resumoMes.pagas === resumoMes.total && resumoMes.total > 0 ? 'var(--green)' : 'var(--text)' }}>
+                {resumoMes.pagas}
+              </strong>{' '}
+              pagas
+            </span>
+            <span className="recorrencia-summary-chip">
+              <strong style={{ color: resumoMes.aReceber > 0 ? 'var(--amber)' : 'var(--green)' }}>
+                {fmtBRL(resumoMes.aReceber)}
+              </strong>{' '}
+              a receber
+            </span>
+          </div>
+
+          <label className="recorrencia-toggle-pill">
+            <input
+              type="checkbox"
+              checked={mostrarForaRenovacao}
+              onChange={e => setMostrarForaRenovacao(e.target.checked)}
+            />
+            <span>Mostrar anuais/semestrais fora do mês de renovação</span>
+          </label>
+        </div>
+
+        <div className="recorrencia-toolbar-heading">
+          <h2>Contratos <span className="recorrencia-count">{list.length}</span></h2>
+          <span role="status">
+            {loading && !totalContractsCount
+              ? 'Carregando contratos...'
+              : `${list.length} de ${totalContractsCount} contratos`}
           </span>
         </div>
 
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={mostrarForaRenovacao}
-            onChange={e => setMostrarForaRenovacao(e.target.checked)}
+        <div className="filters recorrencia-filters">
+          <div className="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              className="filter-input"
+              aria-label="Buscar cliente, plano ou CPF/CNPJ"
+              placeholder="Buscar cliente, plano ou CPF/CNPJ..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <CustomSelect
+            variant="filter"
+            ariaLabel="Status"
+            value={status}
+            onChange={e => setStatus(e.target.value)}
+            placeholder="Todos os status"
+            options={[
+              { value: '', label: 'Todos os status' },
+              { value: 'Ativo', label: 'Ativos' },
+              { value: 'Inativo', label: 'Inativos' }
+            ]}
           />
-          Mostrar anuais/semestrais fora do mês de renovação
-        </label>
-      </div>
-
-      <div className="filters">
-        <div className="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="filter-input" placeholder="Buscar cliente, plano ou CPF/CNPJ..." value={search} onChange={e => setSearch(e.target.value)} />
+          <CustomSelect
+            variant="filter"
+            ariaLabel="Ordenar contratos"
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            options={[
+              { value: 'criadoDesc', label: 'Mais recentes' },
+              { value: 'nomeAz', label: 'Nome A-Z' },
+              { value: 'valorDesc', label: 'Maior valor' },
+              { value: 'valorAsc', label: 'Menor valor' },
+              { value: 'vencimento', label: 'Próx. vencimento' }
+            ]}
+          />
         </div>
-        <CustomSelect
-          variant="filter"
-          value={status}
-          onChange={e => setStatus(e.target.value)}
-          placeholder="Todos os status"
-          options={[
-            { value: '', label: 'Todos os status' },
-            { value: 'Ativo', label: 'Ativos' },
-            { value: 'Inativo', label: 'Inativos' }
-          ]}
-        />
-        <CustomSelect
-          variant="filter"
-          value={sort}
-          onChange={e => setSort(e.target.value)}
-          options={[
-            { value: 'criadoDesc', label: 'Mais recentes' },
-            { value: 'nomeAz', label: 'Nome A-Z' },
-            { value: 'valorDesc', label: 'Maior valor' },
-            { value: 'valorAsc', label: 'Menor valor' },
-            { value: 'vencimento', label: 'Próx. vencimento' }
-          ]}
-        />
-      </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 30 }}>
-                <input
-                  type="checkbox"
-                  onChange={() => selectAll('recorrencia', allIds)}
-                  checked={selectedItems.length === list.length && list.length > 0}
-                />
-              </th>
-              <th>Cliente</th>
-              <th>CPF / CNPJ</th>
-              <th>Plano / Descrição</th>
-              <th>Valor</th>
-              <th>Próx. Vencimento</th>
-              <th>Pago ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})</th>
-              <th>NF ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})</th>
-              <th>Método</th>
-              <th style={{ width: 90 }}>Status</th>
-              <th style={{ width: 190 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {!list.length ? (
-              <EmptyState msg="Nenhum contrato para esta competência" colSpan={11} />
-            ) : (
-              list.map(r => {
-                const cli = clientByRec[r.id];
-                const rawDoc = cli?.cnpjCpf || cli?.cpfCnpj || '';
-                const formattedDoc = rawDoc ? maskCpfCnpjInput(rawDoc) : '';
-                const isPaid = isRecorrenciaPaidInCompetencia(r, mesSelecionado, data.negocio);
-                const compNf = r.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '' };
+        {loading && !totalContractsCount ? (
+          <div className="recorrencia-loading" role="status" aria-label="Carregando contratos" aria-busy="true">
+            <Skeleton height={54} count={6} />
+          </div>
+        ) : (
+          <Table className="recorrencia-table" aria-label="Contratos recorrentes">
+            <TableHeader>
+              <tr>
+                <TableHead>
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar todos os contratos da competência"
+                    onChange={() => selectAll('recorrencia', allIds)}
+                    checked={selectedItems.length === list.length && list.length > 0}
+                  />
+                </TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>CPF / CNPJ</TableHead>
+                <TableHead>Plano / Descrição</TableHead>
+                <TableHead style={{ textAlign: 'right' }}>Valor</TableHead>
+                <TableHead>Próx. Vencimento</TableHead>
+                <TableHead>Pago ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})</TableHead>
+                <TableHead>NF ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead style={{ textAlign: 'right' }}>Ações</TableHead>
+              </tr>
+            </TableHeader>
+            <TableBody>
+              {!list.length ? (
+                <tr>
+                  <td colSpan={11}>
+                    <div className="recorrencia-empty" role="status">
+                      <span className="recorrencia-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 22, height: 22 }}>
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                      </span>
+                      <h3>Nenhum contrato para esta competência</h3>
+                      <p>
+                        {totalContractsCount === 0
+                          ? 'Cadastre seu primeiro contrato recorrente para acompanhar mensalidades e NFS-e.'
+                          : 'Ajuste os filtros, a competência selecionada ou marque a exibição fora do mês de renovação.'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                list.map(r => {
+                  const cli = clientByRec[r.id];
+                  const rawDoc = cli?.cnpjCpf || cli?.cpfCnpj || '';
+                  const formattedDoc = rawDoc ? maskCpfCnpjInput(rawDoc) : '';
+                  const isPaid = isRecorrenciaPaidInCompetencia(r, mesSelecionado, data.negocio);
+                  const compNf = r.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '' };
+                  const isSelected = selectedItems.includes(r.id);
 
-                return (
-                  <tr key={r.id} className="row-in">
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(r.id)}
-                        onChange={() => toggleSelect('recorrencia', r.id)}
-                      />
-                    </td>
-                    <td
-                      style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text)' }}
-                      onClick={() => openModal('recorrencia', r.id)}
-                    >
-                      {r.cliente || '-'}
-                      {r.periodicidade && r.periodicidade !== 'Mensal' && (
-                        <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--bg3)', color: 'var(--text3)', fontWeight: 500 }}>
-                          {r.periodicidade}
-                        </span>
-                      )}
-                      {(() => {
-                        const targetDate = r.reajusteEm || ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') ? r.renovacao : '');
-                        if (!targetDate || r.status !== 'Ativo') return null;
-                        const dTarget = new Date(targetDate + 'T12:00:00');
-                        const days = diffDays(dTarget);
-                        if (days === null || days > 30 || days < -15) return null;
-                        return (
-                          <span
-                            style={{
-                              marginLeft: 6,
-                              fontSize: 10,
-                              padding: '1px 6px',
-                              borderRadius: 99,
-                              background: days <= 0 ? 'var(--red-bg)' : 'rgba(245,158,11,0.14)',
-                              color: days <= 0 ? 'var(--red)' : '#f59e0b',
-                              fontWeight: 700,
-                            }}
-                            title={`Data de reajuste/renovação: ${targetDate.split('-').reverse().join('/')}`}
-                          >
-                            {days < 0 ? `reajuste há ${Math.abs(days)}d` : days === 0 ? 'reajuste hoje' : `reajuste em ${days}d`}
+                  return (
+                    <TableRow key={r.id} active={isSelected} className="row-in">
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar ${r.cliente || 'contrato'}`}
+                          checked={isSelected}
+                          onChange={() => toggleSelect('recorrencia', r.id)}
+                        />
+                      </TableCell>
+                      <TableCell
+                        className="recorrencia-col-cliente"
+                        onClick={() => openModal('recorrencia', r.id)}
+                      >
+                        <div className="recorrencia-client-cell">
+                          <span className="recorrencia-client-avatar" aria-hidden="true">
+                            {(r.cliente || '?').trim()[0]?.toUpperCase() || '?'}
                           </span>
-                        );
-                      })()}
-                    </td>
-                    <td>
-                      {formattedDoc ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text2)' }}>
-                            {formattedDoc}
-                          </span>
-                          <button
-                            type="button"
-                            className="row-btn"
-                            style={{ width: 22, height: 22 }}
-                            title="Copiar CPF/CNPJ"
-                            onClick={() => copyText(formattedDoc, 'CPF/CNPJ')}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)' }}>
-                          <span>—</span>
-                          <button
-                            type="button"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              color: 'var(--accent)',
-                              textDecoration: 'underline',
-                              fontSize: 11,
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => {
-                              if (cli?.id) openModal('cliente', cli.id);
-                              else openModal('cliente');
-                            }}
-                          >
-                            cadastrar
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px' }}>
-                        <span style={{ fontSize: 12 }}>{r.plano || '-'}</span>
-                        {(() => {
-                          const consumo = calcularConsumoMes(r.atividades, mesSelecionado, r.limiteHoras);
-                          if (consumo.totalMinutos === 0) return null;
-                          const excedido = consumo.excedeu;
-                          const cor = excedido ? 'var(--red)' : consumo.percentual >= 80 ? '#f59e0b' : 'var(--text3)';
-                          return (
-                            <div
-                              className="manutencao-badge"
-                              style={{ color: cor }}
-                              title={`Manutenção ${mesSelecionado}: ${formatMinutes(consumo.totalMinutos)}${consumo.limiteMinutos ? ` de ${formatMinutes(consumo.limiteMinutos)}` : ''}`}
+                          <div className="recorrencia-client-info">
+                            <button
+                              type="button"
+                              className="recorrencia-client-name"
+                              onClick={e => { e.stopPropagation(); openModal('recorrencia', r.id); }}
                             >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
-                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                              {r.cliente || '-'}
+                            </button>
+                            <div className="recorrencia-client-badges">
+                              {r.periodicidade && r.periodicidade !== 'Mensal' && (
+                                <span className="recorrencia-period-chip">
+                                  {r.periodicidade}
+                                </span>
+                              )}
+                              {(() => {
+                                const targetDate = r.reajusteEm || ((r.periodicidade === 'Anual' || r.periodicidade === 'Semestral') ? r.renovacao : '');
+                                if (!targetDate || r.status !== 'Ativo') return null;
+                                const dTarget = new Date(targetDate + 'T12:00:00');
+                                const days = diffDays(dTarget);
+                                if (days === null || days > 30 || days < -15) return null;
+                                return (
+                                  <span
+                                    className={`recorrencia-reajuste-chip ${days <= 0 ? 'is-overdue' : 'is-soon'}`}
+                                    title={`Data de reajuste/renovação: ${targetDate.split('-').reverse().join('/')}`}
+                                  >
+                                    {days < 0 ? `reajuste há ${Math.abs(days)}d` : days === 0 ? 'reajuste hoje' : `reajuste em ${days}d`}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {formattedDoc ? (
+                          <div className="recorrencia-doc-wrap">
+                            <span className="recorrencia-doc-text">
+                              {formattedDoc}
+                            </span>
+                            <button
+                              type="button"
+                              className="row-btn recorrencia-copy-btn"
+                              title="Copiar CPF/CNPJ"
+                              onClick={() => copyText(formattedDoc, 'CPF/CNPJ')}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                               </svg>
-                              <span>{formatMinutes(consumo.totalMinutos)}{consumo.limiteMinutos ? ` / ${formatMinutes(consumo.limiteMinutos)}` : ''}</span>
-                              {consumo.limiteMinutos && (
-                                <div className="manutencao-badge-track">
-                                  <div
-                                    className="manutencao-badge-fill"
-                                    style={{ width: `${Math.min(consumo.percentual, 100)}%`, background: cor }}
-                                  />
-                                </div>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="recorrencia-doc-empty">
+                            <span>—</span>
+                            <button
+                              type="button"
+                              className="recorrencia-doc-register"
+                              onClick={() => {
+                                if (cli?.id) openModal('cliente', cli.id);
+                                else openModal('cliente');
+                              }}
+                            >
+                              cadastrar
+                            </button>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="recorrencia-plano-stack">
+                          <span className="recorrencia-plano-name">{r.plano || '-'}</span>
+                          {(() => {
+                            const consumo = calcularConsumoMes(r.atividades, mesSelecionado, r.limiteHoras);
+                            if (consumo.totalMinutos === 0) return null;
+                            const excedido = consumo.excedeu;
+                            const cor = excedido ? 'var(--red)' : consumo.percentual >= 80 ? 'var(--amber)' : 'var(--text2)';
+                            return (
+                              <div
+                                className={`manutencao-badge ${excedido ? 'manutencao-badge-excedido' : ''}`}
+                                style={{ color: cor }}
+                                title={`Manutenção ${mesSelecionado}: ${formatMinutes(consumo.totalMinutos)}${consumo.limiteMinutos ? ` de ${formatMinutes(consumo.limiteMinutos)}` : ''}`}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
+                                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span>{formatMinutes(consumo.totalMinutos)}{consumo.limiteMinutos ? ` / ${formatMinutes(consumo.limiteMinutos)}` : ''}</span>
+                                {consumo.limiteMinutos && (
+                                  <div className="manutencao-badge-track">
+                                    <div
+                                      className="manutencao-badge-fill"
+                                      style={{ width: `${Math.min(consumo.percentual, 100)}%`, background: cor }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </TableCell>
+                      <TableCell align="right" className="recorrencia-col-valor">
+                        <span className="recorrencia-valor-amount">{fmtBRL(r.valor)}</span>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          if (r.status !== 'Ativo') return <span className="recorrencia-muted">—</span>;
+                          const vd = getProxVencimento(r);
+                          const diff = diffDays(vd);
+                          const urgent = diff !== null && diff <= 7;
+                          return (
+                            <div className="recorrencia-venc-wrap">
+                              <span className="recorrencia-venc-date">{fmtVenc(vd)}</span>
+                              {urgent && (
+                                <span
+                                  className={`recorrencia-venc-chip ${diff <= 0 ? 'is-overdue' : 'is-soon'}`}
+                                >
+                                  {diff <= 0 ? 'VENCEU' : `${diff}d`}
+                                </span>
                               )}
                             </div>
                           );
                         })()}
-                      </div>
-                    </td>
-                    <td style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500 }}>{fmtBRL(r.valor)}</td>
-                    <td style={{ fontSize: 13 }}>
-                      {(() => {
-                        if (r.status !== 'Ativo') return <span style={{ color: 'var(--text3)' }}>—</span>;
-                        const vd = getProxVencimento(r);
-                        const diff = diffDays(vd);
-                        const urgent = diff !== null && diff <= 7;
-                        return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span>{fmtVenc(vd)}</span>
-                            {urgent && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  background: diff <= 0 ? 'var(--red-bg)' : 'var(--amber-bg, rgba(245,158,11,.15))',
-                                  color: diff <= 0 ? 'var(--red)' : '#f59e0b',
-                                  padding: '1px 6px',
-                                  borderRadius: 4,
-                                  fontWeight: 700,
-                                }}
-                              >
-                                {diff <= 0 ? 'VENCEU' : `${diff}d`}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td>
-                      {isPaid ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            background: 'var(--green-bg)',
-                            color: 'var(--green)',
-                          }}
-                        >
-                          ✓ Pago
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11,
-                            fontWeight: 500,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            background: 'var(--bg3)',
-                            color: 'var(--text3)',
-                          }}
-                        >
-                          Pendente
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: compNf.nfEmitida ? 'var(--green)' : 'var(--text3)' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!compNf.nfEmitida}
-                            onChange={e => updateRecorrenciaCompetenciaNf(r.id, mesSelecionado, { nfEmitida: e.target.checked })}
-                          />
-                          <span>{compNf.nfEmitida ? 'Emitida' : 'Pendente'}</span>
-                        </label>
-                        {compNf.nfEmitida && (
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Nº NF"
-                            defaultValue={compNf.nfNumero || ''}
-                            key={`${r.id}_${mesSelecionado}_${compNf.nfNumero || ''}`}
-                            style={{ width: 68, height: 24, padding: '2px 6px', fontSize: 11, fontFamily: 'var(--mono)' }}
-                            onBlur={e => {
-                              const val = e.target.value.trim();
-                              if (val !== (compNf.nfNumero || '')) {
-                                updateRecorrenciaCompetenciaNf(r.id, mesSelecionado, { nfNumero: val });
-                              }
-                            }}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') e.currentTarget.blur();
-                            }}
-                          />
+                      </TableCell>
+                      <TableCell>
+                        {isPaid ? (
+                          <span className="recorrencia-pay-pill is-paid">
+                            ✓ Pago
+                          </span>
+                        ) : (
+                          <span className="recorrencia-pay-pill is-pending">
+                            Pendente
+                          </span>
                         )}
-                      </div>
-                    </td>
-                    <td><span style={{ fontSize: 11, color: 'var(--text3)' }}>{r.metodoPagamento || 'PIX'}</span></td>
-                    <td style={{ width: 90 }}><Badge status={r.status || 'Ativo'} /></td>
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-secondary"
-                          style={{ fontSize: 11, padding: '4px 8px' }}
-                          onClick={() => setNfPopoverId(nfPopoverId === r.id ? null : r.id)}
-                          title="Ver e copiar dados para emissão da NFS-e"
-                        >
-                          Dados da NF
-                        </button>
-                        {r.status === 'Ativo' && !isPaid && (
+                      </TableCell>
+                      <TableCell>
+                        <div className="recorrencia-nf-cell">
+                          <label className={`recorrencia-nf-check ${compNf.nfEmitida ? 'is-issued' : 'is-pending'}`}>
+                            <input
+                              type="checkbox"
+                              checked={!!compNf.nfEmitida}
+                              onChange={e => updateRecorrenciaCompetenciaNf(r.id, mesSelecionado, { nfEmitida: e.target.checked })}
+                            />
+                            <span>{compNf.nfEmitida ? 'Emitida' : 'Pendente'}</span>
+                          </label>
+                          {compNf.nfEmitida && (
+                            <input
+                              type="text"
+                              className="form-input recorrencia-nf-input"
+                              placeholder="Nº NF"
+                              defaultValue={compNf.nfNumero || ''}
+                              key={`${r.id}_${mesSelecionado}_${compNf.nfNumero || ''}`}
+                              onBlur={e => {
+                                const val = e.target.value.trim();
+                                if (val !== (compNf.nfNumero || '')) {
+                                  updateRecorrenciaCompetenciaNf(r.id, mesSelecionado, { nfNumero: val });
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') e.currentTarget.blur();
+                              }}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="recorrencia-metodo-pill">{r.metodoPagamento || 'PIX'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge status={r.status || 'Ativo'} size="sm" />
+                      </TableCell>
+                      <TableCell align="right">
+                        <div className="row-actions recorrencia-row-actions">
                           <button
                             type="button"
-                            className="btn btn-sm btn-secondary"
-                            style={{ fontSize: 11, color: 'var(--green)', borderColor: 'var(--green-bg)', padding: '4px 8px' }}
-                            onClick={() => openModal('pagarRecorrencia', r.id, { competencia: mesSelecionado })}
-                            title="Registrar Pagamento"
+                            className="btn btn-sm btn-secondary recorrencia-action-pill"
+                            onClick={() => setNfPopoverId(nfPopoverId === r.id ? null : r.id)}
+                            title="Ver e copiar dados para emissão da NFS-e"
                           >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-                            Pagar
+                            Dados da NF
                           </button>
-                        )}
-                        <button className="row-btn" onClick={() => openModal('recorrencia', r.id)} title="Editar">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
-                        </button>
-                        <button className="row-btn del" onClick={() => deleteItem('recorrencia', r.id, r.cliente)} title="Excluir">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                          {r.status === 'Ativo' && !isPaid && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary recorrencia-action-pill is-pay"
+                              onClick={() => openModal('pagarRecorrencia', r.id, { competencia: mesSelecionado })}
+                              title="Registrar Pagamento"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 11, height: 11 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                              Pagar
+                            </button>
+                          )}
+                          <button className="row-btn recorrencia-icon-btn" onClick={() => openModal('recorrencia', r.id)} title="Editar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+                          </button>
+                          <button className="row-btn del recorrencia-icon-btn" onClick={() => deleteItem('recorrencia', r.id, r.cliente)} title="Excluir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </section>
 
       {/* Modal / Popover "Dados da NF" (NFS-e nacional) */}
       {activePopoverRec && (() => {
@@ -614,7 +610,19 @@ export default function RecorrenciaPage() {
         const descricao = resolveDescricaoNf(activePopoverRec, mesSelecionado);
         const valorFormatado = fmtBRL(activePopoverRec.valor);
         const valorNumerico = Number(activePopoverRec.valor || 0).toFixed(2).replace('.', ',');
-        const compNf = activePopoverRec.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '' };
+        const compNf = activePopoverRec.competencias?.[mesSelecionado] || { nfEmitida: false, nfNumero: '', nfEmitidaEm: null };
+        const competenciaFmt = `${mesSelecionado.slice(5, 7)}/${mesSelecionado.slice(0, 4)}`;
+        const formatNfDate = (isoOrDateStr) => {
+          if (!isoOrDateStr) return '';
+          if (typeof isoOrDateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(isoOrDateStr)) {
+            const [y, m, d] = isoOrDateStr.split('-');
+            return `${d}/${m}/${y}`;
+          }
+          const d = new Date(isoOrDateStr);
+          if (isNaN(d.getTime())) return '';
+          return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        };
+        const formattedEmitidaDate = formatNfDate(compNf.nfEmitidaEm);
 
         const copyAllText = [
           `Cliente: ${nomeTomador}`,
@@ -624,86 +632,206 @@ export default function RecorrenciaPage() {
           `Valor: ${valorFormatado}`,
         ].join('\n');
 
+        const handleSaveNfModal = () => {
+          const numEl = document.getElementById('nf-modal-numero');
+          const chkEl = document.getElementById('nf-modal-emitida');
+          const nextNum = numEl ? numEl.value.trim() : (compNf.nfNumero || '');
+          const nextEmitida = chkEl ? chkEl.checked : !!compNf.nfEmitida;
+          const effectiveEmitida = nextEmitida || Boolean(nextNum);
+
+          updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, {
+            nfEmitida: effectiveEmitida,
+            nfNumero: nextNum,
+          });
+          toast('Dados da NFS-e salvos na competência!');
+        };
+
         return (
           <div
-            className="modal-overlay"
+            className="modal-overlay recorrencia-nf-overlay open"
             style={{ zIndex: 1100 }}
             onClick={e => { if (e.target === e.currentTarget) setNfPopoverId(null); }}
           >
-            <div className="modal" style={{ maxWidth: 500, width: '94%' }}>
+            <div
+              className="modal recorrencia-nf-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Dados da NF — ${activePopoverRec.cliente} (${competenciaFmt})`}
+            >
               <div className="modal-header">
                 <div className="modal-title">
-                  Dados da NF — {activePopoverRec.cliente} ({mesSelecionado.slice(5, 7)}/{mesSelecionado.slice(0, 4)})
+                  Dados da NF — {activePopoverRec.cliente} ({competenciaFmt})
                 </div>
-                <button className="modal-close" onClick={() => setNfPopoverId(null)}>
+                <button className="modal-close" onClick={() => setNfPopoverId(null)} title="Fechar modal">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* 1. Cliente */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>1. Cliente / Razão Social</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, marginTop: 2 }}>{nomeTomador}</div>
-                  </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(nomeTomador, 'Cliente')}>Copiar</button>
-                </div>
 
-                {/* 2. CPF/CNPJ */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>2. CPF / CNPJ</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--mono)', marginTop: 2 }}>
-                      {rawDoc ? `${rawDoc} • ${formattedDoc}` : '—'}
+              <div className="modal-body recorrencia-nf-modal-body">
+                {/* Contexto da Competência e Status de Emissão */}
+                <div className="nf-modal-context-card">
+                  <div className="nf-modal-context-left">
+                    <span className="nf-modal-context-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
+                    </span>
+                    <div className="nf-modal-context-info">
+                      <div className="nf-modal-context-title-row">
+                        <strong className="nf-modal-context-cliente">{activePopoverRec.cliente}</strong>
+                        <span className="nf-modal-comp-pill">{formatMesAnoLabel(mesSelecionado)}</span>
+                      </div>
+                      <span className="nf-modal-context-plano">
+                        {activePopoverRec.plano || 'Serviços recorrentes'}
+                        {compNf.nfEmitida && formattedEmitidaDate ? ` • Emitida em ${formattedEmitidaDate}` : ''}
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(rawDoc, 'CPF/CNPJ (só dígitos)')}>Só dígitos</button>
-                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(formattedDoc, 'CPF/CNPJ formatado')}>Formatado</button>
+                  <div className="nf-modal-context-right">
+                    <Badge variant={compNf.nfEmitida ? 'success' : 'warning'} size="sm" dot>
+                      {compNf.nfEmitida ? 'Emitida' : 'Pendente'}
+                    </Badge>
+                    {compNf.nfNumero && (
+                      <span className="nf-modal-num-chip">Nº {compNf.nfNumero}</span>
+                    )}
                   </div>
                 </div>
 
-                {/* 3. Código do serviço */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>3. Código do serviço (NFS-e)</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--mono)', marginTop: 2 }}>{codigoServico}</div>
+                {/* Controle de Emissão na Competência (Status, Número e Data) */}
+                <section className="nf-modal-section" aria-label="Controle de emissão da NFS-e na competência">
+                  <div className="nf-modal-section-head">
+                    <h3>Controle de emissão ({competenciaFmt})</h3>
+                    <span className="nf-modal-section-tag">Competência isolada</span>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(codigoServico, 'Código do serviço')}>Copiar</button>
-                </div>
 
-                {/* 4. Descrição */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>4. Descrição do serviço</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 2, wordBreak: 'break-word' }}>{descricao}</div>
+                  <div className="nf-modal-emission-grid">
+                    <div className="nf-modal-status-field">
+                      <span className="nf-modal-field-label">Status de emissão</span>
+                      <label className={`nf-modal-toggle-pill ${compNf.nfEmitida ? 'is-issued' : 'is-pending'}`}>
+                        <input
+                          id="nf-modal-emitida"
+                          type="checkbox"
+                          checked={!!compNf.nfEmitida}
+                          onChange={e => {
+                            updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, {
+                              nfEmitida: e.target.checked,
+                            });
+                          }}
+                        />
+                        <span>Marcar NF como emitida nesta competência</span>
+                      </label>
+                    </div>
+
+                    <div className="nf-modal-input-field">
+                      <label className="nf-modal-field-label" htmlFor="nf-modal-numero">Número da NFS-e</label>
+                      <input
+                        id="nf-modal-numero"
+                        type="text"
+                        className="form-input nf-modal-input"
+                        placeholder="Ex: 2026/089"
+                        defaultValue={compNf.nfNumero || ''}
+                        key={`nf_num_${activePopoverRec.id}_${mesSelecionado}_${compNf.nfNumero || ''}`}
+                        onBlur={e => {
+                          const val = e.target.value.trim();
+                          if (val !== (compNf.nfNumero || '')) {
+                            updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, { nfNumero: val });
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveNfModal();
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="nf-modal-input-field">
+                      <label className="nf-modal-field-label" htmlFor="nf-modal-data">Data de emissão</label>
+                      <input
+                        id="nf-modal-data"
+                        type="text"
+                        className="form-input nf-modal-input is-readonly"
+                        readOnly
+                        value={compNf.nfEmitida ? (formattedEmitidaDate || 'Hoje (automático)') : 'Pendente de emissão'}
+                        title="Data registrada automaticamente pela store ao emitir a NFS-e"
+                      />
+                    </div>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(descricao, 'Descrição')}>Copiar</button>
-                </div>
+                </section>
 
-                {/* 5. Valor */}
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600 }}>5. Valor</div>
-                    <div style={{ fontSize: 14, color: 'var(--green)', fontWeight: 700, marginTop: 2 }}>{valorFormatado}</div>
+                {/* Dados Fiscais para Emissão (1 a 5) */}
+                <section className="nf-modal-section" aria-label="Dados fiscais para emissão da NFS-e">
+                  <div className="nf-modal-section-head">
+                    <h3>Dados fiscais para emissão (NFS-e)</h3>
+                    <span className="nf-modal-section-tag">Cópia rápida</span>
                   </div>
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => copyText(valorNumerico, 'Valor')}>Copiar</button>
-                </div>
 
-                {/* Controle rápido de NF emitida no próprio modal */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!compNf.nfEmitida}
-                      onChange={e => updateRecorrenciaCompetenciaNf(activePopoverRec.id, mesSelecionado, { nfEmitida: e.target.checked })}
-                    />
-                    Marcar NF como emitida nesta competência
-                  </label>
-                </div>
+                  <div className="nf-modal-cards-grid">
+                    {/* 1. Cliente */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">1. Cliente / Razão Social</div>
+                        <div className="nf-modal-data-value">{nomeTomador}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(nomeTomador, 'Cliente')}>Copiar</button>
+                    </div>
 
-                <div className="form-actions" style={{ marginTop: 6 }}>
+                    {/* 2. CPF/CNPJ */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">2. CPF / CNPJ</div>
+                        <div className="nf-modal-data-value is-mono">
+                          {rawDoc ? `${rawDoc} • ${formattedDoc}` : '—'}
+                        </div>
+                      </div>
+                      <div className="nf-modal-copy-group">
+                        <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(rawDoc, 'CPF/CNPJ (só dígitos)')}>Só dígitos</button>
+                        <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(formattedDoc, 'CPF/CNPJ formatado')}>Formatado</button>
+                      </div>
+                    </div>
+
+                    {/* 3. Código do serviço */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">3. Código do serviço (NFS-e)</div>
+                        <div className="nf-modal-data-value is-mono">{codigoServico}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(codigoServico, 'Código do serviço')}>Copiar</button>
+                    </div>
+
+                    {/* 4. Descrição resolvida */}
+                    <div className="nf-modal-data-tile">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">4. Descrição do serviço</div>
+                        <div className="nf-modal-data-value is-desc">{descricao}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(descricao, 'Descrição')}>Copiar</button>
+                    </div>
+
+                    {/* 5. Valor (largura completa) */}
+                    <div className="nf-modal-data-tile is-full">
+                      <div className="nf-modal-data-content">
+                        <div className="nf-modal-data-label">5. Valor</div>
+                        <div className="nf-modal-data-value is-amount">{valorFormatado}</div>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-secondary nf-modal-copy-btn" onClick={() => copyText(valorNumerico, 'Valor')}>Copiar</button>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="form-actions nf-modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setNfPopoverId(null)}>Fechar</button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary nf-modal-save-btn"
+                    onClick={handleSaveNfModal}
+                  >
+                    Salvar NF
+                  </button>
                   <button
                     type="button"
                     className="btn btn-primary"

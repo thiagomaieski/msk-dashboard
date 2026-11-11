@@ -1,7 +1,10 @@
-import { useState, useRef } from 'react';
-import { useDash, fmtBRL, fmtDate } from '../store/useStore';
+import { useState, useRef, useId } from 'react';
+import { createPortal } from 'react-dom';
+import { useDash, fmtBRL, fmtDate, getWaLink } from '../store/useStore';
 import { Badge } from '../components/shared';
+import { useDialogFocus } from '../components/ui/useDialogFocus';
 import { FEATURES } from '../config/features';
+import './ProjectView.css';
 
 export default function ProjectView() {
   const data = useDash(s => s.data);
@@ -15,6 +18,8 @@ export default function ProjectView() {
 
   const [activeTab, setActiveTab] = useState('detalhes');
   const overlayClickRef = useRef(false);
+  const panelRef = useRef(null);
+  const titleId = useId();
 
   const availableTabs = [
     'detalhes',
@@ -23,11 +28,18 @@ export default function ProjectView() {
   ];
   const currentTab = availableTabs.includes(activeTab) ? activeTab : 'detalhes';
 
-  if (!activeProjectView) return null;
-  const p = data.projetos.find(x => x.id === activeProjectView);
-  if (!p) return null;
+  const p = activeProjectView ? data.projetos.find(x => x.id === activeProjectView) : null;
+  const isOpen = !!p;
 
   const handleClose = () => { closeProjectView(); setActiveTab('detalhes'); };
+  useDialogFocus(isOpen, panelRef, handleClose);
+
+  if (!isOpen) return null;
+
+  const clienteVinculado = (data.clientes || []).find(
+    c => (p.clienteId && c.id === p.clienteId) || (p.cliente && c.nome === p.cliente)
+  );
+  const clienteDisplay = clienteVinculado?.nome || p.cliente || '';
 
   const handleMouseDown = (e) => {
     overlayClickRef.current = e.target === e.currentTarget;
@@ -40,42 +52,67 @@ export default function ProjectView() {
     overlayClickRef.current = false;
   };
 
-  return (
+  return createPortal(
     <div 
       className="pv-overlay open" 
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
     >
-      <div className="pv-modal">
+      <div
+        ref={panelRef}
+        className="pv-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="pv-head">
           <div className="pv-head-info">
-            <div className="pv-title">{p.descricao || 'Projeto'}</div>
-            <div className="pv-subtitle">{p.cliente || ''}</div>
+            <span className="pv-eyebrow">Detalhes do projeto</span>
+            <h2 id={titleId} className="pv-title">{p.descricao || 'Projeto'}</h2>
+            <p className="pv-subtitle">{clienteDisplay || 'Cliente não informado'}</p>
           </div>
           {availableTabs.length > 1 && (
-            <div className="pv-tabs">
+            <div className="pv-tabs" role="tablist" aria-label="Seções do projeto">
               {availableTabs.map(tab => (
-                <button key={tab} className={`pv-tab ${currentTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={currentTab === tab}
+                  className={`pv-tab ${currentTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
           )}
-          <button className="pv-close-btn" onClick={handleClose}>
+          <button type="button" className="pv-close-btn" aria-label="Fechar detalhes do projeto" onClick={handleClose}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <div className="pv-body">
-          {currentTab === 'detalhes' && <PVDetalhes p={p} onEdit={() => { openModal('projeto', p.id); handleClose(); }} updateField={updateProjectField} />}
-          {FEATURES.PROJECT_TASKS && currentTab === 'tarefas' && <PVTarefas p={p} onUpdate={updateProjectTarefas} />}
-          {FEATURES.PROJECT_FILES && currentTab === 'arquivos' && <PVArquivos p={p} onAdd={addArquivo} onDel={delArquivo} />}
+          {currentTab === 'detalhes' && (
+            <PVDetalhes
+              key={p.id}
+              p={p}
+              cliente={clienteVinculado}
+              onEdit={() => { openModal('projeto', p.id); handleClose(); }}
+              onClose={handleClose}
+              updateField={updateProjectField}
+            />
+          )}
+          {FEATURES.PROJECT_TASKS && currentTab === 'tarefas' && <PVTarefas key={p.id} p={p} onUpdate={updateProjectTarefas} />}
+          {FEATURES.PROJECT_FILES && currentTab === 'arquivos' && <PVArquivos key={p.id} p={p} onAdd={addArquivo} onDel={delArquivo} />}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-function PVDetalhes({ p, onEdit, updateField }) {
+function PVDetalhes({ p, cliente, onEdit, onClose, updateField }) {
   const [notes, setNotes] = useState(p.anotacoes || '');
   const [saving, setSaving] = useState(false);
   const data = useDash(s => s.data);
@@ -85,9 +122,28 @@ function PVDetalhes({ p, onEdit, updateField }) {
 
   const tipoLabel = p.tipo || p.tipoProjeto || 'Não informado';
   const origemLabel = p.origem || 'Não informado';
-  const fechadoEmStr = p.fechadoEm || (typeof p.criadoEm === 'string' && p.criadoEm.includes('-') ? p.criadoEm.split('T')[0] : '');
+  const fechadoEmStr = p.fechadoEm || (typeof p.criadoEm === 'string' && p.criadoEm.includes('-') ? p.criadoEm.split('T')[0] : (p.criadoEm?.seconds ? new Date(p.criadoEm.seconds * 1000).toISOString().split('T')[0] : ''));
   const siteHref = p.siteUrl ? (/^https?:\/\//i.test(p.siteUrl) ? p.siteUrl : `https://${p.siteUrl}`) : '';
-  
+  const siteClean = p.siteUrl ? p.siteUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '') : '';
+
+  const now = new Date();
+  const tsPrazo = p.prazo ? new Date(p.prazo + 'T12:00:00').getTime() : null;
+  const isAtrasado = tsPrazo && tsPrazo < now.getTime() && !['Concluído', 'Cancelado', 'Aguardando Aprovação'].includes(p.status);
+  const diasAtraso = isAtrasado ? Math.ceil((now.getTime() - tsPrazo) / (1000 * 3600 * 24)) : 0;
+
+  const totalVinculado = recsProjeto.reduce((a, b) => a + (b.valor || 0), 0);
+  const valorProjetoNum = Number(p.valor) || 0;
+  const pctFinanceiro = valorProjetoNum > 0 ? Math.min(100, Math.round((totalVinculado / valorProjetoNum) * 100)) : 0;
+
+  const ts = p.tarefas || [];
+  const feito = ts.filter(t => t.col === 'feito').length;
+  const totalTarefas = ts.length;
+  const pctTarefas = totalTarefas ? Math.round((feito / totalTarefas) * 100) : 0;
+
+  const clienteNome = cliente?.nome || p.cliente || 'Não informado';
+  const clienteSegmento = cliente?.segmento || (cliente ? 'Cliente cadastrado' : (p.cliente ? 'Vínculo por nome' : 'Sem vínculo'));
+  const waLink = cliente?.telefone ? getWaLink(cliente.telefone) : null;
+
   const handleSaveNotes = async () => {
     if (notes === p.anotacoes) return;
     setSaving(true);
@@ -96,131 +152,237 @@ function PVDetalhes({ p, onEdit, updateField }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-        <div className="summary-card">
-          <div className="summary-card-label">Valor do Projeto</div>
-          <div className="summary-card-val" style={{ fontFamily: 'var(--sans)' }}>{fmtBRL(p.valor)}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Fechado em</div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{fechadoEmStr ? fmtDate(fechadoEmStr) : '—'}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Prazo</div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{p.prazo ? fmtDate(p.prazo) : '—'}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Status</div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: sc }}>{p.status || '—'}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Pagamento</div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: pc }}>{p.pagamento || '—'}</div>
-        </div>
-      </div>
+    <div className="pv-detalhes">
+      {/* BLOCO SUPERIOR: RESUMO COMERCIAL/PRAZOS + CLIENTE VINCULADO */}
+      <div className="pv-hero-grid">
+        <div className="pv-card pv-hero-card">
+          <div className="pv-hero-top">
+            <div>
+              <div className="pv-label">Valor do Projeto</div>
+              <div className="pv-hero-value">{fmtBRL(p.valor)}</div>
+            </div>
+            <div className="pv-badges-row">
+              <span className="pv-pill" style={{ color: sc }}>
+                <span className="pv-pill-dot" />
+                {p.status || '—'}
+              </span>
+              <span className="pv-pill" style={{ color: pc }}>
+                <span className="pv-pill-dot" />
+                {p.pagamento || '—'}
+              </span>
+              {isAtrasado && (
+                <span className="pv-pill pv-pill-overdue" title={`Prazo vencido em ${fmtDate(p.prazo)}`}>
+                  Atrasado {diasAtraso}d
+                </span>
+              )}
+            </div>
+          </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-        <div className="summary-card">
-          <div className="summary-card-label">Tipo</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: p.tipo || p.tipoProjeto ? 'var(--text)' : 'var(--text3)' }}>{tipoLabel}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Origem</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: p.origem ? 'var(--text)' : 'var(--text3)' }}>{origemLabel}</div>
-        </div>
-        <div className="summary-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)'} strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}>
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-          </svg>
-          <div>
-            <div className="summary-card-label">Nota Fiscal</div>
-            <div style={{ fontWeight: 500, fontSize: 14, color: p.nf === 'sim' ? 'var(--accent)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)' }}>
-              {p.nf === 'sim' ? 'Emitida' : p.nf === 'pendente' ? 'Pendente' : 'Não emitida'}
+          <div className="pv-dates-row">
+            <div className="pv-date-item">
+              <div className="pv-label" style={{ marginBottom: 0 }}>Fechado em</div>
+              <div className="pv-date-val">{fechadoEmStr ? fmtDate(fechadoEmStr) : '—'}</div>
+              <div className="pv-date-sub">Data de contratação</div>
+            </div>
+            <div className="pv-date-item">
+              <div className="pv-label" style={{ marginBottom: 0 }}>Prazo de Entrega</div>
+              <div className={`pv-date-val ${isAtrasado ? 'is-overdue' : ''}`}>
+                {p.prazo ? fmtDate(p.prazo) : '—'}
+              </div>
+              <div className={`pv-date-sub ${isAtrasado ? 'is-overdue' : ''}`}>
+                {isAtrasado
+                  ? `Atrasado ${diasAtraso} dia(s)`
+                  : p.status === 'Concluído'
+                  ? 'Projeto concluído'
+                  : p.prazo
+                  ? 'Dentro do prazo'
+                  : 'Sem prazo definido'}
+              </div>
             </div>
           </div>
         </div>
-        <div className="summary-card">
-          <div className="summary-card-label">Site</div>
+
+        <div className="pv-card pv-client-card" aria-label="Cliente vinculado">
+          <div>
+            <div className="pv-label">Cliente Vinculado</div>
+            <div className="pv-client-header">
+              <span className="pv-client-avatar" aria-hidden="true">
+                {(clienteNome || '?')[0].toUpperCase()}
+              </span>
+              <div className="pv-client-identity">
+                <div className="pv-client-name">{clienteNome}</div>
+                <div className="pv-client-meta">{clienteSegmento}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pv-client-contacts">
+            <div className="pv-contact-chip">
+              <div className="pv-contact-chip-label">Telefone</div>
+              <div className="pv-contact-chip-val">
+                {cliente?.telefone ? (
+                  waLink ? (
+                    <a href={waLink} target="_blank" rel="noopener noreferrer">
+                      {cliente.telefone}
+                    </a>
+                  ) : (
+                    cliente.telefone
+                  )
+                ) : (
+                  '—'
+                )}
+              </div>
+            </div>
+            <div className="pv-contact-chip">
+              <div className="pv-contact-chip-label">E-mail</div>
+              <div className="pv-contact-chip-val" title={cliente?.email || ''}>
+                {cliente?.email || '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* DADOS CADASTRAIS E TÉCNICOS */}
+      <div className="pv-meta-grid" aria-label="Dados cadastrais do projeto">
+        <div className="pv-meta-tile">
+          <div className="pv-label" style={{ marginBottom: 0 }}>Tipo</div>
+          <div className={`pv-meta-val ${p.tipo || p.tipoProjeto ? '' : 'is-muted'}`}>
+            {tipoLabel}
+          </div>
+        </div>
+        <div className="pv-meta-tile">
+          <div className="pv-label" style={{ marginBottom: 0 }}>Origem</div>
+          <div className={`pv-meta-val ${p.origem ? '' : 'is-muted'}`}>
+            {origemLabel}
+          </div>
+        </div>
+        <div className="pv-meta-tile">
+          <div className="pv-label" style={{ marginBottom: 0 }}>Nota Fiscal</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke={p.nf === 'sim' ? 'var(--green)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)'} strokeWidth="2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span style={{ fontWeight: 600, fontSize: 14, color: p.nf === 'sim' ? 'var(--green)' : p.nf === 'pendente' ? 'var(--amber)' : 'var(--text3)' }}>
+              {p.nf === 'sim' ? 'Emitida' : p.nf === 'pendente' ? 'Pendente' : 'Não emitida'}
+            </span>
+          </div>
+        </div>
+        <div className="pv-meta-tile">
+          <div className="pv-label" style={{ marginBottom: 0 }}>Site</div>
           {siteHref ? (
             <a
               href={siteHref}
               target="_blank"
               rel="noreferrer"
-              style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all' }}
+              title={p.siteUrl}
+              className="pv-site-link"
             >
-              <span>{p.siteUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}</span>
+              <span>{siteClean}</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0 }}>
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
             </a>
           ) : (
-            <div style={{ fontSize: 14, color: 'var(--text3)' }}>—</div>
+            <div className="pv-meta-val is-muted">—</div>
           )}
         </div>
       </div>
 
-      <div className="summary-card" style={{ display: 'block' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div className="summary-card-label" style={{ marginBottom: 0 }}>Receitas Vinculadas (Módulo Financeiro)</div>
+      {/* INDICADORES DE PROGRESSO EXISTENTES */}
+      <div className="pv-progress-grid" aria-label="Indicadores de progresso">
+        <div className="pv-progress-card">
+          <div className="pv-progress-head">
+            <span className="pv-progress-title">Recebimento vinculado ao projeto</span>
+            <span className="pv-progress-pct">
+              {fmtBRL(totalVinculado)} / {fmtBRL(p.valor)} ({pctFinanceiro}%)
+            </span>
+          </div>
+          <div className="pv-progress-track">
+            <div className="pv-progress-fill" style={{ width: `${pctFinanceiro}%` }} />
+          </div>
         </div>
-        {recsProjeto.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Nenhuma receita vinculada.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {recsProjeto.map(r => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg1)', padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{r.descricao || 'Receita'} - <span style={{ color: 'var(--text3)' }}>{fmtDate(r.data)}</span></span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{fmtBRL(r.valor)}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Total Vinculado:</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{fmtBRL(recsProjeto.reduce((a,b)=>a+(b.valor||0),0))}</span>
+
+        {FEATURES.PROJECT_TASKS && totalTarefas > 0 && (
+          <div className="pv-progress-card">
+            <div className="pv-progress-head">
+              <span className="pv-progress-title">Tarefas concluídas</span>
+              <span className="pv-progress-pct">{feito}/{totalTarefas} ({pctTarefas}%)</span>
+            </div>
+            <div className="pv-progress-track">
+              <div className="pv-progress-fill" style={{ width: `${pctTarefas}%` }} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="summary-card" style={{ display: 'block' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div className="summary-card-label" style={{ marginBottom: 0 }}>Anotações e Estrutura</div>
-          {notes !== p.anotacoes && (
-            <button 
-              className="btn btn-sm btn-primary" 
-              onClick={handleSaveNotes}
-              disabled={saving}
-              style={{ padding: '2px 8px', fontSize: 11 }}
-            >
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
+      {/* RECEITAS VINCULADAS E ANOTAÇÕES */}
+      <div className="pv-sections-grid">
+        <section className="pv-card pv-section-card" aria-label="Receitas Vinculadas">
+          <div className="pv-section-head">
+            <h3 className="pv-section-title">
+              Receitas Vinculadas (Módulo Financeiro)
+              <span className="pv-section-count">{recsProjeto.length}</span>
+            </h3>
+          </div>
+          {recsProjeto.length === 0 ? (
+            <div className="pv-empty-box">Nenhuma receita vinculada.</div>
+          ) : (
+            <div className="pv-revenues-list">
+              {recsProjeto.map(r => (
+                <div key={r.id} className="pv-revenue-item">
+                  <div className="pv-revenue-info">
+                    <span className="pv-revenue-desc">{r.descricao || 'Receita'}</span>
+                    <span className="pv-revenue-date">{fmtDate(r.data)}</span>
+                  </div>
+                  <span className="pv-revenue-val">{fmtBRL(r.valor)}</span>
+                </div>
+              ))}
+              <div className="pv-revenue-total">
+                <span className="pv-revenue-total-label">Total Vinculado:</span>
+                <span className="pv-revenue-total-val">{fmtBRL(totalVinculado)}</span>
+              </div>
+            </div>
           )}
-        </div>
-        <textarea 
-          style={{ 
-            width: '100%',
-            minHeight: 120,
-            fontSize: 13, 
-            color: 'var(--text2)', 
-            lineHeight: 1.6, 
-            background: 'var(--bg3)', 
-            padding: 12, 
-            borderRadius: 'var(--radius-sm)', 
-            border: '1px solid var(--border)',
-            fontFamily: 'inherit',
-            resize: 'vertical',
-            outline: 'none',
-            transition: 'border-color 0.2s'
-          }}
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="Adicione anotações sobre o projeto..."
-          onBlur={handleSaveNotes}
-        />
+        </section>
+
+        <section className="pv-card pv-section-card" aria-label="Anotações e Estrutura">
+          <div className="pv-section-head">
+            <label htmlFor="pv-notes-input" className="pv-section-title">Anotações e Estrutura</label>
+            {notes !== p.anotacoes && (
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={handleSaveNotes}
+                disabled={saving}
+                style={{ padding: '4px 12px', fontSize: 11, minHeight: 28 }}
+              >
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            )}
+          </div>
+          <textarea
+            id="pv-notes-input"
+            className="pv-notes-textarea"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Adicione anotações sobre o projeto..."
+            onBlur={handleSaveNotes}
+          />
+          <div className="pv-notes-hint">
+            As alterações são salvas automaticamente ao sair do campo.
+          </div>
+        </section>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 10 }}>
-        <button className="btn btn-secondary" style={{ padding: '8px 24px' }} onClick={onEdit}>Editar Projeto</button>
+      {/* AÇÕES DISPONÍVEIS */}
+      <div className="pv-actions-bar">
+        <button type="button" className="btn btn-secondary" onClick={onClose}>
+          Fechar
+        </button>
+        <button type="button" className="btn btn-primary" style={{ padding: '8px 24px' }} onClick={onEdit}>
+          Editar Projeto
+        </button>
       </div>
     </div>
   );

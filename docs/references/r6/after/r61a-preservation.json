@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-11-09T16:44:29.633Z",
+  "logicBlockIdentical": true,
+  "logicBlockLengthBefore": 5424,
+  "logicBlockLengthAfter": 5424,
+  "nfModalBlockIdentical": true,
+  "nfModalBlockLengthBefore": 7483,
+  "nfModalBlockLengthAfter": 7483,
+  "preservedIdentifiers": [
+    {
+      "identifier": "resolveDescricaoNf",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "isRecorrenciaPaidInCompetencia",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "getRecorrenciaVencimento",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "calcularConsumoMes",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "formatMinutes",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "isInCompetenciaMonth",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "clientByRec",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "totalMensal",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "totalAnual",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "ativosCount",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "resumoMes",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "getProxVencimento",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "diffDays",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "fmtVenc",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "copyText",
+      "inBefore": true,
+      "inAfter": true
+    },
+    {
+      "identifier": "activePopoverRec",
+      "inBefore": true,
+      "inAfter": true
+    }
+  ]
+}
