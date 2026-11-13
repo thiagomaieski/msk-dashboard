@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDash } from '../../store/useStore';
+import { getLocalDateISO, useDash } from '../../store/useStore';
 import CustomSelect from '../CustomSelect';
 import { NumberStepper } from '../shared';
 import { navToConfigTab } from './shared';
@@ -15,7 +15,7 @@ export default function FinancaForm({ item, defaultTipo }) {
   const tipo = item ? item.tipo : defaultTipo;
   const isReceita = tipo === 'Receita';
   const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasNegocioDespesa || []);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateISO();
   const data = useDash(s => s.data);
 
   const [f, setF] = useState({
@@ -70,10 +70,10 @@ export default function FinancaForm({ item, defaultTipo }) {
   const isCreditCard = f.formaPagamento === 'Cartão de Crédito';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, margin: -20, marginTop: -16 }}>
+    <div className="finance-pj-form">
 
       {/* ── HEADER ── */}
-      <div style={{
+      <div className="finance-pj-form-intro" style={{
         padding: '14px 20px',
         background: isReceita ? 'linear-gradient(135deg,rgba(16,185,129,.1),rgba(16,185,129,.02))' : 'linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.02))',
         borderBottom: '1px solid var(--border)',
@@ -89,12 +89,12 @@ export default function FinancaForm({ item, defaultTipo }) {
         </div>
       </div>
 
-      <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="finance-pj-form-fields">
 
         {/* ── ROW 1: DATA ── */}
         <div className="form-group">
           <label className="form-label">Data</label>
-          <input className="form-input" type="date" value={f.data} onChange={u('data')} />
+          <input className="form-input" type="date" aria-label="Data" value={f.data} onChange={u('data')} />
         </div>
 
         {/* ── ROW 2: VALOR BRUTO + VALOR LÍQUIDO ── */}
@@ -112,14 +112,14 @@ export default function FinancaForm({ item, defaultTipo }) {
         {/* ── ROW 3: DESCRIÇÃO ── */}
         <div className="form-group">
           <label className="form-label">Descrição <span style={{color:'var(--red)'}}>*</span></label>
-          <input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder={isReceita ? 'Ex: Desenvolvimento de site para cliente X' : 'Ex: Aluguel do escritório'} />
+          <input className="form-input" aria-label="Descrição" value={f.descricao} onChange={u('descricao')} placeholder={isReceita ? 'Ex: Desenvolvimento de site para cliente X' : 'Ex: Aluguel do escritório'} />
         </div>
 
         {/* ── ROW 4: PAGAMENTO ── */}
         <div style={{ display: 'grid', gridTemplateColumns: isCreditCard ? '1fr auto' : '1fr 1fr', gap: 12, alignItems: 'end' }}>
           <div className="form-group">
             <label className="form-label">Forma de Pagamento</label>
-            <CustomSelect variant="form" value={f.formaPagamento} onChange={u('formaPagamento')}>
+            <CustomSelect variant="form" ariaLabel="Forma de pagamento" value={f.formaPagamento} onChange={u('formaPagamento')}>
               {['PIX', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência', 'Dinheiro'].map(m => <option key={m}>{m}</option>)}
             </CustomSelect>
           </div>
@@ -133,7 +133,7 @@ export default function FinancaForm({ item, defaultTipo }) {
           ) : (
             <div className="form-group">
               <label className="form-label">NF Emitida?</label>
-              <CustomSelect variant="form" value={f.nf} onChange={u('nf')}>
+              <CustomSelect variant="form" ariaLabel="NF emitida" value={f.nf} onChange={u('nf')}>
                 <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
               </CustomSelect>
             </div>
@@ -144,7 +144,7 @@ export default function FinancaForm({ item, defaultTipo }) {
         {isCreditCard && (
           <div className="form-group">
             <label className="form-label">NF Emitida?</label>
-            <CustomSelect variant="form" value={f.nf} onChange={u('nf')}>
+            <CustomSelect variant="form" ariaLabel="NF emitida" value={f.nf} onChange={u('nf')}>
               <option value="nao">Não</option><option value="sim">Sim</option><option value="pendente">Pendente</option>
             </CustomSelect>
           </div>
@@ -154,7 +154,7 @@ export default function FinancaForm({ item, defaultTipo }) {
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           <div className="form-group">
             <label className="form-label">Categoria</label>
-            <CustomSelect variant="form" value={f.categoria} onChange={u('categoria')}>
+            <CustomSelect variant="form" ariaLabel="Categoria" value={f.categoria} onChange={u('categoria')}>
               {cats.map(c => <option key={c}>{c}</option>)}
             </CustomSelect>
             <span style={{ fontSize:11, color:'var(--text3)', marginTop:3, cursor:'pointer', display:'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => navTo('cfg-financas')}>
@@ -164,7 +164,7 @@ export default function FinancaForm({ item, defaultTipo }) {
           </div>
           <div className="form-group">
             <label className="form-label">Cliente / Fornecedor</label>
-            <input className="form-input" value={f.entidade} onChange={u('entidade')} list="fin-entidades" placeholder="Nome..." />
+            <input className="form-input" aria-label="Cliente / Fornecedor" value={f.entidade} onChange={u('entidade')} list="fin-entidades" placeholder="Nome..." />
             <datalist id="fin-entidades">{(data?.clientes||[]).map(c => <option key={c.id} value={c.nome}/>)}</datalist>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function FinancaForm({ item, defaultTipo }) {
         {isReceita && (
           <div className="form-group">
             <label className="form-label">Vincular a Projeto</label>
-            <CustomSelect variant="form" value={f.projetoId} onChange={u('projetoId')} placeholder="— Nenhum —">
+            <CustomSelect variant="form" ariaLabel="Vincular a projeto" value={f.projetoId} onChange={u('projetoId')} placeholder="— Nenhum —">
               <option value="">— Nenhum —</option>
               {(data?.projetos||[]).map(p => <option key={p.id} value={p.id}>{p.descricao||p.cliente}</option>)}
             </CustomSelect>
@@ -181,12 +181,12 @@ export default function FinancaForm({ item, defaultTipo }) {
 
         <div className="form-group" style={{ paddingBottom:2 }}>
           <label className="form-label">Observações <span style={{color:'var(--text3)',fontWeight:400}}>(opcional)</span></label>
-          <input className="form-input" value={f.observacoes} onChange={u('observacoes')} placeholder="Notas internas..." />
+          <input className="form-input" aria-label="Observações" value={f.observacoes} onChange={u('observacoes')} placeholder="Notas internas..." />
         </div>
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{ display:'flex', justifyContent:'flex-end', gap:10, padding:'12px 20px', borderTop:'1px solid var(--border)', background:'var(--bg2)' }}>
+      <div className="form-actions finance-pj-form-actions">
         <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
         <button className="btn btn-primary" onClick={handleSave} style={{ minWidth:130 }}>
           {isCreditCard && f.parcelas > 1
@@ -211,7 +211,7 @@ export function PessoalForm({ item, defaultTipo }) {
   const isReceita = tipo === 'Receita';
   const isDespesa = !isReceita;
   const cats = isReceita ? (configData.categoriasReceita || []) : (configData.categoriasPessoal || []);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateISO();
   const [f, setF] = useState({
     data: item?.data || today,
     valor: item?.valor || '',
@@ -222,15 +222,16 @@ export function PessoalForm({ item, defaultTipo }) {
   });
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   return (
-    <div className="form-grid">
+    <div className="form-grid finance-pf-form">
+      <p className="finance-pf-form-intro">{isReceita ? "Registre uma entrada nas suas finanças pessoais." : "Registre uma despesa e informe se foi feita no cartão."}</p>
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Data</label><input className="form-input" type="date" value={f.data} onChange={u('data')} /></div>
+        <div className="form-group"><label className="form-label">Data</label><input className="form-input" type="date" aria-label="Data" value={f.data} onChange={u('data')} /></div>
         <div className="form-group"><label className="form-label">Valor</label><NumberStepper mode="currency" value={f.valor} onChange={(value) => setF(p => ({ ...p, valor: value }))} min={0} className="form-input" /></div>
       </div>
-      <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" value={f.descricao} onChange={u('descricao')} /></div>
+      <div className="form-group"><label className="form-label">Descrição</label><input className="form-input" aria-label="Descrição" value={f.descricao} onChange={u('descricao')} /></div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Categoria</label>
-          <CustomSelect variant="form" value={f.categoria} onChange={u('categoria')}>
+          <CustomSelect variant="form" ariaLabel="Categoria" value={f.categoria} onChange={u('categoria')}>
             {cats.map(c => <option key={c}>{c}</option>)}
           </CustomSelect>
           <div 
@@ -276,7 +277,7 @@ export function ParcelaForm() {
   const saveNegocioParcelado = useDash(s => s.saveNegocioParcelado);
   const closeModal = useDash(s => s.closeModal);
   const data = useDash(s => s.data);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateISO();
   const [f, setF] = useState({
     descricao: '', valor: '', totalParcelas: 2,
     dataInicio: today, categoria: (configData.categoriasReceita || [])[0] || '',
@@ -285,8 +286,8 @@ export function ParcelaForm() {
   const u = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const valorParcela = f.valor && f.totalParcelas ? (parseFloat(f.valor) / parseInt(f.totalParcelas)).toFixed(2) : '0,00';
   return (
-    <div className="form-grid">
-      <div className="form-group"><label className="form-label">Descrição *</label><input className="form-input" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Site institucional" /></div>
+    <div className="form-grid finance-pj-form finance-pj-installments">
+      <div className="form-group"><label className="form-label">Descrição *</label><input className="form-input" aria-label="Descrição" value={f.descricao} onChange={u('descricao')} placeholder="Ex: Site institucional" /></div>
       <div className="form-grid form-grid-2">
         <div className="form-group"><label className="form-label">Valor Total (R$) *</label><input className="form-input" type="number" min="0" step="0.01" value={f.valor} onChange={u('valor')} placeholder="0,00" /></div>
         <div className="form-group"><label className="form-label">Nº de Parcelas *</label><input className="form-input" type="number" min="2" max="60" value={f.totalParcelas} onChange={u('totalParcelas')} /></div>
@@ -295,7 +296,7 @@ export function ParcelaForm() {
         {parseInt(f.totalParcelas)}x de R$ {parseFloat(valorParcela).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — lançamentos automáticos mensais
       </div>}
       <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">1ª Parcela em *</label><input className="form-input" type="date" value={f.dataInicio} onChange={u('dataInicio')} /></div>
+        <div className="form-group"><label className="form-label">1ª Parcela em *</label><input className="form-input" type="date" aria-label="Data da primeira parcela" value={f.dataInicio} onChange={u('dataInicio')} /></div>
         <div className="form-group"><label className="form-label">Forma de Pagamento</label>
           <select className="form-select" value={f.formaPagamento} onChange={u('formaPagamento')}>
             {['PIX', 'Boleto', 'Cartão de Crédito', 'Transferência'].map(m => <option key={m}>{m}</option>)}
@@ -308,7 +309,7 @@ export function ParcelaForm() {
             {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
-        <div className="form-group"><label className="form-label">Cliente</label><input className="form-input" value={f.entidade} onChange={u('entidade')} /></div>
+        <div className="form-group"><label className="form-label">Cliente</label><input className="form-input" aria-label="Cliente / Fornecedor" value={f.entidade} onChange={u('entidade')} /></div>
       </div>
       <div className="form-group"><label className="form-label">Vincular a Projeto</label>
         <select className="form-select" value={f.projetoId} onChange={u('projetoId')}>

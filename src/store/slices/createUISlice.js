@@ -242,7 +242,7 @@ export const createUISlice = (set, get) => ({
     const map = {
       lead: 'leads', projeto: 'projetos', recorrencia: 'recorrencia',
       negocioReceita: 'negocio', negocioDespesa: 'negocio',
-      pessoalReceita: 'pessoal', pessoalDespesa: 'pessoal',
+      pessoalReceita: 'pessoal', pessoalDespesa: 'pessoal', pessoalInvestimento: 'pessoal',
       cliente: 'clientes', lembrete: 'lembretes', despesaFixa: 'despesasFixas',
       verNota: 'lembretes', parcela: 'negocio', interacao: 'leads',
       pagarRecorrencia: 'recorrencia',
@@ -256,6 +256,7 @@ export const createUISlice = (set, get) => ({
       negocioDespesa: id ? 'Editar Despesa Negócio' : 'Nova Despesa Negócio',
       pessoalReceita: id ? 'Editar Receita Pessoal' : 'Nova Receita Pessoal',
       pessoalDespesa: id ? 'Editar Despesa Pessoal' : 'Nova Despesa Pessoal',
+      pessoalInvestimento: id ? 'Editar Investimento Pessoal' : 'Novo Investimento Pessoal',
       cliente: id ? 'Editar Cliente' : 'Novo Cliente',
       lembrete: id ? 'Editar Lembrete' : 'Novo Lembrete',
       despesaFixa: id ? 'Editar Despesa F.' : 'Nova Despesa Fixa',

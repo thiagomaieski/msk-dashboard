@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useDash, fmtBRL } from '../../store/useStore';
+import { getLocalDateISO, useDash, fmtBRL } from '../../store/useStore';
 import CustomSelect from '../CustomSelect';
 import { NumberStepper } from '../shared';
 import { isValidCpf, isValidCnpj, maskCpfCnpjInput, fetchBrasilApiCnpj } from './ClienteForm';
@@ -22,7 +22,7 @@ export default function NovoFechamentoModal({ lead }) {
   const salvarNovoFechamento = useDash(s => s.salvarNovoFechamento);
   const toast = useDash(s => s.toast);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateISO();
 
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);

@@ -4,6 +4,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { generateReciboPDF } from '../components/PDFGenerator';
 import { NumberStepper } from '../components/shared';
 import CustomSelect from '../components/CustomSelect';
+import { Card } from '../components/ui/Card';
+import './FinancasNegocioPage.css';
+import './FinancasPessoaisPage.css';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
@@ -559,9 +562,9 @@ export function FinancasNegocioPage() {
   }, [data.projetos, data.recorrencia, data.negocio, configData.metaFaturamento, limitValue, forecastHorizon, todayISO]);
 
   return (
-    <div>
+    <div className="finance-pj-page">
       <div className="page-header">
-        <div className="page-title">Finanças Negócio</div>
+        <div><span className="finance-pj-eyebrow">Gestão financeira • PJ</span><h1 className="page-title">Finanças do Negócio</h1><p className="finance-pj-description">Receitas, despesas e planejamento do negócio.</p></div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'negocio')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
@@ -600,22 +603,22 @@ export function FinancasNegocioPage() {
         <button className="btn btn-sm btn-secondary" onClick={() => setQuickFilter('esteAno')}>Este Ano</button>
         <div className="search-wrap" style={{ width: 160, marginLeft: 8 }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="filter-input" placeholder="Filtrar Cliente..." value={clienteFilter} onChange={e => setClienteFilter(e.target.value)} />
+          <input className="filter-input" placeholder="Filtrar Cliente..." aria-label="Filtrar cliente" value={clienteFilter} onChange={e => setClienteFilter(e.target.value)} />
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-          <button className={`btn-icon ${viewMode === 'cols' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'cols' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('cols')} title="Colunas">
+          <button className={`btn-icon ${viewMode === 'cols' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'cols' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('cols')} title="Colunas" aria-pressed={viewMode === 'cols'}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/></svg>
           </button>
-          <button className={`btn-icon ${viewMode === 'extrato' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'extrato' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('extrato')} title="Extrato Completo">
+          <button className={`btn-icon ${viewMode === 'extrato' ? 'active' : ''}`} style={{ borderRadius: 0, border: 'none', background: viewMode === 'extrato' ? 'var(--bg3)' : 'transparent' }} onClick={() => setViewMode('extrato')} title="Extrato Completo" aria-pressed={viewMode === 'extrato'}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
         </div>
       </div>
       
-      <div className="shell-finance-summary" style={{ display: 'grid', gridTemplateColumns: '1fr 300px 300px', gap: 20, marginBottom: 20 }}>
-        <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 0 }}>
+      <div className="finance-pj-overview">
+        <div className="summary-cards finance-pj-kpis">
           {/* Receita Bruta — seta para cima com cifrao: entrada bruta de caixa */}
-          <div className="summary-card">
+          <Card className="summary-card finance-pj-kpi">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -626,10 +629,10 @@ export function FinancasNegocioPage() {
             </div>
             <div className="summary-card-label">Receita Bruta</div>
             <div className="summary-card-val green">{fmtBRL(rec)}</div>
-          </div>
+          </Card>
 
           {/* Receita Líquida Real — escudo com check: valor protegido após taxas e impostos */}
-          <div className="summary-card" title={`Após taxas (Asaas) e tributação (${configData.aliquotaImposto || 0}%)`}>
+          <Card className="summary-card finance-pj-kpi" title={`Após taxas (Asaas) e tributação (${configData.aliquotaImposto || 0}%)`}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16,185,129,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -640,10 +643,10 @@ export function FinancasNegocioPage() {
             </div>
             <div className="summary-card-label">Receita Líquida Real</div>
             <div className="summary-card-val" style={{ color: 'var(--green)' }}>{fmtBRL(recLiq)}</div>
-          </div>
+          </Card>
 
           {/* Total Despesas — seta para baixo com tracos: saída de recursos */}
-          <div className="summary-card">
+          <Card className="summary-card finance-pj-kpi">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(239,68,68,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -656,10 +659,10 @@ export function FinancasNegocioPage() {
             </div>
             <div className="summary-card-label">Total Despesas</div>
             <div className="summary-card-val red">{fmtBRL(desp)}</div>
-          </div>
+          </Card>
 
           {/* Saldo Operacional — balanca: equilibrio entre entradas e saídas */}
-          <div className="summary-card">
+          <Card className="summary-card finance-pj-kpi">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: saldo >= 0 ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke={saldo >= 0 ? '#10b981' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -674,21 +677,22 @@ export function FinancasNegocioPage() {
             </div>
             <div className="summary-card-label">Saldo Operacional</div>
             <div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div>
-          </div>
+          </Card>
         </div>
-        <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--border)', height: '100%', minHeight: 120 }}>
+        <Card className="finance-pj-chart" style={{ gap: 8 }}>
            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>Balanço do Período</div>
-           <ResponsiveContainer width="100%" height="80%">
-             <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-               <Tooltip cursor={{ fill: 'var(--bg3)' }} contentStyle={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-               <Bar dataKey="rec" name="Receita" fill="#10b981" radius={[2, 2, 0, 0]} />
-               <Bar dataKey="desp" name="Despesa" fill="#ef4444" radius={[2, 2, 0, 0]} />
+           <ResponsiveContainer width="100%" height={170}>
+             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+               <XAxis dataKey="name" tick={{ fill: 'var(--text3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+               <Tooltip formatter={(v) => fmtBRL(v)} cursor={{ fill: 'var(--bg3)' }} contentStyle={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+               <Bar dataKey="rec" name="Receita" fill="var(--green)" radius={[2, 2, 0, 0]} />
+               <Bar dataKey="desp" name="Despesa" fill="var(--red)" radius={[2, 2, 0, 0]} />
              </BarChart>
            </ResponsiveContainer>
-        </div>
-        <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--border)', height: '100%', minHeight: 120 }}>
+        </Card>
+        <Card className="finance-pj-chart" style={{ gap: 8 }}>
            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>Despesas por Categoria</div>
-           <ResponsiveContainer width="100%" height="80%">
+           <ResponsiveContainer width="100%" height={170}>
              <PieChart>
                <Tooltip contentStyle={{ background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} formatter={(v) => fmtBRL(v)} />
                <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
@@ -696,25 +700,25 @@ export function FinancasNegocioPage() {
                </Pie>
              </PieChart>
            </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
       {/* Limite MEI / empresa */}
-      <div style={{ background: 'var(--bg2)', border: `1px solid ${alerteLimite ? 'var(--amber)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+      <Card className="finance-pj-mei" style={{ gap: 8, borderColor: alerteLimite ? 'var(--amber)' : undefined }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Limite Anual {configData.tipoEmpresa || 'Empresa'} ({parseInt(ano) || CURRENT_YEAR})</div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>{fmtBRL(usadoLimite)} de {fmtBRL(limitValue)}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: alerteLimite ? '#f59e0b' : 'var(--green)' }}>{pctLimite.toFixed(1)}% usado</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: alerteLimite ? 'var(--amber)' : 'var(--green)' }}>{pctLimite.toFixed(1)}% usado</span>
           </div>
         </div>
         <div style={{ height: 8, background: 'var(--bg3)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pctLimite}%`, background: pctLimite >= 100 ? 'var(--red)' : pctLimite >= 80 ? '#f59e0b' : 'var(--green)', borderRadius: 4, transition: 'width .5s' }} />
+          <div style={{ height: '100%', width: `${pctLimite}%`, background: pctLimite >= 100 ? 'var(--red)' : pctLimite >= 80 ? 'var(--amber)' : 'var(--green)', borderRadius: 4, transition: 'width .5s' }} />
         </div>
-        {alerteLimite && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 6, fontWeight: 600 }}>⚠ Atenção: você usou {pctLimite.toFixed(0)}% do limite de faturamento {configData.tipoEmpresa || 'Empresa'}.</div>}
-      </div>
+        {alerteLimite && <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 6, fontWeight: 600 }}>⚠ Atenção: você usou {pctLimite.toFixed(0)}% do limite de faturamento {configData.tipoEmpresa || 'Empresa'}.</div>}
+      </Card>
 
       {/* Previsão de 3 a 6 meses (T2.4) */}
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+      <Card className="finance-pj-forecast" style={{ gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -735,6 +739,7 @@ export function FinancasNegocioPage() {
               <button
                 key={h}
                 type="button"
+                aria-pressed={forecastHorizon === h}
                 onClick={() => setForecastHorizon(h)}
                 style={{
                   border: 'none',
@@ -753,10 +758,11 @@ export function FinancasNegocioPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <div className="finance-pj-forecast-grid">
           {forecastInfo.months.map(m => (
             <div
               key={m.monthKey}
+              className="finance-pj-forecast-month"
               style={{
                 background: 'var(--bg3)',
                 border: '1px solid var(--border)',
@@ -819,7 +825,7 @@ export function FinancasNegocioPage() {
             <span style={{ fontSize: 10, color: 'var(--text3)' }}>Não somado ao garantido por não ter parcelas agendadas</span>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Painel Despesas Fixas do Negócio + DAS do MEI */}
       {(() => {
@@ -829,7 +835,7 @@ export function FinancasNegocioPage() {
         const totalFixasMes = fixasNegocio.reduce((s, d) => s + (Number(d.valor) || 0), 0);
 
         return (
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
+          <Card className="finance-pj-fixed" style={{ gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: fixasNegocio.length ? 12 : 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Despesas Fixas do Negócio</span>
@@ -847,7 +853,7 @@ export function FinancasNegocioPage() {
                       padding: '3px 10px',
                       borderRadius: 99,
                       background: 'rgba(245,158,11,0.12)',
-                      color: '#f59e0b',
+                      color: 'var(--amber)',
                       border: '1px solid rgba(245,158,11,0.3)',
                       cursor: 'pointer',
                     }}
@@ -890,10 +896,11 @@ export function FinancasNegocioPage() {
             </div>
 
             {fixasNegocio.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 10 }}>
+              <div className="finance-pj-fixed-grid">
                 {fixasNegocio.map(df => (
                   <div
                     key={df.id}
+                    className="finance-pj-fixed-item"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -927,9 +934,10 @@ export function FinancasNegocioPage() {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         );
       })()}
+      <div className="finance-pj-section-heading"><h2>Lançamentos</h2><span>Movimentações do período selecionado</span></div>
       {viewMode === 'cols' ? (
         <div className="finance-cols">
           <div className="finance-col">
@@ -958,24 +966,24 @@ export function FinancasNegocioPage() {
               </div>
             </div>
             <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={tipoRec} onChange={e => setTipoRec(e.target.value)}>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} aria-label="Tipo de receita" value={tipoRec} onChange={e => setTipoRec(e.target.value)}>
                 <option value="">Todos os tipos</option>
                 <option value="Projeto">Projeto</option>
                 <option value="Recorrência">Recorrência</option>
                 <option value="Avulso">Avulso</option>
               </select>
-              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={statusRec} onChange={e => setStatusRec(e.target.value)}>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} aria-label="Status da receita" value={statusRec} onChange={e => setStatusRec(e.target.value)}>
                 <option value="">Recebido + A receber</option>
                 <option value="recebido">Recebido</option>
                 <option value="areceber">A receber</option>
               </select>
-              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
+              <select className="filter-select" style={{ flex: 1, minWidth: 110 }} aria-label="Categoria de receita" value={catRec} onChange={e => setCatRec(e.target.value)}>
                 <option value="">Todas categorias</option>
                 {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
               </select>
               <div className="search-wrap" style={{ flex: 1, minWidth: 130 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value)} />
+                <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." aria-label="Buscar receitas" value={searchRec} onChange={e => setSearchRec(e.target.value)} />
               </div>
             </div>
             <FinanceColList list={receitas} isRec={true} showNf={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
@@ -1007,13 +1015,13 @@ export function FinancasNegocioPage() {
             </div>
           </div>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-            <select className="filter-select" style={{ flex: 1 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
+            <select className="filter-select" style={{ flex: 1 }} aria-label="Categoria de despesa" value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasNegocioDespesa || []).map(c => <option key={c}>{c}</option>)}
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." aria-label="Buscar despesas" value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
           <FinanceColList list={despesas} isRec={false} showNf={true} showPayStatus={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="negocio"
@@ -1103,7 +1111,7 @@ export function FinancasNegocioPage() {
                         </td>
                         <td>
                           {m.tipo === 'Receita' && m.nf ? (
-                            <span style={{ fontSize: 11, color: m.nf === 'pendente' ? '#f59e0b' : 'var(--text2)' }}>
+                            <span style={{ fontSize: 11, color: m.nf === 'pendente' ? 'var(--amber)' : 'var(--text2)' }}>
                               {m.nf === 'sim' ? 'Emitida' : m.nf === 'pendente' ? 'Pendente' : 'Sem NF'}
                             </span>
                           ) : '-'}
@@ -1213,7 +1221,7 @@ export function FinancasNegocioPage() {
                       </td>
                       <td>
                         {m.tipo === 'Receita' && m.nf ? (
-                          <span style={{ fontSize: 11, color: m.nf === 'pendente' ? '#f59e0b' : 'var(--text2)' }}>
+                          <span style={{ fontSize: 11, color: m.nf === 'pendente' ? 'var(--amber)' : 'var(--text2)' }}>
                             {m.nf === 'sim' ? 'Emitida' : m.nf === 'pendente' ? 'Pendente' : 'Sem NF'}
                           </span>
                         ) : '-'}
@@ -1332,9 +1340,9 @@ export function FinancasPessoaisPage() {
     : '';
 
   return (
-    <div>
+    <div className="finance-pf-page">
       <div className="page-header">
-        <div className="page-title">Finanças Pessoais</div>
+        <div><span className="finance-pf-eyebrow">Gestão financeira • PF</span><h1 className="page-title">Finanças Pessoais</h1><p className="finance-pf-description">Receitas, despesas e seus investimentos.</p></div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-secondary" style={{ fontSize: 12, gap: 6 }} onClick={() => openModal('importFinancas', 'pessoal')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
@@ -1351,7 +1359,7 @@ export function FinancasPessoaisPage() {
           <span className="finance-period-label">Período:</span>
           <CustomSelect
             variant="filter"
-            value={ano}
+            ariaLabel="Ano" value={ano}
             onChange={e => setAno(e.target.value)}
             placeholder="Todos"
             options={[
@@ -1361,7 +1369,7 @@ export function FinancasPessoaisPage() {
           />
           <CustomSelect
             variant="filter"
-            value={mes}
+            ariaLabel="Mês" value={mes}
             onChange={e => setMes(e.target.value)}
             placeholder="Todo ano"
             options={[
@@ -1371,21 +1379,21 @@ export function FinancasPessoaisPage() {
           />
         </div>
         <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
-          <button className="btn btn-sm" style={{ background: viewMode === 'cols' ? 'var(--bg1)' : 'transparent', color: viewMode === 'cols' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} onClick={() => setViewMode('cols')}>Colunas</button>
-          <button className="btn btn-sm" style={{ background: viewMode === 'extrato' ? 'var(--bg1)' : 'transparent', color: viewMode === 'extrato' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} onClick={() => setViewMode('extrato')}>Extrato</button>
+          <button className="btn btn-sm" style={{ background: viewMode === 'cols' ? 'var(--bg1)' : 'transparent', color: viewMode === 'cols' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} aria-pressed={viewMode === 'cols'} onClick={() => setViewMode('cols')}>Colunas</button>
+          <button className="btn btn-sm" style={{ background: viewMode === 'extrato' ? 'var(--bg1)' : 'transparent', color: viewMode === 'extrato' ? 'var(--text)' : 'var(--text3)', border: 'none', borderRadius: 6 }} aria-pressed={viewMode === 'extrato'} onClick={() => setViewMode('extrato')}>Extrato</button>
         </div>
       </div>
-      <div className="summary-cards">
-        <div className="summary-card"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Saldo</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div></div>
-        <div className="summary-card"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div></div>
-        <div className="summary-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyGap: 'space-between', gap: 6, minHeight: 90 }}>
+      <div className="summary-cards finance-pf-kpis">
+        <Card className="summary-card finance-pf-kpi"><div className="summary-card-label">Total Receitas</div><div className="summary-card-val green">{fmtBRL(rec)}</div><span className="finance-pf-kpi-note">Entradas do período filtrado</span></Card>
+        <Card className="summary-card finance-pf-kpi"><div className="summary-card-label">Saldo</div><div className={`summary-card-val ${saldo >= 0 ? 'green' : 'red'}`}>{fmtBRL(saldo)}</div><span className="finance-pf-kpi-note">Após despesas e investimentos</span></Card>
+        <Card className="summary-card finance-pf-kpi"><div className="summary-card-label">Total Despesas</div><div className="summary-card-val red">{fmtBRL(desp)}</div><span className="finance-pf-kpi-note">Consumo, sem aportes de investimento</span></Card>
+        <Card className="summary-card finance-pf-kpi finance-pf-goal" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 90 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="summary-card-label" style={{ margin: 0 }}>Meta de Investimento</span>
             {editingMeta ? (
               <div style={{ display: 'flex', gap: 4, zIndex: 10 }}>
                 <button className="btn btn-xs btn-primary" onClick={handleSaveMeta} style={{ padding: '2px 6px', fontSize: 10, background: 'var(--amber)', borderColor: 'var(--amber)', color: '#000' }}>Salvar</button>
-                <button className="btn btn-xs btn-secondary" onClick={() => setEditingMeta(false)} style={{ padding: '2px 6px', fontSize: 10 }}>X</button>
+                <button className="btn btn-xs btn-secondary" onClick={() => setEditingMeta(false)} style={{ padding: '2px 6px', fontSize: 10 }} aria-label="Cancelar edição da meta">Cancelar</button>
               </div>
             ) : (
               <button 
@@ -1403,7 +1411,7 @@ export function FinancasPessoaisPage() {
             <span className="summary-card-val" style={{ color: 'var(--amber)' }}>{fmtBRL(totalInvestido)}</span>
             <span style={{ fontSize: 11, color: 'var(--text3)' }}>
               de {editingMeta ? (
-                <div style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <span style={{ display: 'inline-block', verticalAlign: 'middle' }}>
                   <NumberStepper 
                     mode="currency" 
                     value={metaInput} 
@@ -1411,7 +1419,7 @@ export function FinancasPessoaisPage() {
                     style={{ width: 120, height: 26, fontSize: 11, display: 'inline-flex' }}
                     className="form-input"
                   />
-                </div>
+                </span>
               ) : fmtBRL(metaVal)}
             </span>
           </div>
@@ -1431,8 +1439,9 @@ export function FinancasPessoaisPage() {
               </div>
             );
           })()}
-        </div>
+        </Card>
       </div>
+      <div className="finance-pf-section-heading"><h2>Lançamentos</h2><span>Movimentações do período selecionado</span></div>
       {viewMode === 'cols' ? (
       <div className="finance-cols">
         <div className="finance-col">
@@ -1449,13 +1458,13 @@ export function FinancasPessoaisPage() {
             <span className="finance-col-total green">{fmtBRL(rec)}</span>
           </div>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-            <select className="filter-select" style={{ flex: 1 }} value={catRec} onChange={e => setCatRec(e.target.value)}>
+            <select className="filter-select" style={{ flex: 1 }} aria-label="Categoria de receita" value={catRec} onChange={e => setCatRec(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasReceita || []).map(c => <option key={c}>{c}</option>)}
             </select>
             <div className="search-wrap" style={{ flex: 1 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchRec} onChange={e => setSearchRec(e.target.value)} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." aria-label="Buscar receitas" value={searchRec} onChange={e => setSearchRec(e.target.value)} />
             </div>
           </div>
           <FinanceColList list={receitas} isRec={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
@@ -1494,20 +1503,20 @@ export function FinancasPessoaisPage() {
             </div>
           </div>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={tipoDesp} onChange={e => setTipoDesp(e.target.value)}>
+            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} aria-label="Tipo de despesa" value={tipoDesp} onChange={e => setTipoDesp(e.target.value)}>
               <option value="">Todos os tipos</option>
               <option value="comum">Avulsa / Comum</option>
               <option value="fixa">Despesa Fixa</option>
               <option value="cartao">Cartão de Crédito</option>
               <option value="investimento">Investimento</option>
             </select>
-            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} value={catDesp} onChange={e => setCatDesp(e.target.value)}>
+            <select className="filter-select" style={{ flex: 1, minWidth: 110 }} aria-label="Categoria de despesa" value={catDesp} onChange={e => setCatDesp(e.target.value)}>
               <option value="">Todas categorias</option>
               {(configData.categoriasPessoal || []).map(c => <option key={c}>{c}</option>)}
             </select>
             <div className="search-wrap" style={{ flex: 1, minWidth: 130 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
+              <input className="filter-input" style={{ width: '100%' }} placeholder="Buscar..." aria-label="Buscar despesas" value={searchDesp} onChange={e => setSearchDesp(e.target.value)} />
             </div>
           </div>
           <FinanceColList list={despesas} isRec={false} showPayStatus={true} selectedItems={selectedItems} toggleSelect={toggleSelect} colPrefix="pessoal"
