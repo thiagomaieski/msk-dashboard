@@ -111,7 +111,7 @@ async function fixture({ revenues = [], records = [rec], persist, timestamp = ()
     },
   });
   const useDash = Object.assign(select => select(state()), { getState: state });
-  const store = synthetic({ useDash, fmtBRL: utils.namespace.fmtBRL, isRecorrenciaPaidInCompetencia: utils.namespace.isRecorrenciaPaidInCompetencia });
+  const store = synthetic({ getLocalDateISO: utils.namespace.getLocalDateISO, useDash, fmtBRL: utils.namespace.fmtBRL, isRecorrenciaPaidInCompetencia: utils.namespace.isRecorrenciaPaidInCompetencia });
   const modules = {
     react, 'react/jsx-runtime': synthetic(jsxRuntime), '../../store/useStore': store,
     '../CustomSelect': synthetic({ default: () => null }), '../shared': synthetic({ NumberStepper: () => null }),

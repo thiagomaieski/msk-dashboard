@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import '../pages/FinancasNegocioPage.css';
+import '../pages/FinancasPessoaisPage.css';
 import { useDialogFocus } from './ui/useDialogFocus';
 import { useDash } from '../store/useStore';
 import ImportFinancasModal from './ImportFinancasModal';
@@ -26,9 +28,14 @@ export default function Modal({ mobile = false }) {
   const paymentSubmitting = useDash(s => s.pagamentoRecorrenciaSubmitting);
   const data = useDash(s => s.data);
   const editingId = useDash(s => s.editingId);
+  const isFinancePF = ['pessoalReceita', 'pessoalDespesa', 'pessoalInvestimento'].includes(modalType);
+  const isFinancePJ = ['negocioReceita', 'negocioDespesa', 'transacao', 'parcela'].includes(modalType)
+    || (modalType === 'importFinancas' && editingId.importType === 'negocio')
+    || (modalType === 'despesaFixa' && (data.despesasFixas.find(x => x.id === editingId.despesasFixas)?.contexto || editingId.despesaFixaExtra?.contexto) === 'negocio');
+  const displayTitle = modalType === 'pessoalInvestimento' ? 'Investimento pessoal' : modalTitle;
   const overlayClickRef = useRef(false);
   const panelRef = useRef(null);
-  useDialogFocus((mobile || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao' || modalType === 'pagarRecorrencia') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
+  useDialogFocus((mobile || isFinancePJ || isFinancePF || modalType === 'cliente' || modalType === 'projeto' || modalType === 'recorrencia' || modalType === 'atividadeManutencao' || modalType === 'pagarRecorrencia') && modalOpen && !(modalType === 'lead' && FEATURES.LEADS_DRAWER), panelRef, closeModal);
 
   if (!modalOpen) return null;
 
@@ -54,10 +61,10 @@ export default function Modal({ mobile = false }) {
       onMouseDown={handleMouseDown} 
       onMouseUp={handleMouseUp}
     >
-      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={modalTitle} tabIndex={-1} className={`modal ${modalSize ? 'modal-' + modalSize : ''} ${modalType === 'lead' ? 'modal-lead' : ''}`}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={displayTitle} tabIndex={-1} className={`modal ${modalSize ? 'modal-' + modalSize : ''} ${modalType === 'lead' ? 'modal-lead' : ''} ${isFinancePJ ? 'modal-finance-pj' : ''} ${isFinancePF ? 'modal-finance-pf' : ''}`}>
         <div className="modal-header">
           <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <div className="modal-title">{modalTitle}</div>
+            <div className="modal-title">{displayTitle}</div>
           </div>
           <div className="modal-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {modalType === 'lead' && (

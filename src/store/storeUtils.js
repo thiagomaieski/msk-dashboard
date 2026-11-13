@@ -195,6 +195,26 @@ export const clampDayToMonth = (day, date = new Date()) => {
 };
 export const buildMonthlyDate = (day, date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(clampDayToMonth(day, date)).padStart(2, '0')}`;
 
+// Civil date defaults only. Keep timestamp serialization and competence rules separate.
+export const getLocalDateISO = (date = new Date()) => buildMonthlyDate(date.getDate(), date);
+
+export function getRecorrenciaHistoryMonth(record) {
+  const start = record?.dataInicio;
+  if (typeof start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    const date = new Date(start + 'T12:00:00');
+    if (Number.isFinite(date.getTime()) && getLocalDateISO(date) === start) return start.slice(0, 7);
+  }
+  // Creation is persisted as serverTimestamp and held locally as ISO.
+  const created = record?.criadoEm;
+  let date = null;
+  if (created instanceof Date) date = created;
+  else if (typeof created === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(created)) date = new Date(created);
+  else if (created && Number.isFinite(created.seconds)) date = new Date(created.seconds * 1000);
+  if (!date || !Number.isFinite(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).formatToParts(date);
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+}
+
 export function isRecorrenciaEligibleInCompetencia(r, competenciaKey) {
   if (!r || !competenciaKey) return false;
   if (r.status && r.status !== 'Ativo') return false;

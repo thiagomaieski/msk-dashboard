@@ -10,6 +10,7 @@ import {
   fmtDate,
   getRecorrenciaVencimento,
   fmtDateISO,
+  getRecorrenciaHistoryMonth,
   isRecorrenciaEligibleInCompetencia,
   isRecorrenciaPaidInCompetencia,
 } from '../store/useStore';
@@ -416,6 +417,7 @@ export default function DashboardPage() {
     const isMetaActive = metaFaturamento > 0;
     const metaPct = isMetaActive ? Math.min((recMesAtual / metaFaturamento) * 100, 100) : 0;
 
+    const mrrSemData = recorrencia.filter(rc => getRecorrenciaHistoryMonth(rc) === null).length;
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(anoAtual, mesAtual - (5 - i), 1);
       const m = d.getMonth();
@@ -424,12 +426,12 @@ export default function DashboardPage() {
       if (isNegocioOn) r = getMonthTotal(negocio, 'Receita', m, y);
       else if (isPessoalOn) r = getMonthTotal(pessoal, 'Receita', m, y);
 
-      const mrrMes = recorrencia.filter(rc => new Date(parseInt(rc.id)).getMonth() === m && new Date(parseInt(rc.id)).getFullYear() === y).reduce((acc, rc) => acc + (rc.valor || 0), 0);
+      const mrrMes = recorrencia.filter(rc => getRecorrenciaHistoryMonth(rc) === `${y}-${String(m + 1).padStart(2, '0')}`).reduce((acc, rc) => acc + (rc.valor || 0), 0);
 
       return { name: MESES_CURTOS[m], Receita: r, Despesas: getMonthTotal(pessoal, 'Despesa', m, y), MRR: mrrMes };
     });
 
-    return { recMesAtual, recMesPrev, despMesAtual, despMesPrev, mrr, trendRec, trendDesp, personalExpByCat, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct, last6Months };
+    return { recMesAtual, recMesPrev, despMesAtual, despMesPrev, mrr, trendRec, trendDesp, personalExpByCat, recorrenciasVencendo, metaFaturamento, isMetaActive, metaPct, last6Months, mrrSemData };
   }, [negocio, pessoal, recorrencia, isNegocioOn, isPessoalOn, mesAtual, anoAtual, mesPrev, anoPrev, configData.metaFaturamento]);
 
   const crmStats = useMemo(() => {
@@ -537,8 +539,7 @@ export default function DashboardPage() {
     const eligibleRecs = (recorrencia || []).filter(r => isRecorrenciaEligibleInCompetencia(r, monthKey));
     const mensalidadesPendentes = eligibleRecs.filter(r => !isRecorrenciaPaidInCompetencia(r, monthKey, negocio || [])).length;
     const nfsPendentes = eligibleRecs.filter(r => {
-      const nfState = r.competencias?.[monthKey]?.nf;
-      return nfState !== 'emitida' && nfState !== 'dispensada';
+      return !r.competencias?.[monthKey]?.nfEmitida;
     }).length;
 
     const dasFixa = (despesasFixas || []).find(d => d.contexto === 'negocio' && (d.descricao || '').toUpperCase().includes('DAS'));
@@ -637,6 +638,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: 'pointer' }} onClick={() => goTo('recorrencia')}>
               <span style={{ fontSize: 12, color: 'var(--text3)' }}>MRR:</span>
               <strong style={{ fontSize: 14, color: 'var(--text)' }}>{fmtBRL(stats.mrr)}</strong>
+              {stats.mrrSemData > 0 && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{stats.mrrSemData} sem data no histórico</span>}
             </div>
           )}
           {stats.isPessoalOn && (

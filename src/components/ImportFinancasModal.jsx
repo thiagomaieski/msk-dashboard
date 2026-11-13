@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { useDash, fmtBRL, fmtDateISO, fmtDate } from '../store/useStore';
+import { readFinanceWorkbook, mapFinanceHeaders, prepareFinanceImport } from '../utils/financeImport';
+import { useDash, fmtBRL, fmtDate } from '../store/useStore';
 
 export default function ImportFinancasModal({ type }) {
   const { bulkAddFinancas, closeModal, toast, configData, setModalSize } = useDash();
@@ -28,6 +29,10 @@ export default function ImportFinancasModal({ type }) {
   const [importMode, setImportMode] = useState(''); // 'Receita' or 'Despesa'
   const [defaultCategoria, setDefaultCategoria] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [encoding, setEncoding] = useState('utf-8');
+  const [dateFormat, setDateFormat] = useState('auto');
+  const importLock = useRef(false);
 
   const fileInputRef = useRef(null);
 
@@ -44,15 +49,17 @@ export default function ImportFinancasModal({ type }) {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const wb = readFinanceWorkbook(evt.target.result, file.name, encoding);
+        setDateFormat('auto');
         setWorkbook(wb);
         setSheets(wb.SheetNames);
         setSelectedSheet(wb.SheetNames[0]);
         setStep(2); // Go to Type Choice
       } catch (err) { toast('Erro ao ler arquivo: ' + err.message, 'error'); }
     };
-    reader.readAsBinaryString(file);
+    reader.onerror = () => toast('Não foi possível ler o arquivo.', 'error');
+    reader.readAsArrayBuffer(file);
+    e.target.value = ''; // Allow retrying the same file after choosing its encoding.
   };
 
   const startConfiguration = (mode) => {
@@ -82,96 +89,39 @@ export default function ImportFinancasModal({ type }) {
     setHeaders(head);
     setDataRows(rows.slice(idx + 1));
     
-    const newMapping = { data: '', descricao: '', valor: '', categoria: '', entidade: '', tipo: '', nf: '', formaPagamento: '', parcela: '', observacoes: '' };
-    head.forEach((h, i) => {
-      if (!h) return;
-      const low = h.toLowerCase();
-      if (['data', 'vencimento', 'pagamento', 'dia', 'date', 'emissão', 'emissao'].some(k => low.includes(k))) newMapping.data = h;
-      if (['descrição', 'descricao', 'historico', 'item', 'description', 'serviço', 'servico'].some(k => low.includes(k))) newMapping.descricao = h;
-      if (['valor', 'preço', 'preco', 'total', 'importancia', 'value', 'amount'].some(k => low.includes(k)) && !low.includes('parcela')) newMapping.valor = h;
-      if (['categoria', 'grupo', 'category'].some(k => low.includes(k))) newMapping.categoria = h;
-      if (['cliente', 'fornecedor', 'entidade', 'empresa', 'who', 'tomador', 'tomadora'].some(k => low.includes(k))) newMapping.entidade = h;
-      if (['tipo', 'receita/despesa', 'natureza'].some(k => low.includes(k))) newMapping.tipo = h;
-      if (['nf', 'nota', 'fiscal'].some(k => low.includes(k))) newMapping.nf = h;
-      if (['forma', 'pagamento', 'meio'].some(k => low.includes(k)) && !low.includes('data')) newMapping.formaPagamento = h;
-      if (['parcela', 'parcelamento', 'venda'].some(k => low.includes(k))) newMapping.parcela = h;
-      if (['obs', 'observação', 'comentário', 'note'].some(k => low.includes(k))) newMapping.observacoes = h;
-    });
+    const newMapping = mapFinanceHeaders(head);
     setMapping(newMapping);
   };
 
-  const normalizeRow = (row) => {
-    const getVal = (key) => {
-      const idx = headers.indexOf(mapping[key]);
-      return idx !== -1 ? row[idx] : null;
-    };
-    let valRaw = getVal('valor');
-    let valNum = 0;
-    if (typeof valRaw === 'number') valNum = valRaw;
-    else if (typeof valRaw === 'string') valNum = parseFloat(valRaw.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-
-    let dtRaw = getVal('data');
-    let dataStr = '';
-    if (dtRaw instanceof Date) dataStr = dtRaw.toISOString().split('T')[0];
-    else if (dtRaw) {
-      const s = String(dtRaw);
-      const parts = s.split(/[-/]/);
-      if (parts.length === 3) {
-        if (parts[0].length === 4) dataStr = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-        else dataStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
-    }
-
-    let nfRaw = getVal('nf');
-    let nfFinal = 'nao';
-    if (nfRaw !== null && nfRaw !== undefined && nfRaw !== '') {
-      if (typeof nfRaw === 'boolean') nfFinal = nfRaw ? 'sim' : 'nao';
-      else if (typeof nfRaw === 'number') nfFinal = nfRaw === 1 ? 'sim' : 'nao';
-      else {
-        const s = String(nfRaw).toLowerCase().trim();
-        if (['não', 'nao', 'no', 'sem', 'false', '0', 'não quis'].some(k => s.includes(k))) nfFinal = 'nao';
-        else if (['sim', 'emitida', 'ok', 'yes', 'true', '1', 'checked'].some(k => s.includes(k)) || s === 'x' || s === 'v') nfFinal = 'sim';
-        else if (['pendente', 'aguardando', 'waiting'].some(k => s.includes(k)) || s === 'p') nfFinal = 'pendente';
-      }
-    }
-
-    let parcRaw = getVal('parcela');
-    let parcelamento = null;
-    if (parcRaw) {
-      const s = String(parcRaw);
-      const match = s.match(/(\d+)\s*[/]\s*(\d+)/);
-      if (match) parcelamento = { parcela: parseInt(match[1]), total: parseInt(match[2]) };
-    }
-
-    return {
-      data: dataStr || fmtDateISO(),
-      descricao: String(getVal('descricao') || ''),
-      valor: Math.abs(valNum),
-      tipo: importMode,
-      categoria: getVal('categoria') || defaultCategoria || 'Outros',
-      entidade: String(getVal('entidade') || ''),
-      nf: nfFinal,
-      formaPagamento: getVal('formaPagamento') || 'Outros',
-      observacoes: getVal('observacoes') || 'Importado via planilha',
-      parcelamento
-    };
-  };
-
-  const processedPreview = useMemo(() => dataRows.slice(0, 10).map(normalizeRow), [dataRows, mapping, importMode, defaultCategoria, headers]);
-  const validRows = useMemo(() => dataRows.map(normalizeRow).filter(it => it.valor > 0 && it.descricao), [dataRows, mapping, importMode, defaultCategoria, headers]);
+  const prepared = useMemo(() => prepareFinanceImport(dataRows, {
+    headers, mapping, importMode, defaultCategoria, dateFormat,
+  }, headerRowIdx), [dataRows, headers, mapping, importMode, defaultCategoria, dateFormat, headerRowIdx]);
+  const validRows = prepared.records;
+  const processedPreview = validRows.slice(0, 10);
 
   const processImport = async () => {
+    if (importLock.current) return;
     if (!mapping.data || !mapping.descricao || !mapping.valor) return toast('Mapeie pelo menos Data, Descrição e Valor', 'error');
+    if (prepared.errors.length || !validRows.length) return toast('Corrija os erros da planilha antes de importar. Nenhuma linha foi importada.', 'error');
+    importLock.current = true;
     setIsImporting(true);
-    await bulkAddFinancas(colName, validRows);
-    setIsImporting(false);
-    closeModal();
+    try {
+      await bulkAddFinancas(colName, validRows);
+      closeModal();
+    } catch (error) {
+      const message = 'Falha ao importar: ' + error.message + '. Confira os lançamentos antes de tentar novamente. Feche este modal antes de uma nova tentativa.';
+      setImportError(message);
+      toast(message, 'error');
+      // Keep submission locked: persistence may have completed an earlier chunk.
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const renderMappingSelect = (field, label, required = false) => (
     <div className="form-group" style={{ marginBottom: 8 }}>
       <label className="form-label" style={{ fontSize: 11 }}>{label} {required && '*'}</label>
-      <select className={`form-select ${required && !mapping[field] ? 'border-amber' : ''}`} value={mapping[field]} onChange={e => setMapping(p => ({ ...p, [field]: e.target.value }))}>
+      <select className={`form-select ${required && !mapping[field] ? 'border-amber' : ''}`} aria-label={label} value={mapping[field] || ''} onChange={e => setMapping(p => ({ ...p, [field]: e.target.value }))}>
         <option value="">{required ? 'Obrigatório...' : 'Não mapeado'}</option>
         {headers.map((h, i) => <option key={i} value={h}>{h || `Coluna ${i+1}`}</option>)}
       </select>
@@ -179,12 +129,20 @@ export default function ImportFinancasModal({ type }) {
   );
 
   return (
-    <div className="import-modal" style={{ padding: 4 }}>
+    <div className={`import-modal ${type === 'negocio' ? 'finance-pj-import' : ''}`} style={{ padding: 4 }}>
       {step === 1 && (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ marginBottom: 30, color: 'var(--text2)', fontSize: 16 }}>
             Suba sua planilha e mapeie os campos de forma inteligente. <br/>
             Suporte a <strong>Datas, NF, Parcelas, Clientes</strong> e mais.
+          </div>
+          <div className="form-group" style={{ maxWidth: 360, margin: '0 auto 24px', textAlign: 'left' }}>
+            <label className="form-label" htmlFor="finance-csv-encoding">Codificação do CSV</label>
+            <select id="finance-csv-encoding" className="form-select" value={encoding} onChange={e => setEncoding(e.target.value)}>
+              <option value="utf-8">UTF-8 (com ou sem BOM)</option>
+              <option value="windows-1252">Windows-1252 (Excel / ANSI)</option>
+            </select>
+            <p style={{ fontSize: 12, color: 'var(--text3)' }}>Escolha Windows-1252 somente se o arquivo foi salvo nessa codificação. Arquivos Excel mantêm a leitura original.</p>
           </div>
           <button className="btn btn-lg btn-primary" onClick={() => fileInputRef.current.click()}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20, marginRight: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -255,13 +213,26 @@ export default function ImportFinancasModal({ type }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                {renderMappingSelect('data', 'Data do Lançamento', true)}
+               <div className="form-group" style={{ marginBottom: 12 }}>
+                 <label className="form-label" htmlFor="finance-date-format">Formato das datas</label>
+                 <select id="finance-date-format" className="form-select" value={dateFormat} onChange={e => setDateFormat(e.target.value)}>
+                   <option value="auto">Automático: rejeitar datas ambíguas</option>
+                   <option value="dmy">DD/MM/AAAA (dia primeiro)</option>
+                   <option value="mdy">MM/DD/AAAA (mês primeiro)</option>
+                 </select>
+                 <p style={{ fontSize: 12, color: 'var(--text3)' }}>YYYY-MM-DD é aceito em todas as opções. Confirme o formato do arquivo antes de escolher.</p>
+               </div>
                {renderMappingSelect('descricao', 'Descrição / Serviço', true)}
                {renderMappingSelect('valor', 'Valor Total', true)}
+               {renderMappingSelect('tipo', 'Tipo da linha (Receita / Despesa)')}
+               {mapping.tipo && <p style={{ fontSize: 12 }}>O tipo de cada linha será preservado conforme a coluna selecionada.</p>}
                {renderMappingSelect('entidade', importMode === 'Receita' ? 'Cliente / Tomador' : 'Fornecedor / Favorecido')}
                {importMode === 'Receita' && renderMappingSelect('nf', 'Status da NF')}
                {renderMappingSelect('parcela', 'Parcela (Ex: 1/12)')}
                {renderMappingSelect('formaPagamento', 'Forma de Pagto')}
                {renderMappingSelect('observacoes', 'Observações')}
+               {renderMappingSelect('projetoId', 'ID do projeto (opcional)')}
+               {renderMappingSelect('clienteId', 'ID do cliente (opcional)')}
 
                <div className="form-group" style={{ marginBottom: 8 }}>
                  <label className="form-label" style={{ fontSize: 11 }}>Categoria</label>
@@ -294,6 +265,14 @@ export default function ImportFinancasModal({ type }) {
               </div>
             </div>
 
+            {importError && <div role="alert" style={{ padding: 14, marginBottom: 16, color: 'var(--red)' }}>{importError}</div>}
+            {prepared.errors.length > 0 && (
+              <div role="alert" style={{ padding: 14, marginBottom: 16, background: 'var(--red-bg)', border: '1px solid var(--red)', borderRadius: 12 }}>
+                <strong>Importação bloqueada: {prepared.errors.length} linha(s) com erro. Nenhuma linha será importada.</strong>
+                <ul>{prepared.errors.slice(0, 5).map(error => <li key={error.line}>Linha {error.line}: {error.message}</li>)}</ul>
+                {prepared.errors.length > 5 && <span>Corrija também as demais linhas do arquivo.</span>}
+              </div>
+            )}
             <div className="table-wrap" style={{ flex: 1, maxHeight: '60vh', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg1)' }}>
               <table style={{ fontSize: 12, borderCollapse: 'separate', borderSpacing: 0 }}>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--bg3)', zIndex: 1 }}>
@@ -312,11 +291,11 @@ export default function ImportFinancasModal({ type }) {
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{fmtDate(row.data)}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>{row.descricao}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 11 }}>{row.entidade || '-'}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontWeight: 700, color: importMode === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
-                        {importMode === 'Despesa' ? '-' : ''}{fmtBRL(row.valor)}
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontWeight: 700, color: row.tipo === 'Receita' ? 'var(--green)' : 'var(--red)' }}>
+                        {row.tipo === 'Despesa' ? '-' : ''}{fmtBRL(row.valor)}
                       </td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
-                         {importMode === 'Receita' ? (
+                         {row.tipo === 'Receita' ? (
                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 700, background: row.nf === 'sim' ? 'var(--green-bg)' : row.nf === 'pendente' ? 'rgba(245,158,11,0.1)' : 'var(--bg3)', color: row.nf === 'sim' ? 'var(--green)' : row.nf === 'pendente' ? '#f59e0b' : 'var(--text3)' }}>
                              {row.nf === 'sim' ? 'SIM' : row.nf === 'pendente' ? 'PEND' : 'NÃO'}
                            </span>
@@ -339,8 +318,8 @@ export default function ImportFinancasModal({ type }) {
             <div className="form-actions" style={{ marginTop: 24, padding: 0 }}>
               <button className="btn btn-secondary" onClick={() => setStep(1)} style={{ padding: '12px 24px' }}>Mudar Arquivo</button>
               <div style={{ flex: 1 }} />
-              <button className="btn btn-lg btn-primary" onClick={processImport} disabled={isImporting} style={{ padding: '12px 40px' }}>
-                {isImporting ? 'Importando...' : `Importar ${validRows.length} ${importMode}s`}
+              <button className="btn btn-lg btn-primary" onClick={processImport} disabled={isImporting || !!importError || prepared.errors.length > 0 || !validRows.length || !mapping.data || !mapping.descricao || !mapping.valor} style={{ padding: '12px 40px' }}>
+                {isImporting ? 'Importando...' : `Importar ${validRows.length} lançamentos`}
               </button>
             </div>
           </div>

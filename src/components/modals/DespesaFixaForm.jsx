@@ -42,7 +42,7 @@ export default function DespesaFixaForm({ item }) {
   };
 
   return (
-    <div className="form-grid">
+    <div className={`form-grid ${f.contexto === 'negocio' ? 'finance-pj-form finance-pj-fixed-form' : ''}`}>
       <div className="form-group">
         <label className="form-label">Contexto</label>
         <div style={{ display: 'flex', gap: 8 }}>

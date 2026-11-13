@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useDash, fmtBRL, isRecorrenciaPaidInCompetencia } from '../../store/useStore';
+import { getLocalDateISO, useDash, fmtBRL, isRecorrenciaPaidInCompetencia } from '../../store/useStore';
 import CustomSelect from '../CustomSelect';
 import { NumberStepper } from '../shared';
 import { formatMinutes, formatMesAnoLabel } from '../../utils/timeUtils';
@@ -195,8 +195,8 @@ export function PagarRecorrenciaForm({ recorrenciaId }) {
   const registrarPagamentoRecorrencia = useDash(s => s.registrarPagamentoRecorrencia);
   const closeModal = useDash(s => s.closeModal);
   const rec = data.recorrencia.find(r => r.id === recorrenciaId);
-  const today = new Date().toISOString().split('T')[0];
-  const initialComp = editingId?.pagarCompetencia || today.substring(0, 7);
+  const today = getLocalDateISO();
+  const initialComp = editingId?.pagarCompetencia || new Date().toISOString().substring(0, 7);
   const categoriasReceita = (configData.categoriasReceita && configData.categoriasReceita.length > 0)
     ? configData.categoriasReceita
     : ['Receita Recorrente', 'Trabalho Fixo', 'Freelancer', 'Comissão', 'Bonificação', 'Presente'];
@@ -431,7 +431,7 @@ export function AtividadeManutencaoForm({ recorrenciaId, atividade }) {
   const closeModal = useDash(s => s.closeModal);
 
   const rec = data.recorrencia.find(r => r.id === recorrenciaId);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateISO();
   const isEditing = !!atividade?.id;
 
   const [f, setF] = useState({
